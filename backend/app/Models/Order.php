@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -58,5 +59,26 @@ class Order extends Model
     public function productionLogs(): HasMany
     {
         return $this->hasMany(ProductionLog::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Pedidos com pagamento aguardando revisão humana: ainda pendentes ou cancelados e com registro
+     * interno de divergência ou de pagamento após cancelamento. Pedido já liberado não entra.
+     */
+    public function scopeInPaymentReview(Builder $query): Builder
+    {
+        return $query
+            ->whereIn('status', [OrderStatus::PENDING_PAYMENT->value, OrderStatus::CANCELLED->value])
+            ->whereHas('productionLogs', fn (Builder $logs) => $logs->paymentReview());
+    }
+
+    public function isInPaymentReview(): bool
+    {
+        if (! in_array($this->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::CANCELLED], true)) {
+            return false;
+        }
+
+        // Pré-carregado pela listagem do painel (withExists); fora dela, consulta direto
+        return (bool) ($this->payment_review_exists ?? $this->productionLogs()->paymentReview()->exists());
     }
 }

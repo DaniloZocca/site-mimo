@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\GatewayPayment;
 use App\Enums\OrderStatus;
 use App\Events\OrderPaidEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\ProductionLog;
 use App\Services\MercadoPagoService;
+use App\Services\PaymentApprovalValidator;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +21,8 @@ use Illuminate\Support\Facades\Log;
 class MercadoPagoWebhookController extends Controller
 {
     public function __construct(
-        private readonly MercadoPagoService $mercadoPagoService
+        private readonly MercadoPagoService $mercadoPagoService,
+        private readonly PaymentApprovalValidator $approvalValidator,
     ) {}
 
     /**
@@ -136,10 +140,9 @@ class MercadoPagoWebhookController extends Controller
             return response()->json(['message' => 'Falha na verificação reversa do pagamento'], 422);
         }
 
-        $paymentStatus      = (string) ($paymentData['status'] ?? '');
-        $externalReference  = (string) ($paymentData['external_reference'] ?? '');
-        $transactionAmount  = (float) ($paymentData['transaction_amount'] ?? 0.0);
-        $paidAmountInCents  = (int) round($transactionAmount * 100);
+        $payment           = GatewayPayment::fromMercadoPago($paymentData);
+        $paymentStatus     = $payment->status;
+        $externalReference = (string) ($payment->externalReference ?? '');
 
         if (empty($externalReference)) {
             Log::warning("⚠️ Pagamento #{$dataId} sem external_reference associada.");
@@ -153,8 +156,8 @@ class MercadoPagoWebhookController extends Controller
             return DB::transaction(function () use (
                 $externalReference,
                 $paymentStatus,
+                $payment,
                 $dataId,
-                $paidAmountInCents,
                 $startTime
             ): JsonResponse {
                 /** @var Order|null $order */
@@ -169,32 +172,60 @@ class MercadoPagoWebhookController extends Controller
 
                 // Idempotência: Se o pedido já avançou para a fila de impressão ou além, responde 200
                 if ($order->status !== OrderStatus::PENDING_PAYMENT) {
-                    Log::info("ℹ️ Evento idempotente recebido: Pedido #{$order->order_number} já está em '{$order->status->value}'.");
+                    // Dinheiro recebido para pedido cancelado: alerta e registro interno para estorno (não reabre)
+                    if ($order->status === OrderStatus::CANCELLED && $paymentStatus === 'approved') {
+                        $this->approvalValidator->reportApprovedAfterCancellation($order, $payment);
+                    } else {
+                        Log::info("ℹ️ Evento idempotente recebido: Pedido #{$order->order_number} já está em '{$order->status->value}'.");
+                    }
+
                     return response()->json([
                         'message'      => 'Evento idempotente já processado.',
                         'order_status' => $order->status->value,
                     ], 200);
                 }
 
-                // Validação Anti-Fraude: O valor pago deve ser idêntico ou superior ao total da compra
-                if ($paidAmountInCents < $order->total_cents) {
-                    Log::critical("🚨 [ALERTA DE FRAUDE] Valor pago (R$ " . ($paidAmountInCents / 100) . ") é inferior ao total do pedido #{$order->order_number} (R$ " . ($order->total_cents / 100) . ")");
-                    return response()->json(['message' => 'Divergência de valores financeiros detectada.'], 422);
-                }
-
-                // Transição para a Fila de Produção 3D
+                // Transição para a Fila de Produção 3D: só com o pagamento exatamente igual ao esperado
                 if ($paymentStatus === 'approved') {
-                    $previousStatus = $order->status->value;
+                    $reasons = $this->approvalValidator->validate($order, $payment);
 
-                    $order->status  = OrderStatus::IN_QUEUE;
-                    $order->paid_at = now();
-                    $order->save();
+                    if ($reasons !== []) {
+                        // Divergência é caso de revisão humana, não de reenvio: 200 e pedido segue pendente
+                        $this->approvalValidator->reportDivergence($order, $payment, $reasons, 'webhook');
+
+                        return response()->json([
+                            'message'      => 'Pagamento em revisão: divergência registrada.',
+                            'order_status' => OrderStatus::PENDING_PAYMENT->value,
+                        ], 200);
+                    }
+
+                    $previousStatus = $order->status->value;
+                    $paidAt = now();
+
+                    // Update condicional: só avança se o pedido ainda estiver pendente (0 linhas = já processado)
+                    $updated = Order::whereKey($order->id)
+                        ->where('status', OrderStatus::PENDING_PAYMENT->value)
+                        ->update(['status' => OrderStatus::IN_QUEUE->value, 'paid_at' => $paidAt]);
+
+                    if ($updated === 0) {
+                        $order->refresh();
+                        Log::info("ℹ️ Evento idempotente recebido: Pedido #{$order->order_number} já está em '{$order->status->value}'.");
+
+                        return response()->json([
+                            'message'      => 'Evento idempotente já processado.',
+                            'order_status' => $order->status->value,
+                        ], 200);
+                    }
+
+                    $order->refresh();
 
                     $order->productionLogs()->create([
                         'previous_status' => $previousStatus,
                         'new_status'      => OrderStatus::IN_QUEUE->value,
                         'notes'           => "Pagamento aprovado via Webhook Mercado Pago (Payment ID: {$dataId})",
                         'created_at'      => now(),
+                        'code'            => ProductionLog::CODE_PAYMENT_APPROVED,
+                        'reference'       => $payment->id,
                     ]);
 
                     // Dispara evento de domínio para listeners de e-mail e WebSocket da fazenda

@@ -281,6 +281,8 @@ class SimulateOrderFlowCommand extends Command
                     'status_detail'      => 'accredited',
                     'external_reference' => $this->order->order_number,
                     'transaction_amount' => $this->order->total_cents / 100,
+                    'currency_id'        => 'BRL',
+                    'live_mode'          => false,
                 ]);
             }
         };

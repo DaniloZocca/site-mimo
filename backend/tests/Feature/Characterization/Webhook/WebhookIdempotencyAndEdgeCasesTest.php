@@ -9,7 +9,6 @@ use App\Events\OrderPaidEvent;
 use App\Models\Order;
 use Illuminate\Support\Facades\Event;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\Feature\Characterization\Support\CapturesLogs;
 use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 use Tests\Feature\Characterization\Support\FakeMercadoPagoHttpClient;
 use Tests\Feature\Characterization\Support\SendsMercadoPagoWebhooks;
@@ -21,7 +20,6 @@ use Tests\Feature\Characterization\Support\SendsMercadoPagoWebhooks;
 #[Group('characterization')]
 class WebhookIdempotencyAndEdgeCasesTest extends CharacterizationTestCase
 {
-    use CapturesLogs;
     use SendsMercadoPagoWebhooks;
 
     private Order $order;
@@ -48,24 +46,6 @@ class WebhookIdempotencyAndEdgeCasesTest extends CharacterizationTestCase
         Event::assertDispatchedTimes(OrderPaidEvent::class, 1);
         // A segunda notificação ainda consulta a API antes de perceber a duplicidade.
         $this->assertCount(2, $this->mpHttp->requests);
-    }
-
-    public function test_aprovado_para_pedido_cancelado_e_ignorado_em_silencio(): void
-    {
-        // BUG CONHECIDO: dinheiro recebido para pedido cancelado não gera alerta nem registro — ver teste gêmeo em KnownBugs
-        $this->order->forceFill(['status' => OrderStatus::CANCELLED])->save();
-        $this->apiReturnsPayment(123, 'approved', $this->order);
-        $this->captureLogs();
-
-        $this->postSignedWebhook('123')
-            ->assertOk()
-            ->assertExactJson(['message' => 'Evento idempotente já processado.', 'order_status' => 'cancelled']);
-
-        $this->assertSame(OrderStatus::CANCELLED, $this->order->refresh()->status);
-        $this->assertSame(0, $this->order->productionLogs()->count());
-        $this->assertSame([], $this->logsAtLevels(['warning', 'error', 'critical', 'alert', 'emergency']));
-        $this->assertCount(1, $this->logsAtLevels(['info'], 'Evento idempotente recebido'));
-        Event::assertNotDispatched(OrderPaidEvent::class);
     }
 
     public function test_recusa_para_pedido_ja_em_producao_nao_altera(): void

@@ -133,16 +133,18 @@ class WebhookPaymentProcessingTest extends CharacterizationTestCase
         $this->assertSame(0, $this->order->productionLogs()->count());
     }
 
-    public function test_valor_pago_menor_que_o_total_retorna_422_e_nao_altera(): void
+    public function test_valor_pago_menor_que_o_total_responde_200_e_deixa_em_revisao(): void
     {
+        // Divergência é caso de revisão humana, não de reenvio: 200 e pedido segue pendente (PaymentApprovalValidator)
         $this->apiReturnsPayment(123, 'approved', $this->order, amountCents: 9999);
 
         $this->postSignedWebhook('123')
-            ->assertStatus(422)
-            ->assertExactJson(['message' => 'Divergência de valores financeiros detectada.']);
+            ->assertOk()
+            ->assertExactJson(['message' => 'Pagamento em revisão: divergência registrada.', 'order_status' => 'pending_payment']);
 
         $this->assertSame(OrderStatus::PENDING_PAYMENT, $this->order->refresh()->status);
-        $this->assertSame(0, $this->order->productionLogs()->count());
+        $this->assertSame(1, $this->order->productionLogs()->where('is_internal', true)->count());
+        Event::assertNotDispatched(OrderPaidEvent::class);
     }
 
     public function test_valor_pago_igual_ao_total_e_aceito(): void
@@ -154,37 +156,27 @@ class WebhookPaymentProcessingTest extends CharacterizationTestCase
         $this->assertSame(OrderStatus::IN_QUEUE, $this->order->refresh()->status);
     }
 
-    public function test_valor_pago_maior_que_o_total_e_aceito(): void
+    public function test_recusa_com_valor_menor_responde_200_e_cancela(): void
     {
-        // BUG CONHECIDO: valor pago acima do total é aceito (doc exige igual) — ver teste gêmeo em KnownBugs
-        $this->apiReturnsPayment(123, 'approved', $this->order, amountCents: 10001);
-
-        $this->postSignedWebhook('123')->assertOk();
-
-        $this->assertSame(OrderStatus::IN_QUEUE, $this->order->refresh()->status);
-    }
-
-    public function test_recusa_com_valor_menor_retorna_422_e_nao_cancela(): void
-    {
-        // PERGUNTA: a checagem de valor roda antes da checagem de status. Um pagamento
-        // 'rejected' com valor menor devolve 422 (o MP reenvia) e o pedido NÃO é cancelado. Intencional?
+        // A checagem de valor só vale para 'approved'; recusa segue a lógica de cancelamento (e 200, sem reenvio do MP).
         $this->apiReturnsPayment(123, 'rejected', $this->order, amountCents: 100);
 
         $this->postSignedWebhook('123')
-            ->assertStatus(422)
-            ->assertExactJson(['message' => 'Divergência de valores financeiros detectada.']);
+            ->assertOk()
+            ->assertExactJson(['message' => 'Notificação processada com sucesso.', 'payment_status' => 'rejected']);
 
-        $this->assertSame(OrderStatus::PENDING_PAYMENT, $this->order->refresh()->status);
+        $this->assertSame(OrderStatus::CANCELLED, $this->order->refresh()->status);
     }
 
-    public function test_valor_com_centavos_fracionados_e_arredondado(): void
+    public function test_valor_com_mais_de_dois_decimais_nao_libera_producao(): void
     {
-        // transaction_amount 99.995 → round(9999.5) = 10000 centavos → aceito para total 10000.
+        // transaction_amount 99.995 não tem valor exato em centavos (conversão sem float) → amount_invalid, sem arredondar.
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(123, 'approved', $this->order->order_number, 99.995), 200);
 
         $this->postSignedWebhook('123')->assertOk();
 
-        $this->assertSame(OrderStatus::IN_QUEUE, $this->order->refresh()->status);
+        $this->assertSame(OrderStatus::PENDING_PAYMENT, $this->order->refresh()->status);
+        $this->assertStringContainsString('amount_invalid', (string) $this->order->productionLogs()->where('is_internal', true)->value('notes'));
     }
 
     public function test_falha_na_consulta_da_api_retorna_422(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\CheckoutOrderDTO;
+use App\DTOs\GatewayPayment;
 use App\Enums\OrderStatus;
 use App\Events\OrderPaid;
 use App\Exceptions\ShippingPriceChangedException;
@@ -12,9 +13,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
 use App\Jobs\ProcessOrderPaidNotification;
 use App\Models\Order;
+use App\Models\ProductionLog;
 use App\Services\CheckoutIdempotencyService;
 use App\Services\MercadoPagoService;
 use App\Services\OrderCreationService;
+use App\Services\PaymentApprovalValidator;
 use Exception;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +30,7 @@ class CheckoutController extends Controller
         private readonly OrderCreationService $orderCreationService,
         private readonly MercadoPagoService $mercadoPagoService,
         private readonly CheckoutIdempotencyService $idempotency,
+        private readonly PaymentApprovalValidator $approvalValidator,
     ) {}
 
     /**
@@ -92,24 +96,10 @@ class CheckoutController extends Controller
                 $paymentResult = $this->mercadoPagoService->createCardPayment($order, $orderDTO);
             }
 
-            $isApproved = ($paymentResult['status'] === 'approved');
-
-            // 4. Atualização isolada do status com log de auditoria
-            if ($isApproved) {
-                $previousStatus = $order->status->value;
-                $order->status  = OrderStatus::IN_QUEUE;
-                $order->paid_at = now();
-                $order->save();
-
-                $order->productionLogs()->create([
-                    'previous_status' => $previousStatus,
-                    'new_status'      => OrderStatus::IN_QUEUE->value,
-                    'notes'           => "Pagamento autorizado instantaneamente via cartão (ID: {$paymentResult['payment_id']})",
-                    'created_at'      => now(),
-                ]);
-
-                event(new OrderPaid($order));
-                ProcessOrderPaidNotification::dispatch($order);
+            // 4. Aprovação instantânea (cartão): só libera a produção se o pagamento for exatamente o esperado
+            $underReview = false;
+            if ($paymentResult['status'] === 'approved') {
+                $underReview = ! $this->releaseApprovedCardPayment($order, GatewayPayment::fromMercadoPago($paymentResult));
             }
         } catch (Exception $e) {
             // 5. Tratamento de Falha no Gateway e Atualização de Auditoria
@@ -141,18 +131,78 @@ class CheckoutController extends Controller
 
         // 5. Persiste o resultado do gateway e a resposta dada (base do replay idempotente)
         $payment = $order->payments()->create([
-            'provider'       => 'mercadopago',
-            'method'         => $orderDTO->paymentMethod,
-            'external_id'    => (string) $paymentResult['payment_id'],
-            'status'         => (string) $paymentResult['status'],
-            'status_detail'  => $paymentResult['status_detail'] ?? null,
-            'qr_code'        => $paymentResult['qr_code'] ?? null,
-            'qr_code_base64' => $paymentResult['qr_code_base64'] ?? null,
-            'ticket_url'     => $paymentResult['ticket_url'] ?? null,
-            'http_status'    => 201,
-            'order_status'   => $order->status->value,
+            'provider'        => 'mercadopago',
+            'method'          => $orderDTO->paymentMethod,
+            'external_id'     => (string) $paymentResult['payment_id'],
+            'status'          => (string) $paymentResult['status'],
+            'status_detail'   => $paymentResult['status_detail'] ?? null,
+            'qr_code'         => $paymentResult['qr_code'] ?? null,
+            'qr_code_base64'  => $paymentResult['qr_code_base64'] ?? null,
+            'ticket_url'      => $paymentResult['ticket_url'] ?? null,
+            'failure_message' => $underReview ? CheckoutIdempotencyService::PAYMENT_UNDER_REVIEW_MESSAGE : null,
+            'http_status'     => $underReview ? 202 : 201,
+            'order_status'    => $order->status->value,
         ]);
 
         return $this->idempotency->checkoutResponse($order, $payment);
+    }
+
+    /**
+     * Libera a produção de um cartão aprovado na criação do pagamento, pela mesma regra do webhook.
+     * Devolve false quando o pedido fica em revisão (divergência): pending_payment, sem nova cobrança.
+     */
+    private function releaseApprovedCardPayment(Order $order, GatewayPayment $payment): bool
+    {
+        $reasons = $this->approvalValidator->validate($order, $payment);
+
+        if ($reasons !== []) {
+            $this->approvalValidator->reportDivergence($order, $payment, $reasons, 'card');
+
+            return false;
+        }
+
+        $previousStatus = $order->status->value;
+
+        // Update condicional: só avança se o pedido ainda estiver pendente
+        $updated = Order::whereKey($order->id)
+            ->where('status', OrderStatus::PENDING_PAYMENT->value)
+            ->update(['status' => OrderStatus::IN_QUEUE->value, 'paid_at' => now()]);
+
+        $order->refresh();
+
+        if ($updated === 0) {
+            // Corrida: o webhook deste mesmo pagamento já liberou o pedido → resposta normal de aprovado
+            $alreadyApproved = $order->status === OrderStatus::IN_QUEUE
+                && $order->productionLogs()
+                    ->where('code', ProductionLog::CODE_PAYMENT_APPROVED)
+                    ->where('reference', $payment->id)
+                    ->exists();
+
+            if ($alreadyApproved) {
+                return true;
+            }
+
+            if ($order->status === OrderStatus::CANCELLED) {
+                $this->approvalValidator->reportApprovedAfterCancellation($order, $payment);
+            } else {
+                $this->approvalValidator->reportDivergence($order, $payment, ['state_conflict'], 'card');
+            }
+
+            return false;
+        }
+
+        $order->productionLogs()->create([
+            'previous_status' => $previousStatus,
+            'new_status'      => OrderStatus::IN_QUEUE->value,
+            'notes'           => "Pagamento autorizado instantaneamente via cartão (ID: {$payment->id})",
+            'created_at'      => now(),
+            'code'            => ProductionLog::CODE_PAYMENT_APPROVED,
+            'reference'       => $payment->id,
+        ]);
+
+        event(new OrderPaid($order));
+        ProcessOrderPaidNotification::dispatch($order);
+
+        return true;
     }
 }
