@@ -1,0 +1,52 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Mail;
+
+use App\Models\Order;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
+
+class OrderPrintingStartedMail extends Mailable implements ShouldQueue
+{
+    use Queueable, SerializesModels;
+
+    public function __construct(
+        public Order $order
+    ) {
+        $this->order->loadMissing(['orderItems', 'customer']);
+    }
+
+    public function envelope(): Envelope
+    {
+        return new Envelope(
+            subject: "🖨️ As máquinas estão trabalhando na sua encomenda #{$this->order->order_number}! - MIMOO LAB",
+        );
+    }
+
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.orders.printing',
+            with: [
+                'order' => $this->order,
+                'trackingUrl' => rtrim(config('app.url', 'http://localhost:5173'), '/') . "/?token={$this->order->tracking_token}",
+            ],
+        );
+    }
+
+    /**
+     * Get the attachments for the message.
+     *
+     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     */
+    public function attachments(): array
+    {
+        return [];
+    }
+}

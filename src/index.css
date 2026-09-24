@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: #FAFAFE;
+    color: #18181B;
+    overflow-x: hidden;
+  }
+
+  /* Cute Kawaii Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #F3E8FF;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #C084FC;
+    border-radius: 9999px;
+    border: 2px solid #F3E8FF;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #7C3AED;
+  }
+}
+
+@layer utilities {
+  .bg-dot-pattern {
+    background-image: radial-gradient(#D8B4FE 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+  }
+  
+  .bg-grid-pattern {
+    background-image: linear-gradient(to right, rgba(124, 58, 237, 0.05) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(124, 58, 237, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .text-stroke-sm {
+    -webkit-text-stroke: 1px #18181B;
+  }
+  
+  .text-stroke-md {
+    -webkit-text-stroke: 2px #18181B;
+  }
+
+  /* Chunky Kawaii Buttons */
+  .btn-chunky {
+    @apply font-fredoka font-semibold rounded-2xl border-2 border-mimoo-dark transition-all duration-150 active:translate-x-1 active:translate-y-1 active:shadow-none;
+  }
+  
+  .btn-chunky-purple {
+    @apply btn-chunky bg-mimoo-purple text-white shadow-chunky hover:bg-mimoo-purple-dark hover:-translate-y-0.5;
+  }
+
+  .btn-chunky-pink {
+    @apply btn-chunky bg-mimoo-pink text-white shadow-chunky hover:bg-mimoo-pink-dark hover:-translate-y-0.5;
+  }
+
+  .btn-chunky-yellow {
+    @apply btn-chunky bg-mimoo-yellow text-mimoo-dark shadow-chunky hover:bg-yellow-400 hover:-translate-y-0.5;
+  }
+
+  .btn-chunky-white {
+    @apply btn-chunky bg-white text-mimoo-dark shadow-chunky hover:bg-mimoo-purple-tint hover:-translate-y-0.5;
+  }
+
+  .card-chunky {
+    @apply rounded-3xl border-2 border-mimoo-dark bg-white shadow-chunky transition-all duration-200;
+  }
+
+  .badge-chunky {
+    @apply font-fredoka font-medium rounded-full border-2 border-mimoo-dark px-3 py-1 text-xs shadow-chunky-sm;
+  }
+}
+
+/* 3D Printer Extruder Head Simulation Keyframes */
+@keyframes extruderMove {
+  0% { transform: translate(10%, 15px); }
+  25% { transform: translate(85%, 25px); }
+  50% { transform: translate(30%, 45px); }
+  75% { transform: translate(70%, 15px); }
+  100% { transform: translate(10%, 15px); }
+}
+
+.animate-extruder {
+  animation: extruderMove 4s ease-in-out infinite alternate;
+}
+
+@keyframes laserScan {
+  0% { transform: translateY(0%); opacity: 0.8; }
+  50% { transform: translateY(100%); opacity: 0.4; }
+  100% { transform: translateY(0%); opacity: 0.8; }
+}
+
+.animate-laser {
+  animation: laserScan 2.5s ease-in-out infinite;
+}

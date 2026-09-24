@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>MIMOO LAB 3D Studio - Contexto Completo do Projeto</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 10mm 11mm 11mm 11mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 8pt;
+      line-height: 1.4;
+      color: #1e293b;
+      background-color: #ffffff;
+    }
+
+    /* Print Break Utilities */
+    .avoid-break {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    h2, h3, h4 {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    /* Cover / Header Banner */
+    .cover-banner {
+      background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 50%, #db2777 100%);
+      color: #ffffff;
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .cover-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      padding: 2px 8px;
+      border-radius: 16px;
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      margin-bottom: 4px;
+    }
+    .cover-title {
+      font-size: 17pt;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .cover-subtitle {
+      font-size: 9.5pt;
+      font-weight: 400;
+      opacity: 0.95;
+      margin-bottom: 8px;
+    }
+    .cover-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 7pt;
+      border-top: 1px solid rgba(255, 255, 255, 0.25);
+      padding-top: 6px;
+    }
+    .cover-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* Typography */
+    h1, h2, h3, h4 {
+      color: #0f172a;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    h2 {
+      font-size: 11pt;
+      color: #5b21b6;
+      border-bottom: 1.5px solid #ede9fe;
+      padding-bottom: 3px;
+      margin-top: 10px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    h3 {
+      font-size: 9pt;
+      color: #1e1b4b;
+      margin-top: 8px;
+      margin-bottom: 3px;
+    }
+    p {
+      margin-bottom: 5px;
+      color: #334155;
+    }
+    ul, ol {
+      margin-left: 14px;
+      margin-bottom: 5px;
+      color: #334155;
+    }
+    li {
+      margin-bottom: 2px;
+    }
+    strong {
+      color: #0f172a;
+    }
+
+    /* Badges & Pills */
+    .pill {
+      display: inline-block;
+      font-size: 6.5pt;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .pill-purple { background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
+    .pill-pink   { background: #fce7f3; color: #be185d; border: 1px solid #fbcfe8; }
+    .pill-green  { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .pill-amber  { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .pill-blue   { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+
+    /* Cards & Containers */
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 9px;
+      margin-bottom: 6px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .card-featured {
+      background: #faf5ff;
+      border: 1px solid #d8b4fe;
+      border-left: 3px solid #7c3aed;
+    }
+    .card-alert {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-left: 3px solid #f59e0b;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 5px 0 7px 0;
+      font-size: 7.2pt;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 3.5px 5px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+    }
+    tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+
+    /* Code Blocks */
+    pre, code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    code {
+      font-size: 7.2pt;
+      background: #f1f5f9;
+      color: #475569;
+      padding: 1px 3px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+    }
+    pre {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 6px 8px;
+      border-radius: 5px;
+      font-size: 6.8pt;
+      line-height: 1.3;
+      margin: 3px 0 5px 0;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border: none;
+    }
+
+    /* Multi-column grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      margin-bottom: 5px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      padding-top: 6px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 6.8pt;
+      color: #64748b;
+      text-align: center;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================== -->
+  <!-- 1. CAPA / CABEÇALHO DO PROJETO             -->
+  <!-- ========================================== -->
+  <div class="cover-banner">
+    <div class="cover-badge">Dossiê Técnico Arquitetural para Inteligência Artificial</div>
+    <div class="cover-title">MIMOO LAB 3D Studio</div>
+    <div class="cover-subtitle">Plataforma de E-Commerce On-Demand e Gestão de Fazenda de Impressão 3D (site-mimo)</div>
+    <div class="cover-meta">
+      <span><strong>Frontend:</strong> React 19 + Tailwind CSS 3.4 + Vite 5</span>
+      <span><strong>Backend:</strong> Laravel 11 (PHP 8.2+) + Filament 3.2</span>
+      <span><strong>Pagamentos:</strong> Mercado Pago (PIX + Cartão)</span>
+      <span><strong>Banco de Dados:</strong> SQLite (UUIDs)</span>
+      <span><strong>Logística:</strong> Cubagem 3D + Melhor Envio / Correios</span>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. RESUMO EXECUTIVO & CONCEITO             -->
+  <!-- ========================================== -->
+  <div class="card card-featured">
+    <h3 style="margin-top:0; color:#6d28d9;">🎯 Objetivo do Dossiê</h3>
+    <p style="margin-bottom:0;">
+      Este documento sintetiza <strong>100% da arquitetura, contratos de API, schema de banco de dados, regras financeiras Zero-Trust e lógica de esteira 3D</strong> do projeto <strong>MIMOO LAB 3D Studio</strong>. Desenvolvido para que qualquer Inteligência Artificial possa dar continuidade, implementar novas funcionalidades, corrigir bugs e refatorar componentes mantendo rigorosa aderência aos padrões do repositório.
+    </p>
+  </div>
+
+  <h2>1. Visão Geral do Produto e Modelo de Negócio</h2>
+  <p>
+    A <strong>MIMOO LAB</strong> é uma loja online especializada em colecionáveis, toys articulados, suportes geek e itens de decoração fabricados <strong>sob encomenda via manufatura aditiva FDM (impressão 3D)</strong>.
+  </p>
+  <ul>
+    <li><strong>Produção On-Demand (Zero Estoque Parado):</strong> Cada peça é fatiada digitalmente e impressa apenas após a confirmação do pagamento, garantindo personalização de cores/materiais sem desperdício de matéria-prima.</li>
+    <li><strong>Customização em Tempo Real:</strong> O cliente escolhe a cor do filamento (ex: Lilás MIMOO, Seda Dourada, Rosa Algodão), o tamanho com modificador de preço e o polímero técnico (PLA, PETG, ABS, TPU).</li>
+    <li><strong>Rastreamento Transparente da Fazenda 3D:</strong> O cliente acompanha cada etapa ao vivo (Fila de Fatiamento &rarr; Extrusão na Mesa &rarr; Acabamento Manual &rarr; Expedição).</li>
+    <li><strong>Design System Kawaii Chunky:</strong> Identidade visual retrô-moderna e amigável: bordas sólidas <code>#18181B</code>, sombras de bloco <code>shadow-chunky</code>, fontes <em>Fredoka</em> e <em>Nunito</em>, e a mascote oficial "Vaquinha Mimoo".</li>
+  </ul>
+
+  <!-- ========================================== -->
+  <!-- 3. ARQUITETURA DO SISTEMA                  -->
+  <!-- ========================================== -->
+  <h2>2. Arquitetura do Sistema e Stack Tecnológica</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3 style="color:#7c3aed; margin-top:0;">Frontend (SPA)</h3>
+      <ul>
+        <li><strong>Framework:</strong> React 19 (React DOM 19)</li>
+        <li><strong>Bundler:</strong> Vite 5.4 com Fast Refresh</li>
+        <li><strong>Estilização:</strong> Tailwind CSS 3.4 com tokens customizados (<code>mimoo-purple</code>, <code>card-chunky</code>, <code>shadow-chunky</code>)</li>
+        <li><strong>Validação:</strong> React Hook Form 7 + Zod 4</li>
+        <li><strong>Ícones & Efeitos:</strong> Lucide React 1.34, Canvas Confetti</li>
+        <li><strong>SDK Pagamentos:</strong> <code>@mercadopago/sdk-react</code> 1.0</li>
+        <li><strong>Segurança:</strong> <code>dompurify</code> 3.4 contra XSS</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="color:#0369a1; margin-top:0;">Backend (API & Backoffice)</h3>
+      <ul>
+        <li><strong>Linguagem:</strong> PHP 8.2+ com <code>declare(strict_types=1);</code></li>
+        <li><strong>Framework:</strong> Laravel 11.0 (RESTful API)</li>
+        <li><strong>Painel Administrativo:</strong> Filament Admin v3.2</li>
+        <li><strong>Banco de Dados:</strong> SQLite com chaves primárias UUIDv7 (<code>HasUuids</code>)</li>
+        <li><strong>SDK Gateway:</strong> Mercado Pago DX PHP SDK 3.16</li>
+        <li><strong>Logística:</strong> ViaCEP, API Melhor Envio (cálculo de cubagem 3D e fretes)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Diagrama de Fluxo e Interações do Sistema</h3>
+    <pre><code>+-----------------------------------------------------------------------------------+
+|                            CLIENTE (React 19 SPA)                                 |
+|  - Catálogo Dinâmico  - Seletor de Cores/Tamanhos/Materiais  - Carrinho Local     |
+|  - Rastreamento Live  - Checkout Seguro (PIX QR Code / Cartão de Crédito)         |
++------------------------------------------+----------------------------------------+
+                                           | HTTP Requests (JSON)
+                                           v
++-----------------------------------------------------------------------------------+
+|                         LARAVEL 11 API (Backend)                                  |
+|  - ProductController (Eager loading, multi-categoria, cache)                      |
+|  - CheckoutController (Orquestração Zero-Trust, atomicidade DB)                   |
+|  - OrderCreationService (Validação de catálogo, snapshots imutáveis, 10% PIX)     |
+|  - PackagingService (Cubagem de peças 3D, peso de tara, plástico bolha)          |
+|  - ShippingCalculationService (Melhor Envio API com fallback regional)            |
+|  - ProductionWorkflowService (Máquina de estados de impressão 3D)                 |
+|  - MercadoPagoWebhookController (Tratamento seguro com validação HMAC)            |
++---------------------+-------------------------------+-----------------------------+
+                      |                               |
+                      v                               v
+    +----------------------------------+   +----------------------------------+
+    |       BANCO DE DADOS SQLite      |   |        SERVIÇOS EXTERNOS         |
+    |  - Products, Categories, Colors  |   |  - Mercado Pago (PIX / Cards)    |
+    |  - Sizes, ProductImages          |   |  - Melhor Envio (Cotação Frete)  |
+    |  - Orders, OrderItems (Snapshots)|   |  - ViaCEP (Autocompletar CEP)    |
+    |  - ProductionLogs (Auditoria 3D) |   |  - Filament Admin Panel (V3.2)   |
+    +----------------------------------+   +----------------------------------+</code></pre>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 4. ESTRUTURA DE DIRETÓRIOS                 -->
+  <!-- ========================================== -->
+  <h2>3. Estrutura de Diretórios e Mapa de Arquivos</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3 style="color:#0369a1; margin-top:0;">Backend (Laravel 11 + Filament 3)</h3>
+      <ul style="font-size:6.8pt;">
+        <li><code>backend/app/DTOs/</code> &rarr; CheckoutOrderDTO, ShippingOptionDTO</li>
+        <li><code>backend/app/Enums/</code> &rarr; OrderStatus.php, MaterialType.php</li>
+        <li><code>backend/app/Events/</code> &rarr; OrderPaid.php, OrderStatusUpdatedEvent.php</li>
+        <li><code>backend/app/Filament/Resources/</code> &rarr; Product, Order, Color, Size</li>
+        <li><code>backend/app/Http/Controllers/Api/</code> &rarr; Checkout, Product, Tracking</li>
+        <li><code>backend/app/Models/</code> &rarr; Product, Order, OrderItem, Color, Size, etc.</li>
+        <li><code>backend/app/Services/</code>:
+          <ul>
+            <li><code>OrderCreationService.php</code>: Criação atômica e Zero-Trust Pricing</li>
+            <li><code>MercadoPagoService.php</code>: PIX QR Code & Cartões tokenizados</li>
+            <li><code>PackagingService.php</code>: Cubagem 3D e tara dos Correios</li>
+            <li><code>ShippingCalculationService.php</code>: Cotações Melhor Envio</li>
+            <li><code>ProductionWorkflowService.php</code>: Máquina de estados 3D</li>
+          </ul>
+        </li>
+        <li><code>backend/database/migrations/</code> &rarr; 15 migrações (UUIDs, pivôs, logs)</li>
+        <li><code>backend/database/seeders/</code> &rarr; Categorias, cores, tamanhos, produtos</li>
+        <li><code>backend/routes/api.php</code> &rarr; Endpoints REST públicos e rate-limited</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="color:#7c3aed; margin-top:0;">Frontend (React 19 + Vite)</h3>
+      <ul style="font-size:6.8pt;">
+        <li><code>src/components/cart/</code> &rarr; CartDrawer.jsx, ShippingSelector.jsx</li>
+        <li><code>src/components/checkout/</code> &rarr; CheckoutModal.jsx, CreditCardPaymentStep.jsx</li>
+        <li><code>src/components/tracking/</code> &rarr; ManufacturingStepper, TimelineLogs, SearchForm</li>
+        <li><code>src/components/</code>:
+          <ul>
+            <li><code>ProductGrid.jsx</code>: Filtros por tempo, categoria e busca</li>
+            <li><code>ProductDetailModal.jsx</code>: Customização cor, tamanho, polímero</li>
+            <li><code>LiveFarmTicker.jsx</code>: Simulação da fazenda de impressoras 3D</li>
+            <li><code>ProductCard.jsx</code>, <code>Hero.jsx</code>, <code>Header.jsx</code>, <code>Footer.jsx</code></li>
+          </ul>
+        </li>
+        <li><code>src/context/</code> &rarr; ShopContext.jsx (catálogo/API), CartContext.jsx (storage)</li>
+        <li><code>src/data/</code> &rarr; mockProducts.js (fallback offline de filamentos/ordens)</li>
+        <li><code>src/hooks/</code> &rarr; useMercadoPagoCard, useShipping, useViaCep</li>
+        <li><code>src/schemas/</code> &rarr; checkoutSchema.js, trackingSchema.js (Zod)</li>
+        <li><code>src/utils/</code> &rarr; pricing.js, sanitize.js, validators.js</li>
+        <li><code>src/index.css</code> &rarr; Tokens Tailwind, scrollbar kawaii, animações de extrusão</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 5. MODELO DE DADOS & BANCO                 -->
+  <!-- ========================================== -->
+  <h2>4. Modelo de Dados e Relacionamentos (Banco de Dados)</h2>
+  <p>Todas as tabelas utilizam identificadores primários <strong>UUID</strong> (trait <code>HasUuids</code> do Eloquent):</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Modelo</th>
+        <th>Tabela</th>
+        <th>Campos Principais</th>
+        <th>Relacionamentos</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Product</strong></td>
+        <td><code>products</code></td>
+        <td><code>id (uuid)</code>, <code>title</code>, <code>slug</code>, <code>description</code>, <code>base_price_cents</code>, <code>weight_grams</code>, <code>estimated_print_time_hours</code>, <code>allowed_materials (json)</code>, <code>is_active</code></td>
+        <td><code>images</code>, <code>primaryImage</code>, <code>categories</code> (M:N), <code>colors</code> (M:N), <code>sizes</code> (M:N), <code>orderItems</code></td>
+      </tr>
+      <tr>
+        <td><strong>Category</strong></td>
+        <td><code>categories</code></td>
+        <td><code>id (uuid)</code>, <code>name</code>, <code>slug</code></td>
+        <td><code>products</code> (BelongsToMany via <code>category_product</code>)</td>
+      </tr>
+      <tr>
+        <td><strong>Color</strong></td>
+        <td><code>colors</code></td>
+        <td><code>id (uuid)</code>, <code>name</code>, <code>hex_code</code>, <code>material_type (enum)</code>, <code>in_stock (bool)</code></td>
+        <td><code>products</code> (BelongsToMany via <code>color_product</code>)</td>
+      </tr>
+      <tr>
+        <td><strong>Size</strong></td>
+        <td><code>sizes</code></td>
+        <td><code>id (uuid)</code>, <code>name</code>, <code>price_modifier_in_cents</code>, <code>is_active</code></td>
+        <td><code>products</code> (BelongsToMany via <code>product_size</code>)</td>
+      </tr>
+      <tr>
+        <td><strong>ProductImage</strong></td>
+        <td><code>product_images</code></td>
+        <td><code>id (uuid)</code>, <code>product_id</code>, <code>image_path</code>, <code>alt_text</code>, <code>display_order</code></td>
+        <td><code>product</code> (BelongsTo)</td>
+      </tr>
+      <tr>
+        <td><strong>Order</strong></td>
+        <td><code>orders</code></td>
+        <td><code>id (uuid)</code>, <code>order_number</code>, <code>tracking_token</code>, <code>status (enum)</code>, <code>customer_name</code>, <code>customer_email</code>, <code>customer_cpf</code>, <code>customer_phone</code>, <code>shipping_address (json)</code>, <code>total_cents</code>, <code>shipping_cost_cents</code>, <code>paid_at</code></td>
+        <td><code>items</code> (HasMany OrderItem), <code>productionLogs</code> (HasMany ProductionLog)</td>
+      </tr>
+      <tr>
+        <td><strong>OrderItem</strong></td>
+        <td><code>order_items</code></td>
+        <td><code>id (uuid)</code>, <code>order_id</code>, <code>product_id</code>, <code>color_id</code>, <code>size_id</code>, <code>product_title_snapshot</code>, <code>color_name_snapshot</code>, <code>size_name_snapshot</code>, <code>material_name_snapshot</code>, <code>unit_price_cents</code>, <code>quantity</code></td>
+        <td><code>order</code> (BelongsTo), <code>product</code>, <code>color</code>, <code>size</code></td>
+      </tr>
+      <tr>
+        <td><strong>ProductionLog</strong></td>
+        <td><code>production_logs</code></td>
+        <td><code>id (uuid)</code>, <code>order_id</code>, <code>previous_status</code>, <code>new_status</code>, <code>notes</code>, <code>operator_name</code></td>
+        <td><code>order</code> (BelongsTo)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card card-featured">
+    <strong style="color:#6d28d9;">⭐ Regra Fundamental de Auditoria: Snapshots Imutáveis em <code>order_items</code></strong><br>
+    Cada item gravado no pedido armazena cópias textuais completas de título, cor, tamanho, polímero e preço unitário do momento da compra. Alterações posteriores no catálogo nunca corrompem pedidos em andamento ou histórico contábil.
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 6. ENUMS E MÁQUINA DE ESTADOS DA OFICINA   -->
+  <!-- ========================================== -->
+  <h2>5. Enums do Negócio e Ciclo de Produção 3D</h2>
+
+  <h3>5.1. Máquina de Estados dos Pedidos (OrderStatus)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Enum Value</th>
+        <th>Rótulo</th>
+        <th>Significado Operacional na Oficina</th>
+        <th>Próximos Estados Permitidos</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>pending_payment</code></td>
+        <td><span class="pill pill-amber">Aguardando Pagamento</span></td>
+        <td>Pedido criado via PIX ou Cartão pendente de confirmação.</td>
+        <td><code>in_queue</code>, <code>cancelled</code></td>
+      </tr>
+      <tr>
+        <td><code>in_queue</code></td>
+        <td><span class="pill pill-purple">Na Fila de Impressão 3D</span></td>
+        <td>Pagamento aprovado. G-Code fatiado e na fila de espera das impressoras.</td>
+        <td><code>printing</code>, <code>cancelled</code></td>
+      </tr>
+      <tr>
+        <td><code>printing</code></td>
+        <td><span class="pill pill-blue">Imprimindo na Fazenda 3D</span></td>
+        <td>Peça fixada na mesa aquecida e em processo de extrusão ativa.</td>
+        <td><code>finishing_and_packaging</code>, <code>cancelled</code></td>
+      </tr>
+      <tr>
+        <td><code>finishing_and_packaging</code></td>
+        <td><span class="pill pill-pink">Acabamento & Embalagem</span></td>
+        <td>Remoção de suportes, inspeção de camadas, aroma e empacotamento seguro.</td>
+        <td><code>shipped</code>, <code>cancelled</code></td>
+      </tr>
+      <tr>
+        <td><code>shipped</code></td>
+        <td><span class="pill pill-green">Expedido / Em Trânsito</span></td>
+        <td>Pacote postado na transportadora com rastreio ativo.</td>
+        <td><code>delivered</code></td>
+      </tr>
+      <tr>
+        <td><code>delivered</code></td>
+        <td><span class="pill pill-green">Entregue com Sucesso</span></td>
+        <td>Entrega confirmada no destino.</td>
+        <td><em>Estado Final</em></td>
+      </tr>
+      <tr>
+        <td><code>cancelled</code></td>
+        <td><span class="pill pill-amber">Cancelado</span></td>
+        <td>Cancelado pelo cliente ou estornado pela loja.</td>
+        <td><em>Estado Final</em></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>5.2. Tipos de Materiais e Polímeros (MaterialType)</h3>
+  <div class="card">
+    <ul style="font-size:7.2pt;">
+      <li><strong>PLA (<code>pla</code>):</strong> <em>PLA Premium (Atóxico e Biodegradável)</em>. Ideal para decoração, vasos e toys. Baixo encolhimento e alta fidelidade de detalhes.</li>
+      <li><strong>PETG (<code>petg</code>):</strong> <em>PETG Resistente (Uso Externo & Térmico)</em>. Resistente a impactos e raios UV. Ideal para suportes e peças funcionais.</li>
+      <li><strong>ABS (<code>abs</code>):</strong> <em>ABS Industrial (Alta Resistência Mecânica)</em>. Suporta até 90°C. Rígido e durável.</li>
+      <li><strong>TPU (<code>tpu</code>):</strong> <em>TPU Flexível (Emborrachado & Maleável)</em>. Elastômero flexível de alta resistência a impactos.</li>
+    </ul>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 7. REGRAS INVIOLÁVEIS DO BACKEND           -->
+  <!-- ========================================== -->
+  <h2>6. Regras de Ouro e Princípios Arquiteturais Invioláveis</h2>
+  <div class="card card-alert">
+    <ol style="font-size:7.2pt; margin-left:14px;">
+      <li><strong>Zero-Trust Pricing:</strong> Os valores de preço e modificadores de tamanho vindos do cliente são <strong>sumariamente ignorados</strong>. O backend recalcula tudo a partir do banco de dados: <code>Product::base_price_cents + Size::price_modifier_in_cents</code>.</li>
+      <li><strong>Atomicidade Transacional DB:</strong> A transação do banco de dados commita a criação do pedido <strong>ANTES</strong> de qualquer chamada de rede externa ao Mercado Pago. Isso impede cobranças sem gravação no banco em caso de timeout.</li>
+      <li><strong>Desconto Automático PIX:</strong> Compras realizadas via PIX recebem <strong>10% de desconto real</strong> calculado sobre o subtotal das peças (o frete não sofre desconto).</li>
+      <li><strong>Validação de Estoque de Filamento:</strong> O checkout verifica se a cor solicitada possui <code>in_stock == true</code>. Se o filamento acabou na oficina, o pedido é barrado com mensagem descritiva (HTTP 422).</li>
+      <li><strong>Restrição de Polímero:</strong> O backend valida se o material solicitado consta na lista <code>allowed_materials</code> do produto.</li>
+      <li><strong>Proteção Anti-IDOR no Rastreamento:</strong> A consulta de pedidos exige a combinação de <code>order_number</code> (ex: <code>MIMOO-8492</code>) + <code>customer_cpf</code>, ou o <code>tracking_token</code> criptográfico.</li>
+      <li><strong>Rate Limiting Rigoroso:</strong> Rotas de checkout e rastreamento possuem limite de <code>throttle:10,1</code> (10 requisições por minuto por IP).</li>
+    </ol>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 8. CONTRATO DE APIS                        -->
+  <!-- ========================================== -->
+  <h2>7. Contrato Completo de APIs e Endpoints REST</h2>
+
+  <div class="card">
+    <h3 style="margin-top:0; color:#5b21b6;">7.1. Catálogo de Produtos: <code>GET /api/products</code></h3>
+    <pre><code>// Resposta (HTTP 200 OK):
+{
+  "data": [
+    {
+      "id": "9d9018e4-18c7-43c3-b41f-8232c4554eb7",
+      "title": "Mascote Vaquinha Articulada 3D",
+      "slug": "mascote-vaquinha-articulada-3d",
+      "base_price_cents": 4990,
+      "base_price_formatted": "R$ 49,90",
+      "weight_grams": 120,
+      "estimated_print_time_hours": 4.5,
+      "allowed_materials": ["pla", "petg"],
+      "primary_image": "https://images.unsplash.com/...",
+      "categories": [{ "id": "...", "name": "Articulados & Toys", "slug": "articulados-toys" }],
+      "colors": [{ "id": "...", "name": "Lilás MIMOO", "hex_code": "#A855F7", "in_stock": true }],
+      "sizes": [{ "id": "...", "name": "Médio Padrão (12cm)", "price_modifier_in_cents": 1500 }]
+    }
+  ]
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0; color:#5b21b6;">7.2. Checkout e Cobrança: <code>POST /api/checkout</code> (Rate Limit: 10/min)</h3>
+    <pre><code>// Payload de Envio:
+{
+  "customer_name": "Fernanda Oliveira",
+  "customer_email": "fernanda@exemplo.com",
+  "customer_cpf": "123.456.789-00",
+  "customer_phone": "(11) 98765-4321",
+  "shipping_address": { "zip_code": "01310-100", "street": "Av. Paulista", "number": "1000", "city": "São Paulo", "state": "SP" },
+  "shipping_cost_cents": 1850,
+  "payment_method": "pix", // "pix" | "credit_card"
+  "items": [{ "product_id": "...", "color_id": "...", "size_id": "...", "material": "pla", "quantity": 1 }],
+  "card_token": null // Obrigatório se payment_method == "credit_card"
+}
+
+// Resposta Sucesso (HTTP 201 Created):
+{
+  "message": "Pedido gerado com sucesso!",
+  "order_number": "MIMOO-8492",
+  "tracking_token": "a1b2c3d4e5...",
+  "status": "pending_payment",
+  "total_cents": 6341,
+  "total_formatted": "R$ 63,41",
+  "payment": { "method": "pix", "qr_code": "00020126580014br.gov.bcb.pix...", "qr_code_base64": "iVBORw0KGgoAAA..." }
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0; color:#5b21b6;">7.3. Rastreamento de Encomendas: <code>POST /api/orders/track</code> (Rate Limit: 10/min)</h3>
+    <pre><code>// Parâmetros: { "order_number": "MIMOO-8492", "cpf": "123.456.789-00" } ou { "tracking_token": "..." }
+// Resposta (HTTP 200 OK):
+{
+  "order_number": "MIMOO-8492",
+  "status": "printing",
+  "status_label": "Imprimindo na Fazenda 3D",
+  "customer_name": "Fernanda O.***",
+  "carrier_tracking_code": "BR984729104BR",
+  "items": [{ "title": "Vasinho Mimoo Vaquinha", "color": "Lilás MIMOO", "size": "Médio (12cm)", "material": "PLA Premium", "quantity": 1 }],
+  "timeline_logs": [
+    { "status": "printing", "notes": "Extrusão de 748/1100 camadas na Impressora Prusa #03", "created_at": "2026-08-26T16:00:00Z" }
+  ]
+}</code></pre>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 9. SERVIÇOS ESPECIALIZADOS                 -->
+  <!-- ========================================== -->
+  <h2>8. Serviços Especializados de Backend</h2>
+  <div class="grid-2">
+    <div class="card">
+      <strong style="color:#7c3aed;">PackagingService.php</strong>
+      <p style="font-size:6.8pt;">Calcula cubagem geométrica para peças 3D, peso de tara da caixa (50g) e proteção bolha (30g), respeitando limites mínimos dos Correios (16x11x6 cm).</p>
+    </div>
+    <div class="card">
+      <strong style="color:#0369a1;">ShippingCalculationService.php</strong>
+      <p style="font-size:6.8pt;">Consulta cotações na API do Melhor Envio com cache de 6h indexado por MD5 do CEP e cubagem. Possui fallback regional local e soma o lead time de impressão ao prazo dos Correios.</p>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <strong style="color:#be185d;">MercadoPagoService.php</strong>
+      <p style="font-size:6.8pt;">Emite pagamentos PIX com QR Code copia-e-cola e imagem Base64. Processa cartões de crédito tokenizados e valida autenticidade de webhooks via HMAC secret.</p>
+    </div>
+    <div class="card">
+      <strong style="color:#15803d;">ProductionWorkflowService.php</strong>
+      <p style="font-size:6.8pt;">Controla formalmente a máquina de estados das impressoras 3D, gravando logs na tabela <code>production_logs</code> e disparando notificações e e-mails aos clientes.</p>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 10. FRONTEND: CONTEXTO E TELAS             -->
+  <!-- ========================================== -->
+  <h2>9. Frontend: Contextos e Experiência do Usuário</h2>
+  <div class="card">
+    <ul style="font-size:7.2pt;">
+      <li><strong><code>ShopContext.jsx</code>:</strong> Busca catálogo em <code>http://localhost:8000/api/products</code> com polling de 3s e foco de janela. Faz fallback transparente para <code>mockProducts.js</code> se a API estiver offline. Controla abas (<code>home</code>, <code>catalog</code>, <code>tracking</code>, <code>howItWorks</code>) e toasts.</li>
+      <li><strong><code>CartContext.jsx</code>:</strong> Mantém itens no <code>localStorage</code> (<code>mimoo_cart_v2</code>) com dados de cor, tamanho, polímero, preço e quantidade.</li>
+      <li><strong><code>ProductDetailModal.jsx</code>:</strong> Permite escolher cor do filamento com visualizador de estoque em tempo real, polímero com descrição técnica e tamanho com recálculo automático de preço e prazo de impressão.</li>
+      <li><strong><code>CheckoutModal.jsx</code>:</strong> Formulário multi-etapas com Zod. Preenchimento de endereço via ViaCEP, seleção de frete, aplicação visual do desconto PIX e exibição do QR Code oficial.</li>
+      <li><strong><code>LiveFarmTicker.jsx</code>:</strong> Barra animada simulando as impressoras da fazenda 3D ativas com temperaturas e peça em fabricação.</li>
+      <li><strong><code>TrackingView.jsx</code>:</strong> Painel de rastreamento com stepper ilustrado de 4 fases e histórico detalhado de logs da esteira.</li>
+    </ul>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 11. GUIA DE EXECUÇÃO                       -->
+  <!-- ========================================== -->
+  <h2>10. Guia de Execução e Desenvolvimento</h2>
+  <div class="grid-2">
+    <div class="card">
+      <strong style="color:#0369a1;">Backend Laravel</strong>
+      <pre><code>cd backend
+composer install
+php artisan migrate:fresh --seed
+php artisan serve
+# API: http://localhost:8000/api
+# Admin: http://localhost:8000/admin</code></pre>
+    </div>
+    <div class="card">
+      <strong style="color:#7c3aed;">Frontend React</strong>
+      <pre><code># Na raiz (site-mimo)
+npm install
+npm run dev
+# Frontend: http://localhost:5173</code></pre>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 12. DIRETRIZES PARA A PRÓXIMA IA           -->
+  <!-- ========================================== -->
+  <h2>11. Diretrizes para a Próxima Inteligência Artificial</h2>
+  <div class="card card-featured">
+    <ol style="font-size:7.2pt; margin-left:14px;">
+      <li><strong>Alterações no Banco de Dados:</strong> Crie migrations numeradas em <code>backend/database/migrations/</code> e atualize o respectivo Modelo Eloquent com a trait <code>HasUuids</code> e os tipos em <code>casts()</code>.</li>
+      <li><strong>Contratos de API:</strong> Mantenha os Form Requests com tipagem estrita e DTOs imutáveis. Registre rotas em <code>backend/routes/api.php</code> com rate limiting.</li>
+      <li><strong>Design System:</strong> Siga o padrão <em>Kawaii Chunky</em>: bordas <code>border-2 border-mimoo-dark</code>, sombras <code>shadow-chunky</code>, fontes <code>font-fredoka</code> para botões e <code>font-nunito</code> para textos.</li>
+      <li><strong>Fórmulas Financeiras:</strong> O backend é a fonte absoluta da verdade. Mantenha sincronizadas as regras de <code>src/utils/pricing.js</code> (frontend) e <code>OrderCreationService.php</code> (backend).</li>
+      <li><strong>Materiais 3D:</strong> Respeite o enum <code>MaterialType</code> (PLA, PETG, ABS, TPU) e mantenha a consistência do campo <code>allowed_materials</code> nos produtos.</li>
+    </ol>
+  </div>
+
+  <div class="footer-note">
+    Documento oficial do ecossistema <strong>MIMOO LAB 3D Studio (site-mimo)</strong>. Estruturado para ingestão e continuidade imediata por agentes de IA.
+  </div>
+
+</body>
+</html>
