@@ -54,22 +54,24 @@ $order = \App\Models\Order::where('order_number', $orderNumber)->firstOrFail();
         throw new \RuntimeException('Pedido não está em pending_payment. Nada foi alterado.');
     }
 
-    // Registro público (aparece na timeline de rastreio): mesmo code do webhook
+    // Registro público (aparece na timeline de rastreio): nota genérica, sem id de pagamento nem
+    // nome do operador (mesmo vazamento do bug #12). O id fica só em `reference`, que o rastreio não expõe.
     $order->productionLogs()->create([
         'previous_status' => \App\Enums\OrderStatus::PENDING_PAYMENT->value,
         'new_status'      => \App\Enums\OrderStatus::IN_QUEUE->value,
-        'notes'           => "Liberado após conferência manual do pagamento {$paymentId} por {$operador}",
+        'notes'           => 'Pagamento confirmado. Seu pedido entrou na fila de impressão.',
         'code'            => \App\Models\ProductionLog::CODE_PAYMENT_APPROVED,
         'reference'       => $paymentId,
         'is_internal'     => false,
         'created_at'      => now(),
     ]);
 
-    // Registro interno (fora da timeline pública): quem conferiu e o quê
+    // Registro interno (fora da timeline pública): pagamento, quem conferiu e quando
+    $conferidoEm = now()->format('d/m/Y H:i:s');
     $order->productionLogs()->create([
         'previous_status' => \App\Enums\OrderStatus::PENDING_PAYMENT->value,
         'new_status'      => \App\Enums\OrderStatus::IN_QUEUE->value,
-        'notes'           => "Conferência manual por {$operador}: pagamento {$paymentId} approved, BRL, valor = total_cents, external_reference = order_number.",
+        'notes'           => "Pagamento {$paymentId} conferido manualmente no painel do Mercado Pago por {$operador} em {$conferidoEm} (approved, BRL, valor = total_cents, external_reference = order_number).",
         'code'            => 'payment_manual_release',
         'reference'       => $paymentId,
         'is_internal'     => true,
@@ -90,5 +92,7 @@ veja o status atual antes de fazer qualquer outra coisa.
 - **Não é disparado o `OrderPaidEvent`**. Por isso o cliente **não recebe o e-mail de confirmação**, que de todo
   modo estaria quebrado pelo bug #13. Isso é aceitável até o PR "Resolver revisão". Se o cliente precisar de
   aviso, faça o contato manual pelo canal de atendimento.
-- A timeline pública de rastreio passa a mostrar "Liberado após conferência manual do pagamento …". O
-  registro interno com a conferência só aparece no banco/painel.
+- A timeline pública de rastreio passa a mostrar só "Pagamento confirmado. Seu pedido entrou na fila de
+  impressão.": sem id de pagamento e sem nome do operador. O `OrderTrackingResource` não expõe a coluna
+  `reference`, e o `OrderTrackingController` carrega só `productionLogs()->public()`. O registro interno
+  (id do pagamento, operador, data/hora) só aparece no banco/painel.
