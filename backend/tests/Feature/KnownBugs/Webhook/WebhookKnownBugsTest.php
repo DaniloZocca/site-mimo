@@ -34,19 +34,6 @@ class WebhookKnownBugsTest extends CharacterizationTestCase
     }
 
     /**
-     * P0 — gêmeo de WebhookSignatureTest::test_sem_segredo_configurado_aceita_requisicao_sem_nenhum_cabecalho
-     */
-    public function test_sem_segredo_configurado_webhook_e_rejeitado_fail_closed(): void
-    {
-        $this->setWebhookSecret('');
-        $this->apiReturnsPayment(123, 'approved', $this->order);
-
-        $this->postWebhook('123')->assertStatus(401);
-
-        $this->assertSame(OrderStatus::PENDING_PAYMENT, $this->order->refresh()->status);
-    }
-
-    /**
      * P0 — gêmeo de WebhookBackdoorTest::test_get_payment_com_prefixo_sim_devolve_aprovado_sem_consultar_api
      */
     public function test_get_payment_nao_tem_atalho_sim_test_e_sempre_consulta_a_api(): void
@@ -57,21 +44,6 @@ class WebhookKnownBugsTest extends CharacterizationTestCase
 
         $this->assertNull($result);
         $this->assertCount(1, $this->mpHttp->requests);
-    }
-
-    /**
-     * P0 — gêmeo de WebhookBackdoorTest::test_sem_segredo_webhook_forjado_com_sim_marca_pedido_como_pago
-     */
-    public function test_webhook_forjado_com_id_sim_nao_marca_pedido_como_pago(): void
-    {
-        $this->setWebhookSecret('');
-        $this->mpHttp->pushApiError(404);
-
-        $this->postWebhook("SIM_{$this->order->order_number}_1");
-
-        $this->assertSame(OrderStatus::PENDING_PAYMENT, $this->order->refresh()->status);
-        $this->assertNull($this->order->paid_at);
-        Event::assertNotDispatched(OrderPaidEvent::class);
     }
 
     /**

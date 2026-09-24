@@ -48,6 +48,17 @@ class MercadoPagoWebhookController extends Controller
         // =========================================================================
         $webhookSecret = (string) config('services.mercadopago.webhook_secret', '');
 
+        // Sem segredo configurado não há como autenticar a notificação: rejeita (fail-closed).
+        if (empty($webhookSecret)) {
+            Log::critical('⛔ [Webhook Fail-Closed] MERCADOPAGO_WEBHOOK_SECRET não configurado. Notificação rejeitada.', [
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'message' => 'Unauthorized: Webhook não configurado.',
+            ], 401);
+        }
+
         if (! empty($webhookSecret)) {
             if (empty($xSignature) || empty($xRequestId)) {
                 Log::warning('⛔ [Webhook Fail-Closed] Requisição rejeitada: Headers x-signature ou x-request-id ausentes.', [

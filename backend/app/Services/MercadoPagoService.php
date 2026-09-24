@@ -217,8 +217,8 @@ class MercadoPagoService
         int $maxAgeSeconds = 300
     ): bool {
         if (empty($this->webhookSecret)) {
-            Log::warning('MERCADOPAGO_WEBHOOK_SECRET não configurado. Pulando validação HMAC.');
-            return true;
+            Log::critical('MERCADOPAGO_WEBHOOK_SECRET não configurado. Assinatura rejeitada (fail-closed).');
+            return false;
         }
 
         $parts = explode(',', $xSignature);

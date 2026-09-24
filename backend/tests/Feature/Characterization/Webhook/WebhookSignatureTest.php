@@ -7,6 +7,7 @@ namespace Tests\Feature\Characterization\Webhook;
 use App\Enums\OrderStatus;
 use App\Events\OrderPaidEvent;
 use App\Models\Order;
+use App\Services\MercadoPagoService;
 use Illuminate\Support\Facades\Event;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Feature\Characterization\Support\CharacterizationTestCase;
@@ -163,25 +164,31 @@ class WebhookSignatureTest extends CharacterizationTestCase
         $this->assertSame(OrderStatus::IN_QUEUE, $this->order->refresh()->status);
     }
 
-    public function test_sem_segredo_configurado_aceita_requisicao_sem_nenhum_cabecalho(): void
+    public function test_sem_segredo_configurado_webhook_e_rejeitado_fail_closed(): void
     {
-        // BUG CONHECIDO: webhook fail-open quando MERCADOPAGO_WEBHOOK_SECRET está vazio — ver teste gêmeo em KnownBugs
+        // Corrigido no bug #1 de docs/known-bugs.md (antes: fail-open).
         $this->setWebhookSecret('');
         $this->apiReturnsPayment(123, 'approved', $this->order);
 
-        $this->postWebhook('123')->assertOk();
+        $this->postWebhook('123')
+            ->assertStatus(401)
+            ->assertExactJson(['message' => 'Unauthorized: Webhook não configurado.']);
 
-        $this->assertSame(OrderStatus::IN_QUEUE, $this->order->refresh()->status);
+        $this->postWebhook('123', ['x-signature' => 'lixo', 'x-request-id' => 'x'])->assertStatus(401);
+        $this->postWebhook('123', $this->signedHeaders('123', secret: ''))->assertStatus(401);
+
+        $this->assertSame(OrderStatus::PENDING_PAYMENT, $this->order->refresh()->status);
+        $this->assertSame(0, $this->order->productionLogs()->count());
     }
 
-    public function test_sem_segredo_configurado_aceita_assinatura_lixo(): void
+    public function test_validate_webhook_signature_do_servico_rejeita_sem_segredo(): void
     {
-        // BUG CONHECIDO: webhook fail-open quando MERCADOPAGO_WEBHOOK_SECRET está vazio — ver teste gêmeo em KnownBugs
         $this->setWebhookSecret('');
-        $this->apiReturnsPayment(123, 'approved', $this->order);
 
-        $this->postWebhook('123', ['x-signature' => 'lixo', 'x-request-id' => 'x'])->assertOk();
-
-        $this->assertSame(OrderStatus::IN_QUEUE, $this->order->refresh()->status);
+        $this->assertFalse(app(MercadoPagoService::class)->validateWebhookSignature(
+            'ts='.time().',v1=qualquer',
+            'req-1',
+            '123'
+        ));
     }
 }
