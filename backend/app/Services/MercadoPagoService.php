@@ -41,7 +41,7 @@ class MercadoPagoService
     public function createPixPayment(Order $order, CheckoutOrderDTO $dto): array
     {
         $amountInReais = (float) round($order->total_cents / 100, 2);
-        $idempotencyKey = (string) Str::uuid();
+        $idempotencyKey = $this->paymentIdempotencyKey($order);
 
         $requestOptions = new RequestOptions();
         $requestOptions->setCustomHeaders([
@@ -120,7 +120,7 @@ class MercadoPagoService
     public function createCardPayment(Order $order, CheckoutOrderDTO $dto): array
     {
         $amountInReais = (float) round($order->total_cents / 100, 2);
-        $idempotencyKey = (string) Str::uuid();
+        $idempotencyKey = $this->paymentIdempotencyKey($order);
 
         $requestOptions = new RequestOptions();
         $requestOptions->setCustomHeaders([
@@ -166,6 +166,20 @@ class MercadoPagoService
 
             throw new Exception("Falha na autorização do cartão de crédito: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Chave do X-Idempotency-Key do pedido: a mesma em toda tentativa de criar o pagamento deste
+     * pedido (o Mercado Pago deduplica). Pedidos anteriores à coluna recebem uma chave agora.
+     */
+    private function paymentIdempotencyKey(Order $order): string
+    {
+        if (empty($order->payment_idempotency_key)) {
+            $order->payment_idempotency_key = (string) Str::uuid();
+            $order->save();
+        }
+
+        return (string) $order->payment_idempotency_key;
     }
 
     /**

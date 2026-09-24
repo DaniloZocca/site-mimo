@@ -85,8 +85,12 @@ class OrderCreationService
      *
      * @throws ValidationException|Exception
      */
-    public function createOrder(CheckoutOrderDTO $dto, ?ShippingOptionDTO $shipping = null): Order
-    {
+    public function createOrder(
+        CheckoutOrderDTO $dto,
+        ?ShippingOptionDTO $shipping = null,
+        ?string $idempotencyKey = null,
+        ?string $requestFingerprint = null,
+    ): Order {
         // 1. Pré-carregamento em lote para prevenir N+1 queries
         $productIds = array_map(fn ($item) => $item->productId, $dto->items);
         $colorIds   = array_map(fn ($item) => $item->colorId, $dto->items);
@@ -184,7 +188,7 @@ class OrderCreationService
 
         // 5. Persistência Atômica dentro de transação PostgreSQL
         /** @var Order $order */
-        $order = DB::transaction(function () use ($dto, $orderNumber, $totalCents, $shippingCostCents, $shipping, $itemsToPersist, $isPix, $discountCents): Order {
+        $order = DB::transaction(function () use ($dto, $orderNumber, $totalCents, $shippingCostCents, $shipping, $itemsToPersist, $isPix, $discountCents, $idempotencyKey, $requestFingerprint): Order {
             $order = new Order();
             $order->order_number        = $orderNumber;
             $order->tracking_token      = (string) Str::uuid();
@@ -196,6 +200,12 @@ class OrderCreationService
             $order->status              = OrderStatus::PENDING_PAYMENT;
             $order->total_cents         = $totalCents;
             $order->shipping_cost_cents = $shippingCostCents;
+
+            // Idempotência: UNIQUE em idempotency_key barra o segundo pedido da mesma tentativa;
+            // payment_idempotency_key vai no X-Idempotency-Key de toda criação de pagamento deste pedido.
+            $order->idempotency_key         = $idempotencyKey;
+            $order->request_fingerprint     = $requestFingerprint;
+            $order->payment_idempotency_key = (string) Str::uuid();
 
             if ($shipping !== null) {
                 $order->shipping_service_code  = $shipping->serviceCode;

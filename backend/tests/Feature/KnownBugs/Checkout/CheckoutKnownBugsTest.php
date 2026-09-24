@@ -67,24 +67,6 @@ class CheckoutKnownBugsTest extends CharacterizationTestCase
     }
 
     /**
-     * P1 — gêmeo de CheckoutIdempotencyAndRateLimitTest::test_duplo_envio_identico_cria_dois_pedidos_e_duas_cobrancas
-     */
-    public function test_duplo_envio_com_a_mesma_idempotency_key_devolve_o_mesmo_pedido(): void
-    {
-        ['payload' => $payload] = $this->simpleCheckout('credit_card');
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'approved'));
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(2, 'approved'));
-        $headers = ['Idempotency-Key' => 'mesma-chave-do-front'];
-
-        $first = $this->postJson('/api/checkout', $payload, $headers);
-        $second = $this->postJson('/api/checkout', $payload, $headers);
-
-        $this->assertSame(1, Order::count());
-        $this->assertSame($first->json('order_number'), $second->json('order_number'));
-        $this->assertCount(1, $this->mpHttp->requests, 'Só uma cobrança deve ser criada.');
-    }
-
-    /**
      * P1 — gêmeo de CheckoutAtomicityAndGatewayTest::test_timeout_do_gateway_no_cartao_cancela_o_pedido_e_repete_a_mensagem
      */
     public function test_falha_do_gateway_mantem_pedido_pendente_e_responde_502_generico(): void

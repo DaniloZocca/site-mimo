@@ -155,7 +155,10 @@ export const CreditCardPaymentStep = ({
       )}
 
       {/* Container do Brick Oficial com estilização MIMOO LAB */}
-      <div className={`transition-opacity duration-300 ${isBrickReady ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+      <div
+        className={`relative transition-opacity duration-300 ${isBrickReady ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}
+        aria-busy={isSubmitting}
+      >
         <CardPayment
           initialization={initialization}
           customization={customization}
@@ -163,6 +166,19 @@ export const CreditCardPaymentStep = ({
           onReady={handleBrickReady}
           onError={handleBrickError}
         />
+
+        {/* Bloqueia novos cliques enquanto o pagamento está sendo processado (evita cobrança em dobro) */}
+        {isSubmitting && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="absolute inset-0 z-10 rounded-3xl bg-white/80 border-2 border-mimoo-dark shadow-chunky-sm flex flex-col items-center justify-center gap-2 text-center p-4"
+          >
+            <Loader2 className="w-8 h-8 text-mimoo-purple animate-spin" aria-hidden="true" />
+            <span className="font-fredoka font-bold text-sm text-mimoo-dark">Processando seu pagamento...</span>
+            <span className="font-nunito text-xs text-slate-600">Não feche nem atualize a página.</span>
+          </div>
+        )}
       </div>
 
       {/* Dica de Parcelamento */}

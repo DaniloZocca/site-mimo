@@ -18,21 +18,22 @@ class CheckoutIdempotencyAndRateLimitTest extends CharacterizationTestCase
 {
     use BuildsCheckoutPayload;
 
-    public function test_duplo_envio_identico_cria_dois_pedidos_e_duas_cobrancas(): void
+    /**
+     * Bug #7 corrigido (era gêmeo em KnownBugs): a mesma Idempotency-Key devolve o mesmo pedido.
+     */
+    public function test_duplo_envio_com_a_mesma_idempotency_key_devolve_o_mesmo_pedido(): void
     {
-        // BUG CONHECIDO: sem idempotência, o duplo clique cria dois pedidos — ver teste gêmeo em KnownBugs
         ['payload' => $payload] = $this->simpleCheckout('credit_card');
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'approved'));
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(2, 'approved'));
-        $headers = ['Idempotency-Key' => 'mesma-chave-do-front'];
+        $headers = ['Idempotency-Key' => '3f1c1d52-7a8e-4a8f-9c8e-1b2f0d6a9e11']; // o header passou a exigir UUID
 
-        $first = $this->postJson('/api/checkout', $payload, $headers)->assertStatus(201);
-        $second = $this->postJson('/api/checkout', $payload, $headers)->assertStatus(201);
+        $first = $this->postJson('/api/checkout', $payload, $headers);
+        $second = $this->postJson('/api/checkout', $payload, $headers);
 
-        $this->assertSame(2, Order::count());
-        $this->assertNotSame($first->json('order_number'), $second->json('order_number'));
-        $this->assertNotSame($first->json('payment.idempotency_key'), $second->json('payment.idempotency_key'));
-        $this->assertCount(2, $this->mpHttp->requests);
+        $this->assertSame(1, Order::count());
+        $this->assertSame($first->json('order_number'), $second->json('order_number'));
+        $this->assertCount(1, $this->mpHttp->requests, 'Só uma cobrança deve ser criada.');
     }
 
     public function test_decima_primeira_requisicao_no_mesmo_minuto_retorna_429(): void

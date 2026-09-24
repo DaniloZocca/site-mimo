@@ -50,6 +50,11 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(OrderPayment::class);
+    }
+
     public function productionLogs(): HasMany
     {
         return $this->hasMany(ProductionLog::class)->orderBy('created_at', 'desc');
