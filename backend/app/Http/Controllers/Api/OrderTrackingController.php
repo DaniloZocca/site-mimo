@@ -23,7 +23,8 @@ class OrderTrackingController extends Controller
         $cpfPrefix   = (string) $request->input('cpf_prefix', '');
         $email       = (string) $request->input('email', '');
 
-        $query = Order::with(['items', 'productionLogs']);
+        // Registros internos (revisão de pagamento etc.) nunca são carregados na resposta pública
+        $query = Order::with(['items', 'productionLogs' => fn ($logs) => $logs->public()]);
 
         // Opção 1: Busca pelo Token Criptográfico (UUIDv4)
         if (! empty($token)) {

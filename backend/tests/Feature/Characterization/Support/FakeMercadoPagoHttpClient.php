@@ -27,6 +27,20 @@ final class FakeMercadoPagoHttpClient implements MPHttpClient
     /** @var array<int, MPRequest> */
     public array $requests = [];
 
+    /** @var (callable(MPRequest): void)|null */
+    private $onSend = null;
+
+    /**
+     * Callback executado a cada requisição, antes de devolver a resposta programada
+     * (ex.: simular o webhook alterando o pedido enquanto o POST do cartão está em andamento).
+     */
+    public function onSend(callable $callback): self
+    {
+        $this->onSend = $callback;
+
+        return $this;
+    }
+
     /**
      * @param  array<string, mixed>  $content
      */
@@ -68,11 +82,36 @@ final class FakeMercadoPagoHttpClient implements MPHttpClient
 
         $next = array_shift($this->queue);
 
+        if ($this->onSend !== null) {
+            ($this->onSend)($request);
+        }
+
         if ($next instanceof Throwable) {
             throw $next;
         }
 
-        return $next;
+        return $this->echoRequestFields($request, $next);
+    }
+
+    /**
+     * Como a API real, a criação (POST) devolve external_reference e transaction_amount enviados.
+     * Só preenche os campos que a resposta programada omitiu (payment() com esses argumentos null).
+     */
+    private function echoRequestFields(MPRequest $request, MPResponse $response): MPResponse
+    {
+        $content = $response->getContent();
+        if ($request->getMethod() !== 'POST' || ! is_array($content)) {
+            return $response;
+        }
+
+        $payload = (array) json_decode((string) $request->getPayload(), true);
+        foreach (['external_reference', 'transaction_amount'] as $field) {
+            if (! array_key_exists($field, $content) && array_key_exists($field, $payload)) {
+                $content[$field] = $payload[$field];
+            }
+        }
+
+        return new MPResponse($response->getStatusCode(), $content);
     }
 
     /**
@@ -93,16 +132,22 @@ final class FakeMercadoPagoHttpClient implements MPHttpClient
     public static function payment(
         int $id,
         string $status,
-        string $externalReference = '',
-        float $amount = 0.0,
+        ?string $externalReference = null,
+        float|int|string|null $amount = null,
         string $statusDetail = 'accredited',
+        ?string $currencyId = 'BRL',
+        ?bool $liveMode = true,
     ): array {
-        return [
+        // external_reference/transaction_amount null = omitidos (no POST, ecoados do payload enviado)
+        return array_filter([
             'id' => $id,
             'status' => $status,
             'status_detail' => $statusDetail,
             'external_reference' => $externalReference,
             'transaction_amount' => $amount,
+            'currency_id' => $currencyId,
+            'live_mode' => $liveMode,
+        ], fn ($value): bool => $value !== null) + [
             'point_of_interaction' => [
                 'transaction_data' => [
                     'qr_code' => '00020126PIXCOPIAECOLA',

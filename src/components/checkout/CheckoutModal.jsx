@@ -32,7 +32,7 @@ import { CreditCardPaymentStep } from './CreditCardPaymentStep';
 import { ShippingSelector } from '../cart/ShippingSelector';
 import { clearShippingCache, normalizeShippingOption } from '../../hooks/useShipping';
 import { ShippingPriceChangedError, isShippingPriceChanged } from '../../utils/shippingPriceChange';
-import { postCheckout, CheckoutInProgressError } from '../../utils/checkoutRequest';
+import { postCheckout, CheckoutInProgressError, PAYMENT_UNDER_REVIEW } from '../../utils/checkoutRequest';
 import { useCheckoutAttemptKey } from '../../hooks/useCheckoutAttemptKey';
 
 const API_BASE = 'http://localhost:8000/api';
@@ -387,6 +387,13 @@ export const CheckoutModal = () => {
       );
 
       clearCart();
+
+      // Pagamento recebido, mas em conferência manual: mostra o aviso e o rastreio (sem retry nem volta ao pagamento)
+      if (result.code === PAYMENT_UNDER_REVIEW) {
+        setOrderResult(result);
+        setCurrentStep(4);
+        return;
+      }
 
       const trackingToken = result.tracking_token;
       const isApprovedStatus = result.payment?.status === 'approved' || result.paid;
@@ -947,7 +954,42 @@ export const CheckoutModal = () => {
             {currentStep === 4 && orderResult && (
               <div className="space-y-6 text-center py-2 animate-in zoom-in-95 duration-300">
                 
-                {isApproved ? (
+                {orderResult.code === PAYMENT_UNDER_REVIEW ? (
+                  /* Pagamento recebido com divergência: pedido em revisão manual */
+                  <div className="space-y-4 py-4" role="status">
+                    <div className="w-16 h-16 rounded-full bg-amber-100 border-2 border-amber-500 text-amber-700 flex items-center justify-center mx-auto shadow-chunky">
+                      <AlertCircle className="w-10 h-10" aria-hidden="true" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-fredoka font-bold text-2xl text-mimoo-dark">
+                        Pagamento em conferência
+                      </h3>
+                      <p className="text-sm font-nunito text-slate-600 max-w-md mx-auto">
+                        {orderResult.message}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-amber-50 border-2 border-mimoo-dark max-w-md mx-auto text-left text-xs font-nunito space-y-1.5 shadow-chunky-sm">
+                      <div className="flex justify-between font-fredoka">
+                        <span className="text-slate-500">Código da Encomenda:</span>
+                        <strong className="text-mimoo-purple">{orderResult.order_number}</strong>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCheckoutOpen(false);
+                        window.history.pushState({}, '', `/?token=${orderResult.tracking_token}&status=pending`);
+                        setActiveTab('tracking');
+                      }}
+                      className="btn-chunky-purple py-3.5 px-8 text-sm font-bold shadow-chunky inline-flex items-center gap-2"
+                    >
+                      <Layers className="w-4 h-4" aria-hidden="true" />
+                      <span>Acompanhar meu pedido</span>
+                    </button>
+                  </div>
+                ) : isApproved ? (
                   /* Tela de Confirmação de Sucesso */
                   <div className="space-y-4 py-4">
                     <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-emerald-500 text-emerald-600 flex items-center justify-center mx-auto shadow-chunky">

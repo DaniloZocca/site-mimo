@@ -16,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -152,6 +153,10 @@ class OrderResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            // Pré-carrega a marca de revisão de pagamento (evita uma consulta por linha)
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->withExists([
+                'productionLogs as payment_review_exists' => fn (Builder $logs) => $logs->paymentReview(),
+            ]))
             ->columns([
                 Tables\Columns\TextColumn::make('order_number')
                     ->label('# Encomenda')
@@ -168,6 +173,14 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status de Produção')
                     ->badge(),
+
+                Tables\Columns\TextColumn::make('payment_review')
+                    ->label('Pagamento')
+                    ->state(fn (Order $record): ?string => $record->isInPaymentReview() ? 'Pagamento em revisão' : null)
+                    ->badge()
+                    ->color('danger')
+                    ->icon('heroicon-m-exclamation-triangle')
+                    ->placeholder('—'),
 
                 Tables\Columns\TextColumn::make('total_cents')
                     ->label('Total')
@@ -191,6 +204,11 @@ class OrderResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Filtrar por Status')
                     ->options(OrderStatus::class),
+
+                Tables\Filters\Filter::make('payment_review')
+                    ->label('Pagamento em revisão')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query->inPaymentReview()),
             ])
             ->actions([
                 // AÇÃO 1: Iniciar Impressão 3D (Registro Atômico em ProductionLog)

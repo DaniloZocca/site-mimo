@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { setupMercadoPago, getFriendlyCardErrorMessage } from '../services/mercadoPago';
 import { transformToApiPayload } from '../schemas/checkoutSchema';
 import { ShippingPriceChangedError, isShippingPriceChanged } from '../utils/shippingPriceChange';
-import { postCheckout, CheckoutInProgressError } from '../utils/checkoutRequest';
+import { postCheckout, CheckoutInProgressError, PAYMENT_UNDER_REVIEW } from '../utils/checkoutRequest';
 import { useCheckoutAttemptKey } from './useCheckoutAttemptKey';
 
 const API_BASE = 'http://localhost:8000/api';
@@ -77,8 +77,18 @@ export const useMercadoPagoCard = () => {
         const { response, result } = await postCheckout(`${API_BASE}/checkout`, payload, keyFor(payload));
 
         // Resultado definitivo (sucesso, recusa ou erro do servidor): a próxima tentativa usa chave nova
-        if (!response.ok || result.payment?.status === 'rejected' || result.payment?.status === 'approved') {
+        if (
+          !response.ok ||
+          result.payment?.status === 'rejected' ||
+          result.payment?.status === 'approved' ||
+          result.code === PAYMENT_UNDER_REVIEW
+        ) {
           rotate();
+        }
+
+        // Pagamento recebido, mas em revisão manual: não é erro do cartão e não se tenta de novo
+        if (result.code === PAYMENT_UNDER_REVIEW) {
+          return result;
         }
 
         if (isShippingPriceChanged(response.status, result)) {

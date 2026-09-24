@@ -23,6 +23,11 @@ class CheckoutIdempotencyService
     /** Segundos sugeridos ao cliente para tentar de novo enquanto o primeiro envio não terminou. */
     public const RETRY_AFTER_SECONDS = 2;
 
+    /** Cartão aprovado com divergência (PaymentApprovalValidator): pedido em revisão, sem nova cobrança. */
+    public const PAYMENT_UNDER_REVIEW = 'payment_under_review';
+
+    public const PAYMENT_UNDER_REVIEW_MESSAGE = 'Recebemos seu pagamento, mas ele precisa de uma conferência manual antes de irmos para a produção. Não pague de novo: entraremos em contato pelo e-mail do pedido.';
+
     /**
      * Chave enviada pelo front, normalizada; null se ausente ou se não for um UUID.
      */
@@ -106,6 +111,16 @@ class CheckoutIdempotencyService
      */
     public function checkoutResponse(Order $order, OrderPayment $payment): JsonResponse
     {
+        if ($payment->http_status === 202) {
+            return response()->json([
+                'code' => self::PAYMENT_UNDER_REVIEW,
+                'message' => (string) $payment->failure_message,
+                'order_number' => $order->order_number,
+                'tracking_token' => $order->tracking_token,
+                'status' => $payment->order_status,
+            ], 202);
+        }
+
         if ($payment->http_status !== 201) {
             return response()->json([
                 'message' => (string) $payment->failure_message,

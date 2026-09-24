@@ -23,7 +23,7 @@ Divergências encontradas ao escrever os testes de caracterização. Nada foi co
 
 | Doc diz | Código faz | Evidência |
 |---|---|---|
-| Pagamento só é aceito se o valor for **igual** a `total_cents` (regra 6 e skill `mimoo-payments`) | Aceita valor **maior ou igual** (`<` rejeita só o menor). | `MercadoPagoWebhookController.php:169` |
+| Pagamento só é aceito se o valor for **igual** a `total_cents` (regra 6 e skill `mimoo-payments`) | ✅ Resolvido em `fix/payment-approval-validator` (bugs #10 e #16): `PaymentApprovalValidator` único no webhook e no cartão síncrono; igualdade exata em centavos, BRL, `external_reference`, payment id e `live_mode` em produção. Divergência → revisão (`pending_payment`), nunca cancelamento. | `app/Services/PaymentApprovalValidator.php` |
 | Frete recalculado no servidor (regra 1) | O checkout usa o `shipping_cost_cents` do payload; o `ShippingCalculationService` só é usado em `POST /api/shipping/calculate`. | `CheckoutOrderDTO.php:57`; `OrderCreationService.php:120` |
 | Webhook sem segredo deve rejeitar (fail-closed) | ✅ Resolvido em `fix/webhook-fail-closed` (bug #1): sem segredo → 401. | `MercadoPagoWebhookController.php:51` |
 | Proibidos atalhos `SIM_`/`TEST_` em produção (regra 10) | ✅ Resolvido em `fix/remove-sim-backdoor` (bug #2): removido de `getPayment()`; `mimoo:simulate-order-flow` usa um cliente HTTP falso do SDK e recusa rodar em produção. | `MercadoPagoService.php` (`getPayment`) |

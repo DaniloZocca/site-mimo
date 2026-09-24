@@ -3,6 +3,12 @@
  * primeiro envio desta mesma tentativa ainda está em andamento (409 request_in_progress).
  */
 export const REQUEST_IN_PROGRESS = 'request_in_progress';
+
+/**
+ * 202 do cartão aprovado com divergência: pedido em revisão manual. Resultado definitivo:
+ * nunca entra no retry abaixo (que só repete 409 + request_in_progress) nem permite nova cobrança.
+ */
+export const PAYMENT_UNDER_REVIEW = 'payment_under_review';
 export const IN_PROGRESS_RETRY_DELAY_MS = 2000;
 export const IN_PROGRESS_MAX_RETRIES = 3;
 

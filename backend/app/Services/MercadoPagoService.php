@@ -154,10 +154,16 @@ class MercadoPagoService
             $payment = $this->client->create($payload, $requestOptions);
 
             return [
-                'payment_id'     => (string) $payment->id,
-                'status'         => (string) $payment->status,
-                'status_detail'  => (string) $payment->status_detail,
-                'idempotency_key'=> $idempotencyKey,
+                'payment_id'         => (string) $payment->id,
+                'status'             => (string) $payment->status,
+                'status_detail'      => (string) $payment->status_detail,
+                'idempotency_key'    => $idempotencyKey,
+                // Recurso completo devolvido pela criação: base do PaymentApprovalValidator no cartão síncrono.
+                // `?? null`: campo ausente na resposta deixa a propriedade tipada do SDK sem inicializar.
+                'transaction_amount' => $payment->transaction_amount ?? null,
+                'currency_id'        => $payment->currency_id ?? null,
+                'external_reference' => $payment->external_reference ?? null,
+                'live_mode'          => $payment->live_mode ?? null,
             ];
         } catch (Exception $e) {
             Log::error("Erro no processamento de cartão Mercado Pago para pedido #{$order->order_number}: " . $e->getMessage(), [
@@ -196,8 +202,10 @@ class MercadoPagoService
                 'id'                 => $payment->id,
                 'status'             => $payment->status,
                 'status_detail'      => $payment->status_detail,
-                'external_reference' => $payment->external_reference,
-                'transaction_amount' => $payment->transaction_amount,
+                'external_reference' => $payment->external_reference ?? null,
+                'transaction_amount' => $payment->transaction_amount ?? null,
+                'currency_id'        => $payment->currency_id ?? null,
+                'live_mode'          => $payment->live_mode ?? null,
             ];
         } catch (Exception $e) {
             Log::error("Exceção ao consultar pagamento #{$paymentId}: " . $e->getMessage());
