@@ -18,6 +18,10 @@ use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use MercadoPago\MercadoPagoConfig;
+use MercadoPago\Net\MPHttpClient;
+use MercadoPago\Net\MPRequest;
+use MercadoPago\Net\MPResponse;
 
 class SimulateOrderFlowCommand extends Command
 {
@@ -42,6 +46,19 @@ class SimulateOrderFlowCommand extends Command
         ShippingCalculationService $shippingService,
         OrderCreationService $orderCreationService
     ): int {
+        // Simulação local: nunca roda em produção (o pagamento aprovado é falso).
+        if (app()->isProduction()) {
+            $this->error('❌ mimoo:simulate-order-flow não pode ser executado em produção.');
+
+            return Command::FAILURE;
+        }
+
+        if (empty(config('services.mercadopago.webhook_secret'))) {
+            $this->error('❌ Configure MERCADOPAGO_WEBHOOK_SECRET no .env: o webhook rejeita notificações sem segredo (fail-closed).');
+
+            return Command::FAILURE;
+        }
+
         $startTime = microtime(true);
         $method = strtolower((string) $this->option('method'));
         if (! in_array($method, ['pix', 'credit_card'], true)) {
@@ -153,8 +170,9 @@ class SimulateOrderFlowCommand extends Command
         $this->info('');
         $this->comment('🔐 [Etapa 3/3] Simulando Webhook do Mercado Pago com assinatura HMAC-SHA256...');
 
-        $webhookSecret = (string) config('services.mercadopago.webhook_secret', 'simulated_secret');
-        $dataId = "SIM_{$order->order_number}_" . rand(100000, 999999);
+        $webhookSecret = (string) config('services.mercadopago.webhook_secret');
+        $paymentId = random_int(1_000_000_000, 9_999_999_999);
+        $dataId = (string) $paymentId;
         $requestId = (string) Str::uuid();
         $ts = time();
 
@@ -186,7 +204,17 @@ class SimulateOrderFlowCommand extends Command
             json_encode($webhookPayload)
         );
 
-        $response = app()->handle($request);
+        // A consulta reversa (GET /v1/payments/{id}) é respondida por um cliente HTTP falso do SDK,
+        // registrado só durante esta chamada. O MercadoPagoService não tem nenhum atalho de simulação.
+        $previousHttpClient = MercadoPagoConfig::getHttpClient();
+        MercadoPagoConfig::setHttpClient($this->approvedPaymentHttpClient($paymentId, $order));
+
+        try {
+            $response = app()->handle($request);
+        } finally {
+            MercadoPagoConfig::setHttpClient($previousHttpClient);
+        }
+
         $statusCode = $response->getStatusCode();
 
         if ($statusCode !== 200) {
@@ -234,5 +262,27 @@ class SimulateOrderFlowCommand extends Command
         );
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Cliente HTTP do SDK que responde qualquer requisição com o pagamento aprovado do pedido simulado.
+     */
+    private function approvedPaymentHttpClient(int $paymentId, Order $order): MPHttpClient
+    {
+        return new class($paymentId, $order) implements MPHttpClient
+        {
+            public function __construct(private int $paymentId, private Order $order) {}
+
+            public function send(MPRequest $request): MPResponse
+            {
+                return new MPResponse(200, [
+                    'id'                 => $this->paymentId,
+                    'status'             => 'approved',
+                    'status_detail'      => 'accredited',
+                    'external_reference' => $this->order->order_number,
+                    'transaction_amount' => $this->order->total_cents / 100,
+                ]);
+            }
+        };
     }
 }

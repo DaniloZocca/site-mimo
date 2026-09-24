@@ -26,7 +26,7 @@ Divergências encontradas ao escrever os testes de caracterização. Nada foi co
 | Pagamento só é aceito se o valor for **igual** a `total_cents` (regra 6 e skill `mimoo-payments`) | Aceita valor **maior ou igual** (`<` rejeita só o menor). | `MercadoPagoWebhookController.php:169` |
 | Frete recalculado no servidor (regra 1) | O checkout usa o `shipping_cost_cents` do payload; o `ShippingCalculationService` só é usado em `POST /api/shipping/calculate`. | `CheckoutOrderDTO.php:57`; `OrderCreationService.php:120` |
 | Webhook sem segredo deve rejeitar (fail-closed) | ✅ Resolvido em `fix/webhook-fail-closed` (bug #1): sem segredo → 401. | `MercadoPagoWebhookController.php:51` |
-| Proibidos atalhos `SIM_`/`TEST_` em produção (regra 10) | Existem em `getPayment()`. | `MercadoPagoService.php:179` |
+| Proibidos atalhos `SIM_`/`TEST_` em produção (regra 10) | ✅ Resolvido em `fix/remove-sim-backdoor` (bug #2): removido de `getPayment()`; `mimoo:simulate-order-flow` usa um cliente HTTP falso do SDK e recusa rodar em produção. | `MercadoPagoService.php` (`getPayment`) |
 | Fluxo-alvo: falha do MP após commit → pedido fica `pending_payment`, resposta 502 | Pedido vai para `cancelled`, resposta 422 com a mensagem técnica do gateway. | `CheckoutController.php:102-120` |
 | Fluxo-alvo: header `Idempotency-Key` do front evita pedido duplicado; coluna `payment_idempotency_key` | O header é ignorado; não existe a coluna; cada tentativa gera um UUID novo. | `MercadoPagoService.php:44` e `:123` |
 | PIX com `date_of_expiration` explícito | Não é enviado. | `MercadoPagoService.php:51-65` |
