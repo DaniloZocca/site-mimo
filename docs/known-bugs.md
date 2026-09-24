@@ -7,7 +7,7 @@ e dos gêmeos que afirmam o comportamento correto (`backend/tests/Feature/KnownB
 "known-bugs" passa a passar. Nesse momento, apague o teste characterization antigo e mova o gêmeo para
 `Characterization/` (trocando o grupo para `characterization`).
 
-- Rodar: `php artisan test --group=known-bugs` (deve falhar; 23 testes hoje).
+- Rodar: `php artisan test --group=known-bugs` (deve falhar; 22 testes hoje).
 - O grupo `known-bugs` está excluído da suíte padrão no `phpunit.xml`.
 
 Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado, dados expostos ou fluxo quebrado; **P2** = inconsistência sem dano imediato.
@@ -16,7 +16,6 @@ Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado
 |---|-----|------|----------------------------------------------|-------------------------------------------|--------------------------------|
 | 5 | Cor que não pertence ao produto é aceita | P1 | `Checkout/CheckoutValidationTest::test_cor_nao_vinculada_ao_produto_e_aceita` | `CheckoutKnownBugsTest::test_cor_nao_vinculada_ao_produto_retorna_422` | `app/Services/OrderCreationService.php:55` |
 | 6 | Tamanho que não pertence ao produto é aceito e o modificador é cobrado (inclusive negativo) | P1 | `CheckoutValidationTest::test_tamanho_nao_vinculado_ao_produto_e_aceito_com_modificador` | `CheckoutKnownBugsTest::test_tamanho_nao_vinculado_ao_produto_retorna_422` | `app/Services/OrderCreationService.php:63` e `:94` |
-| 7 | Duplo envio idêntico cria dois pedidos e duas cobranças (header `Idempotency-Key` ignorado) | P1 | `Checkout/CheckoutIdempotencyAndRateLimitTest::test_duplo_envio_identico_cria_dois_pedidos_e_duas_cobrancas` | `CheckoutKnownBugsTest::test_duplo_envio_com_a_mesma_idempotency_key_devolve_o_mesmo_pedido` | `app/Http/Controllers/Api/CheckoutController.php:39` |
 | 8 | Falha do gateway após o commit cancela o pedido e devolve 422 repetindo a mensagem técnica | P1 | `Checkout/CheckoutAtomicityAndGatewayTest::test_timeout_do_gateway_no_cartao_cancela_o_pedido_e_repete_a_mensagem`, `::test_erro_500_da_api_no_pix_cancela_o_pedido` | `CheckoutKnownBugsTest::test_falha_do_gateway_mantem_pedido_pendente_e_responde_502_generico` | `app/Http/Controllers/Api/CheckoutController.php:102-120` |
 | 9 | Cartão `rejected` responde 201 e o pedido fica `pending_payment` para sempre | P1 | `Checkout/CheckoutHappyPathTest::test_cartao_rejeitado_responde_201_e_pedido_fica_pendente` | `CheckoutKnownBugsTest::test_cartao_rejeitado_responde_422_com_mensagem_amigavel` | `app/Http/Controllers/Api/CheckoutController.php:61-100` |
 | 10 | Pagamento aprovado para pedido cancelado é ignorado sem alerta nem registro (dinheiro recebido sem estorno) | P1 | `Webhook/WebhookIdempotencyAndEdgeCasesTest::test_aprovado_para_pedido_cancelado_e_ignorado_em_silencio` | `WebhookKnownBugsTest::test_aprovado_para_pedido_cancelado_gera_alerta_e_registro_para_estorno` | `app/Http/Controllers/Api/MercadoPagoWebhookController.php:160` |
@@ -34,7 +33,7 @@ Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado
 | 22 | `dispatchOrder()` grava o código de rastreio antes de validar a transição | P2 | `TransitionSideEffectsTest::test_dispatch_order_invalido_grava_o_codigo_mesmo_assim` | `OrderStateMachineKnownBugsTest::test_dispatch_order_invalido_nao_grava_o_codigo` | `app/Services/ProductionWorkflowService.php:132` |
 | 23 | `SendOrderConfirmedNotification` registrado duas vezes (Event::listen + descoberta automática do Laravel 11) → e-mail em dobro quando o bug 13 for corrigido | P2 *(novo, a confirmar)* | `NotificationListenersTest::test_mapa_de_listeners_registrados`, `::test_webhook_aprovado_com_fila_database_enfileira_tres_listeners` | `OrderStateMachineKnownBugsTest::test_confirmacao_registrada_uma_unica_vez` | `app/Providers/AppServiceProvider.php:67-69` |
 
-Em aberto: 19 bugs, 23 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
+Em aberto: 18 bugs, 22 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
 
 ## Corrigidos
 
@@ -44,3 +43,4 @@ Em aberto: 19 bugs, 23 testes em `known-bugs` (alguns bugs têm mais de um gême
 | 2 | `getPayment()` devolvia `approved` para IDs `SIM_`/`TEST_` sem consultar a API | P0 | `fix/remove-sim-backdoor`: atalho removido; o comando `mimoo:simulate-order-flow` passou a usar um cliente HTTP falso do SDK só durante a execução e recusa rodar em produção ou sem segredo | `Webhook/WebhookBackdoorTest::test_get_payment_nao_tem_atalho_sim_test_e_sempre_consulta_a_api`, `::test_webhook_assinado_com_id_sim_nao_aprova_o_pedido`; `Console/SimulateOrderFlowCommandTest` |
 | 3 | POST anônimo com `data.id=SIM_<pedido>_1` marcava o pedido como pago | P0 | resolvido pelo fail-closed do #1 | `Webhook/WebhookBackdoorTest::test_webhook_forjado_com_id_sim_sem_segredo_nao_marca_pedido_como_pago` |
 | 4 | `shipping_cost_cents` enviado pelo cliente entrava no total sem recálculo (frete 0 ou absurdo) | P0 | corrigido — e5d9205 (`fix/frete-recalculado-servidor`): frete recalculado no servidor a partir de `shipping_service`; valor do cliente só detecta divergência (409 `shipping_price_changed`); serviço inválido → 422; snapshot do frete no pedido | `Checkout/CheckoutZeroTrustTest::test_frete_e_recalculado_no_servidor_e_ignora_o_valor_do_cliente`; `Checkout/CheckoutShippingRecalculationTest` |
+| 7 | Duplo envio idêntico criava dois pedidos e duas cobranças (header `Idempotency-Key` ignorado) | P1 | corrigido — 6a1056e (`fix/checkout-idempotente`): `Idempotency-Key` (UUID) obrigatório, UNIQUE em `orders.idempotency_key`, fingerprint do payload, replay da resposta via `order_payments` sem chamar o gateway; `X-Idempotency-Key` do MP fixo por pedido | `Checkout/CheckoutIdempotencyAndRateLimitTest::test_duplo_envio_com_a_mesma_idempotency_key_devolve_o_mesmo_pedido`; `Checkout/CheckoutIdempotencyTest` |
