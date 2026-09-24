@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { setupMercadoPago, getFriendlyCardErrorMessage } from '../services/mercadoPago';
 import { transformToApiPayload } from '../schemas/checkoutSchema';
 import { ShippingPriceChangedError, isShippingPriceChanged } from '../utils/shippingPriceChange';
+import { postCheckout, CheckoutInProgressError } from '../utils/checkoutRequest';
+import { useCheckoutAttemptKey } from './useCheckoutAttemptKey';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -13,6 +15,8 @@ export const useMercadoPagoCard = () => {
   const [isReady, setIsReady] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const inFlightRef = useRef(false);
+  const { keyFor, rotate } = useCheckoutAttemptKey();
 
   // Inicializa o SDK do Mercado Pago na montagem do hook
   useEffect(() => {
@@ -43,36 +47,39 @@ export const useMercadoPagoCard = () => {
         throw new Error(msg);
       }
 
+      // Trava contra duplo envio (o estado do React só atualiza no próximo render)
+      if (inFlightRef.current) {
+        throw new CheckoutInProgressError('Seu pagamento já está sendo processado. Aguarde.');
+      }
+      inFlightRef.current = true;
+
       setIsSubmitting(true);
       setError(null);
 
-      // Monta o payload seguro com zero dados sensíveis brutos
-      const payload = transformToApiPayload(
-        {
-          ...orderCustomerData,
-          paymentMethod: 'credit_card',
-        },
-        cartItems,
-        shippingCostCents,
-        {
-          card_token: cardFormData.token,
-          installments: Number(cardFormData.installments) || 1,
-          payment_method_id: cardFormData.payment_method_id || 'credit_card',
-        },
-        selectedShipping
-      );
-
       try {
-        const response = await fetch(`${API_BASE}/checkout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
+        // Monta o payload seguro com zero dados sensíveis brutos
+        const payload = transformToApiPayload(
+          {
+            ...orderCustomerData,
+            paymentMethod: 'credit_card',
           },
-          body: JSON.stringify(payload),
-        });
+          cartItems,
+          shippingCostCents,
+          {
+            card_token: cardFormData.token,
+            installments: Number(cardFormData.installments) || 1,
+            payment_method_id: cardFormData.payment_method_id || 'credit_card',
+          },
+          selectedShipping
+        );
 
-        const result = await response.json();
+        // Mesma tentativa (mesmos dados, ignorando o card_token) → mesma Idempotency-Key
+        const { response, result } = await postCheckout(`${API_BASE}/checkout`, payload, keyFor(payload));
+
+        // Resultado definitivo (sucesso, recusa ou erro do servidor): a próxima tentativa usa chave nova
+        if (!response.ok || result.payment?.status === 'rejected' || result.payment?.status === 'approved') {
+          rotate();
+        }
 
         if (isShippingPriceChanged(response.status, result)) {
           // Frete mudou no servidor: nenhum pedido/cobrança foi criado; o modal pede nova confirmação.
@@ -99,16 +106,21 @@ export const useMercadoPagoCard = () => {
         if (err instanceof ShippingPriceChangedError) {
           throw err;
         }
+        if (err instanceof CheckoutInProgressError) {
+          // Não é erro do cartão: o modal avisa que o pedido ainda está sendo processado
+          throw err;
+        }
         if (!error) {
           const friendlyMsg = err.message || 'Falha ao autorizar pagamento com cartão.';
           setError(friendlyMsg);
         }
         throw err;
       } finally {
+        inFlightRef.current = false;
         setIsSubmitting(false);
       }
     },
-    [error]
+    [error, keyFor, rotate]
   );
 
   return {

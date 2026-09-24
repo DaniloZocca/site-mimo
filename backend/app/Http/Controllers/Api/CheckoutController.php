@@ -12,9 +12,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
 use App\Jobs\ProcessOrderPaidNotification;
 use App\Models\Order;
+use App\Services\CheckoutIdempotencyService;
 use App\Services\MercadoPagoService;
 use App\Services\OrderCreationService;
 use Exception;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -24,6 +26,7 @@ class CheckoutController extends Controller
     public function __construct(
         private readonly OrderCreationService $orderCreationService,
         private readonly MercadoPagoService $mercadoPagoService,
+        private readonly CheckoutIdempotencyService $idempotency,
     ) {}
 
     /**
@@ -31,6 +34,18 @@ class CheckoutController extends Controller
      */
     public function __invoke(CheckoutRequest $request): JsonResponse
     {
+        // 0. Idempotência: mesma Idempotency-Key → mesma resposta, sem novo pedido nem nova cobrança
+        $idempotencyKey = $this->idempotency->keyFrom($request);
+        if ($idempotencyKey === null) {
+            return $this->idempotency->missingKeyResponse();
+        }
+
+        $fingerprint = $this->idempotency->fingerprintOf($request);
+        $existing = $this->idempotency->findByKey($idempotencyKey);
+        if ($existing) {
+            return $this->idempotency->responseForExisting($existing, $fingerprint);
+        }
+
         // 1. Converte Request Validado em DTO Imutável (PHP 8.2+)
         $orderDTO = CheckoutOrderDTO::fromRequest($request);
 
@@ -39,7 +54,15 @@ class CheckoutController extends Controller
         try {
             // Frete recalculado no servidor (chamada externa, fora de transação); o valor do cliente só detecta divergência
             $shipping = $this->orderCreationService->resolveShipping($orderDTO);
-            $order = $this->orderCreationService->createOrder($orderDTO, $shipping);
+            $order = $this->orderCreationService->createOrder($orderDTO, $shipping, $idempotencyKey, $fingerprint);
+        } catch (UniqueConstraintViolationException $e) {
+            // Corrida: outro envio com a mesma chave criou o pedido primeiro. O UNIQUE impediu a duplicata.
+            $existing = $this->idempotency->findByKey($idempotencyKey);
+            if (! $existing) {
+                throw $e;
+            }
+
+            return $this->idempotency->responseForExisting($existing, $fingerprint);
         } catch (ShippingPriceChangedException $e) {
             return response()->json([
                 'code'                => 'shipping_price_changed',
@@ -88,28 +111,6 @@ class CheckoutController extends Controller
                 event(new OrderPaid($order));
                 ProcessOrderPaidNotification::dispatch($order);
             }
-
-            return response()->json([
-                'message'         => 'Pedido gerado com sucesso!',
-                'order_id'        => $order->id,
-                'order_number'    => $order->order_number,
-                'tracking_token'  => $order->tracking_token,
-                'status'          => $order->status->value,
-                'status_label'    => $order->status->getLabel(),
-                'total_cents'     => $order->total_cents,
-                'total_formatted' => 'R$ ' . number_format($order->total_cents / 100, 2, ',', '.'),
-                'payment'         => [
-                    'method'          => $orderDTO->paymentMethod,
-                    'payment_id'      => $paymentResult['payment_id'],
-                    'status'          => $paymentResult['status'],
-                    'status_detail'   => $paymentResult['status_detail'] ?? null,
-                    'qr_code'         => $paymentResult['qr_code'] ?? null,
-                    'qr_code_base64'  => $paymentResult['qr_code_base64'] ?? null,
-                    'ticket_url'      => $paymentResult['ticket_url'] ?? null,
-                    'idempotency_key' => $paymentResult['idempotency_key'],
-                ],
-            ], 201);
-
         } catch (Exception $e) {
             // 5. Tratamento de Falha no Gateway e Atualização de Auditoria
             Log::error("Falha ao processar pagamento do pedido #{$order->order_number}: " . $e->getMessage());
@@ -125,10 +126,33 @@ class CheckoutController extends Controller
                 'created_at'      => now(),
             ]);
 
-            return response()->json([
-                'message'      => 'Não foi possível processar a cobrança. ' . $e->getMessage(),
-                'order_number' => $order->order_number,
-            ], 422);
+            // Resposta persistida: um reenvio com a mesma chave recebe exatamente esta resposta
+            $payment = $order->payments()->create([
+                'provider'        => 'mercadopago',
+                'method'          => $orderDTO->paymentMethod,
+                'status'          => 'error',
+                'failure_message' => 'Não foi possível processar a cobrança. ' . $e->getMessage(),
+                'http_status'     => 422,
+                'order_status'    => $order->status->value,
+            ]);
+
+            return $this->idempotency->checkoutResponse($order, $payment);
         }
+
+        // 5. Persiste o resultado do gateway e a resposta dada (base do replay idempotente)
+        $payment = $order->payments()->create([
+            'provider'       => 'mercadopago',
+            'method'         => $orderDTO->paymentMethod,
+            'external_id'    => (string) $paymentResult['payment_id'],
+            'status'         => (string) $paymentResult['status'],
+            'status_detail'  => $paymentResult['status_detail'] ?? null,
+            'qr_code'        => $paymentResult['qr_code'] ?? null,
+            'qr_code_base64' => $paymentResult['qr_code_base64'] ?? null,
+            'ticket_url'     => $paymentResult['ticket_url'] ?? null,
+            'http_status'    => 201,
+            'order_status'   => $order->status->value,
+        ]);
+
+        return $this->idempotency->checkoutResponse($order, $payment);
     }
 }

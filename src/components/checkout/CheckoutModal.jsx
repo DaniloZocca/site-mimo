@@ -32,6 +32,8 @@ import { CreditCardPaymentStep } from './CreditCardPaymentStep';
 import { ShippingSelector } from '../cart/ShippingSelector';
 import { clearShippingCache, normalizeShippingOption } from '../../hooks/useShipping';
 import { ShippingPriceChangedError, isShippingPriceChanged } from '../../utils/shippingPriceChange';
+import { postCheckout, CheckoutInProgressError } from '../../utils/checkoutRequest';
+import { useCheckoutAttemptKey } from '../../hooks/useCheckoutAttemptKey';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -59,6 +61,9 @@ export const CheckoutModal = () => {
   const [isSubmittingPix, setIsSubmittingPix] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [shippingNotice, setShippingNotice] = useState(null);
+  // Idempotência do PIX: mesma chave para a mesma tentativa; trava contra duplo clique
+  const pixAttempt = useCheckoutAttemptKey();
+  const pixInFlightRef = useRef(false);
   const [orderResult, setOrderResult] = useState(null);
   const [copiedPix, setCopiedPix] = useState(false);
   const [pixTimeLeft, setPixTimeLeft] = useState(900); // 15 minutos
@@ -252,6 +257,11 @@ export const CheckoutModal = () => {
       return;
     }
 
+    if (pixInFlightRef.current) {
+      return;
+    }
+    pixInFlightRef.current = true;
+
     setIsSubmittingPix(true);
     setApiError(null);
     setShippingNotice(null);
@@ -311,16 +321,14 @@ export const CheckoutModal = () => {
     };
 
     try {
-      const response = await fetch(`${API_BASE}/checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(checkoutPayload),
-      });
+      const { response, result } = await postCheckout(
+        `${API_BASE}/checkout`,
+        checkoutPayload,
+        pixAttempt.keyFor(checkoutPayload)
+      );
 
-      const result = await response.json();
+      // Resultado definitivo: a próxima tentativa de compra usa uma chave nova
+      pixAttempt.rotate();
 
       if (isShippingPriceChanged(response.status, result)) {
         throw new ShippingPriceChangedError(result);
@@ -350,6 +358,7 @@ export const CheckoutModal = () => {
         setApiError(err.message || 'Ocorreu um erro ao comunicar com o servidor de pagamento.');
       }
     } finally {
+      pixInFlightRef.current = false;
       setIsSubmittingPix(false);
     }
   };
@@ -416,6 +425,8 @@ export const CheckoutModal = () => {
     } catch (err) {
       if (err instanceof ShippingPriceChangedError) {
         applyShippingPriceChange(err);
+      } else if (err instanceof CheckoutInProgressError) {
+        setApiError(err.message);
       }
       // Demais erros são exibidos dentro do CreditCardPaymentStep
     }

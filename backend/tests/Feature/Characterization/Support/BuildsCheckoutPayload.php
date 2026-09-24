@@ -7,6 +7,7 @@ namespace Tests\Feature\Characterization\Support;
 use App\Models\Color;
 use App\Models\Product;
 use App\Models\Size;
+use Illuminate\Support\Str;
 
 /**
  * Monta catálogo e payloads de POST /api/checkout no formato aninhado aceito pelo CheckoutRequest.
@@ -23,6 +24,22 @@ trait BuildsCheckoutPayload
      * (sem token do Melhor Envio → fallback regional de SP). Enviado como "valor exibido".
      */
     protected const SERVER_PAC_CENTS = 1490;
+
+    /**
+     * POST /api/checkout exige o header Idempotency-Key (UUID). Se o teste não enviar o header,
+     * cada requisição recebe uma chave nova (como uma tentativa de compra nova do front).
+     * Para testar a ausência do header, envie 'Idempotency-Key' => '' explicitamente.
+     */
+    public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)
+    {
+        if (strtoupper((string) $method) === 'POST'
+            && str_ends_with(rtrim(parse_url((string) $uri, PHP_URL_PATH) ?: '', '/'), '/api/checkout')
+            && ! array_key_exists('HTTP_IDEMPOTENCY_KEY', $server)) {
+            $server['HTTP_IDEMPOTENCY_KEY'] = (string) Str::uuid();
+        }
+
+        return parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
+    }
 
     /**
      * Produto ativo com uma cor vinculada (em estoque) e, opcionalmente, um tamanho vinculado.
