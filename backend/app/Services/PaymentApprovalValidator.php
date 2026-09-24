@@ -8,6 +8,8 @@ use App\DTOs\GatewayPayment;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\ProductionLog;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -129,14 +131,19 @@ class PaymentApprovalValidator
             return;
         }
 
-        $order->productionLogs()->create([
-            'previous_status' => $status,
-            'new_status' => $status,
-            'notes' => $notes,
-            'created_at' => now(),
-            'is_internal' => true,
-            'code' => $code,
-            'reference' => $reference,
-        ]);
+        try {
+            // Savepoint: no PostgreSQL, a violação sem savepoint abortaria a transação externa (webhook)
+            DB::transaction(fn () => $order->productionLogs()->create([
+                'previous_status' => $status,
+                'new_status' => $status,
+                'notes' => $notes,
+                'created_at' => now(),
+                'is_internal' => true,
+                'code' => $code,
+                'reference' => $reference,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            // Corrida entre webhook e checkout: o outro já gravou o mesmo registro (índice único)
+        }
     }
 }

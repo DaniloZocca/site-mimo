@@ -60,6 +60,8 @@ class GatewayPaymentAmountTest extends TestCase
             'nulo' => [null],
             'infinito' => [INF],
             'NaN' => [NAN],
+            'inteiro que estoura ao virar centavos' => [PHP_INT_MAX],
+            'string com reais demais' => ['99999999999999999.99'],
         ];
     }
 

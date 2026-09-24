@@ -21,12 +21,17 @@ return new class extends Migration
             $table->boolean('is_internal')->default(false);
             $table->string('code', 40)->nullable()->index();
             $table->string('reference', 64)->nullable()->index();
+
+            // Um registro por (pedido, tipo, pagamento). NULLs são distintos no SQLite e no PostgreSQL,
+            // então os registros antigos (code/reference nulos) não conflitam.
+            $table->unique(['order_id', 'code', 'reference']);
         });
     }
 
     public function down(): void
     {
         Schema::table('production_logs', function (Blueprint $table): void {
+            $table->dropUnique(['order_id', 'code', 'reference']);
             $table->dropIndex(['code']);
             $table->dropIndex(['reference']);
             $table->dropColumn(['is_internal', 'code', 'reference']);

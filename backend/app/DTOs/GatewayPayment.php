@@ -51,7 +51,7 @@ readonly class GatewayPayment
         }
 
         if (is_int($amount)) {
-            return $amount >= 0 ? $amount * 100 : null;
+            return $amount >= 0 && $amount <= intdiv(PHP_INT_MAX, 100) ? $amount * 100 : null;
         }
 
         if (is_float($amount)) {
@@ -62,6 +62,11 @@ readonly class GatewayPayment
         }
 
         if (preg_match('/^(\d+)(?:\.(\d{1,2}))?$/', trim($amount), $m) !== 1) {
+            return null;
+        }
+
+        // Limite de inteiro: acima disso não há valor exato em centavos
+        if (strlen(ltrim($m[1], '0')) > 16) {
             return null;
         }
 

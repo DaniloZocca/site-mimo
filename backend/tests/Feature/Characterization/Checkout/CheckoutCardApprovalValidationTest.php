@@ -199,4 +199,29 @@ class CheckoutCardApprovalValidationTest extends CharacterizationTestCase
         );
         Event::assertNotDispatched(OrderPaid::class);
     }
+
+    public function test_erro_depois_da_cobranca_aprovada_nunca_cancela_o_pedido(): void
+    {
+        ['payload' => $payload] = $this->simpleCheckout('credit_card');
+        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(777, 'approved'));
+        // Depois da cobrança, gravar o log de aprovação falha (ex.: banco instável)
+        $this->mpHttp->onSend(function (): void {
+            ProductionLog::creating(function (): void {
+                throw new \RuntimeException('falha simulada ao gravar o log');
+            });
+        });
+        $this->withoutExceptionHandling();
+
+        try {
+            $this->postJson('/api/checkout', $payload);
+            $this->fail('Esperada a exceção do pós-processamento.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('falha simulada ao gravar o log', $e->getMessage());
+        }
+
+        $order = Order::sole();
+        $this->assertNotSame(OrderStatus::CANCELLED, $order->status, 'Pedido já cobrado não pode ser cancelado por erro interno.');
+        $this->assertSame(0, OrderPayment::where('http_status', 422)->count(), 'Não pode responder a falha de cobrança (cliente pagaria de novo).');
+        $this->assertCount(1, $this->mpHttp->requests);
+    }
 }

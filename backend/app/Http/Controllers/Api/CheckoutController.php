@@ -95,12 +95,6 @@ class CheckoutController extends Controller
             } else {
                 $paymentResult = $this->mercadoPagoService->createCardPayment($order, $orderDTO);
             }
-
-            // 4. Aprovação instantânea (cartão): só libera a produção se o pagamento for exatamente o esperado
-            $underReview = false;
-            if ($paymentResult['status'] === 'approved') {
-                $underReview = ! $this->releaseApprovedCardPayment($order, GatewayPayment::fromMercadoPago($paymentResult));
-            }
         } catch (Exception $e) {
             // 5. Tratamento de Falha no Gateway e Atualização de Auditoria
             Log::error("Falha ao processar pagamento do pedido #{$order->order_number}: " . $e->getMessage());
@@ -127,6 +121,13 @@ class CheckoutController extends Controller
             ]);
 
             return $this->idempotency->checkoutResponse($order, $payment);
+        }
+
+        // 4. Aprovação instantânea (cartão): só libera a produção se o pagamento for exatamente o esperado.
+        // Fora do try do gateway: a cobrança já existe, então um erro aqui nunca pode cancelar o pedido.
+        $underReview = false;
+        if ($paymentResult['status'] === 'approved') {
+            $underReview = ! $this->releaseApprovedCardPayment($order, GatewayPayment::fromMercadoPago($paymentResult));
         }
 
         // 5. Persiste o resultado do gateway e a resposta dada (base do replay idempotente)
