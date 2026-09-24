@@ -30,8 +30,9 @@ Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado
 | 21 | Ações do admin disparam `OrderPrintStarted`/`OrderShipped`, que não têm listener | P2 | `FilamentOrderActionsTest::test_iniciar_impressao_da_fila_dispara_order_print_started_sem_listener`, `::test_expedir_grava_codigo_log_e_order_shipped_sem_listener` | `OrderStateMachineKnownBugsTest::test_admin_iniciar_impressao_dispara_evento_com_listener`, `::test_admin_expedir_dispara_evento_com_listener` | `app/Filament/Resources/OrderResource.php:221` e `:287` |
 | 22 | `dispatchOrder()` grava o código de rastreio antes de validar a transição | P2 | `TransitionSideEffectsTest::test_dispatch_order_invalido_grava_o_codigo_mesmo_assim` | `OrderStateMachineKnownBugsTest::test_dispatch_order_invalido_nao_grava_o_codigo` | `app/Services/ProductionWorkflowService.php:132` |
 | 23 | `SendOrderConfirmedNotification` registrado duas vezes (Event::listen + descoberta automática do Laravel 11) → e-mail em dobro quando o bug 13 for corrigido | P2 *(novo, a confirmar)* | `NotificationListenersTest::test_mapa_de_listeners_registrados`, `::test_webhook_aprovado_com_fila_database_enfileira_tres_listeners` | `OrderStateMachineKnownBugsTest::test_confirmacao_registrada_uma_unica_vez` | `app/Providers/AppServiceProvider.php:67-69` |
+| 24 | Cancelamento pelo webhook (`rejected`/`cancelled`/`refunded`/`charged_back`) não confere o id do pagamento em `order_payments`: um pagamento recusado de outra tentativa com a mesma `external_reference` cancela o pedido cujo pagamento legítimo ainda está pendente (cancelamento também sem update condicional) | P2 | — (sem teste de caracterização ainda) | — (sem gêmeo ainda) | `app/Http/Controllers/Api/MercadoPagoWebhookController.php:249-253` |
 
-Em aberto: 16 bugs, 20 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
+Em aberto: 17 bugs, 20 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
 
 ## Corrigidos
 
