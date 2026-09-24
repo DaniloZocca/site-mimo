@@ -2,11 +2,13 @@
 
 Loja brasileira de colecionáveis impressos em 3D sob encomenda (FDM). Só imprimimos após pagamento confirmado.
 Monorepo: frontend React 19 + Vite (raiz, `src/`) + API Laravel 11 + Filament 3 (`backend/`). UI, mensagens e commits em pt-BR.
-Antes de tarefas de segurança/pagamento, leia `RELATORIO_SEGURANCA_MIMOO.md` (achados abertos C1–B3).
+Antes de tarefas de segurança/pagamento, leia `RELATORIO_SEGURANCA_MIMOO.md` (achados abertos C1–B3) e `docs/known-bugs.md` (bugs confirmados por teste, com severidade).
+As regras abaixo descrevem o comportamento-alvo; onde o código ainda diverge, está registrado em `docs/doc-vs-codigo.md`.
 
 ## Comandos
 - Front: `npm run dev` | `npm run lint` (oxlint) | `npm run build`. Ainda não há testes de front (Vitest não instalado).
 - Back (dentro de `backend/`): `php artisan serve` (porta 8000) | `php artisan test` (PHPUnit) | `vendor/bin/pint --dirty`
+- Testes de caracterização: `php artisan test --group=characterization` (deve ficar 100% verde) e `php artisan test --group=known-bugs` (falha de propósito; um gêmeo por bug em `docs/known-bugs.md`; excluído da suíte padrão). Exigem a extensão `pdo_sqlite` no PHP.
 - Rode o teste mais específico (`php artisan test --filter=NomeDoTeste`); a suíte completa só ao final da tarefa.
 - Larastan/PHPStan e Pest não estão instalados: não os invoque sem pedir para instalar.
 
@@ -20,7 +22,7 @@ Na dúvida entre dois tamanhos, escolha o menor — exceto se tocar pagamento, q
 ## Regras invioláveis (motivo entre parênteses)
 1. Zero-trust pricing: preço de peças E frete são recalculados no servidor (`OrderCreationService` / `ShippingCalculationService`). Valores monetários do request são só exibição (o payload é controlado pelo usuário).
 2. Dinheiro sempre em centavos inteiros (`*_cents`), nunca float — nem no JS. Conversão para reais só na borda do Mercado Pago (`transaction_amount`).
-3. Desconto PIX de 10% incide só no subtotal das peças, nunca no frete. Backend é a fonte da verdade; `src/utils/pricing.js` espelha só para exibição — mudou um, atualize o outro (skill `pricing-sync`).
+3. Desconto PIX de 10% incide só no subtotal das peças, nunca no frete. Backend é a fonte da verdade; `src/utils/pricing.js` espelha só para exibição — mudou um, atualize o outro (skill `pricing-sync`). Atenção: hoje o back faz `subtotal − round(subtotal × 0,10)` e o front `Math.round(subtotal × 0,9)`; diferem em 1 centavo quando o desconto termina em ,5.
 4. Pedido é commitado ANTES de chamar o Mercado Pago. Nenhuma chamada HTTP externa dentro de `DB::transaction`.
 5. Status de pedido só muda via `ProductionWorkflowService::transitionTo()` (mapa `ALLOWED_TRANSITIONS`), gravando `ProductionLog`.
 6. Pagamento só é aceito após `MercadoPagoService::getPayment()` confirmar `approved` + valor igual a `total_cents` + `external_reference`. Webhook: assinatura válida (fail-closed), evento idempotente, resposta 200 rápida.
@@ -51,8 +53,11 @@ Na dúvida entre dois tamanhos, escolha o menor — exceto se tocar pagamento, q
 - Carrinho em localStorage (`mimoo_cart_v2` em `CartContext.jsx`).
 - `PackagingService`: tara caixa 50 g + plástico bolha 30 g; mínimo Correios 16×11×6 cm.
 - Frete: Melhor Envio com cache 6 h (MD5 de CEP+cubagem), fallback regional, soma o lead time de impressão.
-- Banco: SQLite. `lockForUpdate()` não trava nada no SQLite — use update condicional (`WHERE status = ?`) para evitar corrida.
-- `MercadoPagoWebhookController` hoje altera `status` direto, sem o `ProductionWorkflowService` (dívida conhecida; ao mexer ali, migre para o serviço).
+- Banco: **PostgreSQL** em desenvolvimento e produção (`DB_CONNECTION=pgsql`, colunas `jsonb`). Os testes antigos (`DatabaseTransactions`) rodam contra esse Postgres; os de caracterização rodam em SQLite `:memory:` com trava de segurança (`tests/Feature/Characterization/Support/CharacterizationTestCase.php`). Diferenças entre os dois bancos (maiúsculas/minúsculas, JSON, locks, colunas inexistentes) só aparecem no Postgres — CI em Postgres ainda pendente.
+- Concorrência: nos testes em SQLite `lockForUpdate()` não trava nada; prefira update condicional (`WHERE status = ?`, 0 linhas = conflito), que funciona nos dois bancos.
+- Nenhum caminho de produção usa o `ProductionWorkflowService` hoje: `CheckoutController`, `MercadoPagoWebhookController` e as ações do Filament (`OrderResource`) alteram `status` direto (dívida conhecida; ao mexer em um deles, migre para o serviço). O painel não tem ações de cancelar nem de entregar.
+- Mercado Pago nos testes: o SDK usa curl próprio, então `Http::fake()` NÃO o intercepta. Use `FakeMercadoPagoHttpClient` (registrado via `MercadoPagoConfig::setHttpClient()` na `CharacterizationTestCase`).
+- Eventos: existem pares duplicados (`OrderPaid`/`OrderPaidEvent`, `OrderShipped`/`OrderShippedEvent`, `OrderPrintStarted`/`OrderPrintingStartedEvent`); só as versões `*Event` têm listener. Os listeners são registrados no `AppServiceProvider` E pela descoberta automática do Laravel 11 (registro em dobro).
 
 ## Compactação
 Ao compactar, preserve: arquivos modificados, comandos de teste usados, decisões sobre dinheiro/status e achados de segurança em aberto.
