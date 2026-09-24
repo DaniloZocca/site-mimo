@@ -30,6 +30,8 @@ import { usePaymentStatus } from '../../hooks/usePaymentStatus';
 import { useMercadoPagoCard } from '../../hooks/useMercadoPagoCard';
 import { CreditCardPaymentStep } from './CreditCardPaymentStep';
 import { ShippingSelector } from '../cart/ShippingSelector';
+import { clearShippingCache, normalizeShippingOption } from '../../hooks/useShipping';
+import { ShippingPriceChangedError, isShippingPriceChanged } from '../../utils/shippingPriceChange';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -56,6 +58,7 @@ export const CheckoutModal = () => {
   const [currentStep, setCurrentStep] = useState(1); // 1: Dados, 2: Endereço, 3: Pagamento, 4: Tela PIX
   const [isSubmittingPix, setIsSubmittingPix] = useState(false);
   const [apiError, setApiError] = useState(null);
+  const [shippingNotice, setShippingNotice] = useState(null);
   const [orderResult, setOrderResult] = useState(null);
   const [copiedPix, setCopiedPix] = useState(false);
   const [pixTimeLeft, setPixTimeLeft] = useState(900); // 15 minutos
@@ -197,6 +200,26 @@ export const CheckoutModal = () => {
     }
   };
 
+  // Frete recalculado no servidor divergiu do exibido (409): atualiza a opção e pede nova confirmação,
+  // mantendo todos os dados já preenchidos no formulário.
+  const applyShippingPriceChange = (err) => {
+    const nextOption = err.shippingOptions.find((opt) => opt.service_code === err.shippingService);
+    clearShippingCache();
+    if (nextOption) {
+      setSelectedShipping(normalizeShippingOption(nextOption));
+    }
+    setShippingNotice({ message: err.message });
+    setCurrentStep(3);
+  };
+
+  const ensureShippingSelected = () => {
+    if (!selectedShipping?.service_code) {
+      setApiError('Calcule o frete e escolha uma opção de entrega na etapa 2 para continuar.');
+      return false;
+    }
+    return true;
+  };
+
   // Navegação entre etapas com validação Zod
   const handleNextStep = async () => {
     setApiError(null);
@@ -225,8 +248,13 @@ export const CheckoutModal = () => {
       return;
     }
 
+    if (!ensureShippingSelected()) {
+      return;
+    }
+
     setIsSubmittingPix(true);
     setApiError(null);
+    setShippingNotice(null);
 
     // Validador de UUID defensivo para variações de tamanho
     const isValidUuid = (val) =>
@@ -250,8 +278,9 @@ export const CheckoutModal = () => {
         city: data.city,
         state: data.state,
       },
-      shipping_service: selectedShipping?.service_name || 'PAC',
-      shipping_cost_cents: selectedShipping?.price_in_cents || shippingCostCents || 0,
+      // O backend recalcula o frete pelo service_code; o valor exibido só serve para detectar divergência (409)
+      shipping_service: selectedShipping.service_code,
+      shipping_cost_cents: selectedShipping.price_in_cents,
       payment_method: 'pix', // 'pix' ou 'credit_card'
       card_token: null, // Vindo do SDK do Mercado Pago
       installments: 1,
@@ -274,8 +303,7 @@ export const CheckoutModal = () => {
         neighborhood: data.neighborhood,
         city: data.city,
         state: data.state,
-        shipping_cost_cents: selectedShipping?.price_in_cents || shippingCostCents || 0,
-        service_name: selectedShipping?.service_name || 'PAC',
+        service_name: selectedShipping.service_name,
       },
       payment: {
         payment_method: 'pix',
@@ -293,6 +321,10 @@ export const CheckoutModal = () => {
       });
 
       const result = await response.json();
+
+      if (isShippingPriceChanged(response.status, result)) {
+        throw new ShippingPriceChangedError(result);
+      }
 
       if (!response.ok) {
         throw new Error(result.message || 'Falha ao processar o checkout.');
@@ -312,7 +344,11 @@ export const CheckoutModal = () => {
       showToast(`✨ Encomenda #${result.order_number} gerada com sucesso!`);
 
     } catch (err) {
-      setApiError(err.message || 'Ocorreu um erro ao comunicar com o servidor de pagamento.');
+      if (err instanceof ShippingPriceChangedError) {
+        applyShippingPriceChange(err);
+      } else {
+        setApiError(err.message || 'Ocorreu um erro ao comunicar com o servidor de pagamento.');
+      }
     } finally {
       setIsSubmittingPix(false);
     }
@@ -325,6 +361,12 @@ export const CheckoutModal = () => {
       showToast('Por favor, revise os dados das etapas anteriores.', 'error');
       return;
     }
+
+    if (!ensureShippingSelected()) {
+      return;
+    }
+
+    setShippingNotice(null);
 
     try {
       const result = await processCardPayment(
@@ -372,7 +414,10 @@ export const CheckoutModal = () => {
       }
 
     } catch (err) {
-      // Erro exibido dentro do CreditCardPaymentStep
+      if (err instanceof ShippingPriceChangedError) {
+        applyShippingPriceChange(err);
+      }
+      // Demais erros são exibidos dentro do CreditCardPaymentStep
     }
   };
 
@@ -476,6 +521,23 @@ export const CheckoutModal = () => {
         {/* Corpo do Formulário */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
           
+          {shippingNotice && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="p-4 rounded-3xl bg-mimoo-yellow-light border-2 border-mimoo-dark shadow-chunky-sm text-mimoo-dark font-nunito text-sm flex items-start gap-3"
+            >
+              <Truck className="w-5 h-5 flex-shrink-0 text-mimoo-purple mt-0.5" aria-hidden="true" />
+              <div className="space-y-1">
+                <p className="font-fredoka font-bold text-base">Muuu! O valor do frete mudou</p>
+                <p className="font-semibold">{shippingNotice.message}</p>
+                <p className="text-xs">
+                  Seus dados continuam preenchidos. Confira o novo total no resumo e toque em pagar de novo para confirmar.
+                </p>
+              </div>
+            </div>
+          )}
+
           {apiError && (
             <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-300 text-red-700 text-xs font-semibold flex items-center gap-3">
               <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500" />

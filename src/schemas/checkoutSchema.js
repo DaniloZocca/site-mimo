@@ -117,7 +117,7 @@ export const checkoutFormSchema = z.object({
  * 
  * @param {z.infer<typeof checkoutFormSchema>} formData
  * @param {Array} cartItems
- * @param {number} [shippingCostCents=0]
+ * @param {number} [shippingCostCents=0] ignorado: o frete enviado vem de selectedShipping (service_code + valor exibido)
  * @param {Object|null} [cardDetails=null] (apenas se paymentMethod for 'credit_card')
  * @param {Object|null} [selectedShipping=null]
  * @returns {Object}
@@ -127,8 +127,11 @@ export const transformToApiPayload = (formData, cartItems, shippingCostCents = 0
   const cleanPhone = cleanNonDigits(formData.phone);
   const cleanCep = cleanNonDigits(formData.cep);
 
-  const finalShippingCostCents = selectedShipping?.price_in_cents ?? shippingCostCents ?? 0;
-  const shippingService = selectedShipping?.service_name || 'PAC';
+  // Frete: o backend recalcula pelo service_code; o valor exibido vai só para a checagem de divergência (409).
+  const shippingService = selectedShipping?.service_code;
+  const displayedShippingCents = Number.isInteger(selectedShipping?.price_in_cents)
+    ? selectedShipping.price_in_cents
+    : undefined;
   const paymentMethod = formData.paymentMethod;
   const cardToken = cardDetails?.card_token || cardDetails?.token || null;
   const installments = Number(cardDetails?.installments) || 1;
@@ -166,7 +169,7 @@ export const transformToApiPayload = (formData, cartItems, shippingCostCents = 0
       state: formData.state.trim().toUpperCase(),
     },
     shipping_service: shippingService,
-    shipping_cost_cents: finalShippingCostCents,
+    shipping_cost_cents: displayedShippingCents,
     payment_method: paymentMethod, // 'pix' ou 'credit_card'
     card_token: cardToken,
     installments: installments,
@@ -181,8 +184,7 @@ export const transformToApiPayload = (formData, cartItems, shippingCostCents = 0
       neighborhood: formData.neighborhood.trim(),
       city: formData.city.trim(),
       state: formData.state.trim().toUpperCase(),
-      shipping_cost_cents: finalShippingCostCents,
-      service_name: shippingService,
+      service_name: selectedShipping?.service_name,
     },
     payment: {
       payment_method: paymentMethod,

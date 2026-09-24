@@ -6,6 +6,28 @@ const API_BASE = 'http://localhost:8000/api';
 // Cache em memória local volátil para evitar chamadas de rede repetidas na mesma sessão
 const memoryCache = new Map();
 
+/** Descarta cotações em memória (ex.: após o servidor devolver 409 shipping_price_changed). */
+export const clearShippingCache = () => {
+  memoryCache.clear();
+};
+
+/**
+ * Normaliza uma opção vinda da API (/shipping/calculate ou shipping_options do 409) para o formato
+ * guardado em selectedShipping. service_code é o identificador enviado ao checkout.
+ */
+export const normalizeShippingOption = (opt) => ({
+  service_code: opt.service_code || 'pac',
+  service_name: opt.service_name || 'PAC',
+  carrier_name: opt.carrier_name || 'Correios',
+  price_in_cents: Number(opt.price_in_cents ?? 0),
+  price: Number(opt.price ?? ((opt.price_in_cents || 0) / 100)),
+  price_formatted: opt.price_formatted || `R$ ${((opt.price_in_cents || 0) / 100).toFixed(2).replace('.', ',')}`,
+  carrier_delivery_days: Number(opt.carrier_delivery_days ?? 3),
+  manufacturing_lead_time_days: Number(opt.manufacturing_lead_time_days ?? 2),
+  total_estimated_days: Number(opt.total_estimated_days ?? 5),
+  icon_url: opt.icon_url || null,
+});
+
 /**
  * Hook de Cálculo e Gestão de Opções de Frete da MIMOO LAB
  */

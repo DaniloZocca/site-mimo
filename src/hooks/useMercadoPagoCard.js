@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { setupMercadoPago, getFriendlyCardErrorMessage } from '../services/mercadoPago';
 import { transformToApiPayload } from '../schemas/checkoutSchema';
+import { ShippingPriceChangedError, isShippingPriceChanged } from '../utils/shippingPriceChange';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -73,6 +74,11 @@ export const useMercadoPagoCard = () => {
 
         const result = await response.json();
 
+        if (isShippingPriceChanged(response.status, result)) {
+          // Frete mudou no servidor: nenhum pedido/cobrança foi criado; o modal pede nova confirmação.
+          throw new ShippingPriceChangedError(result);
+        }
+
         if (!response.ok) {
           const friendlyMessage = getFriendlyCardErrorMessage(
             result.status_detail || result.payment?.status_detail || result.message
@@ -90,6 +96,9 @@ export const useMercadoPagoCard = () => {
 
         return result;
       } catch (err) {
+        if (err instanceof ShippingPriceChangedError) {
+          throw err;
+        }
         if (!error) {
           const friendlyMsg = err.message || 'Falha ao autorizar pagamento com cartão.';
           setError(friendlyMsg);

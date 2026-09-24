@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\DTOs\CheckoutOrderDTO;
 use App\Enums\OrderStatus;
 use App\Events\OrderPaid;
+use App\Exceptions\ShippingPriceChangedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
 use App\Jobs\ProcessOrderPaidNotification;
@@ -36,7 +37,17 @@ class CheckoutController extends Controller
         // 2. Criação Atômica do Pedido no PostgreSQL com Zero-Trust Pricing
         // REGRA DE OURO: A transação DB commita ANTES de qualquer chamada de rede externa
         try {
-            $order = $this->orderCreationService->createOrder($orderDTO);
+            // Frete recalculado no servidor (chamada externa, fora de transação); o valor do cliente só detecta divergência
+            $shipping = $this->orderCreationService->resolveShipping($orderDTO);
+            $order = $this->orderCreationService->createOrder($orderDTO, $shipping);
+        } catch (ShippingPriceChangedException $e) {
+            return response()->json([
+                'code'                => 'shipping_price_changed',
+                'message'             => $e->getMessage(),
+                'shipping_service'    => $e->serverOption->serviceCode,
+                'shipping_cost_cents' => $e->serverOption->priceInCents,
+                'shipping_options'    => array_map(fn ($option) => $option->toArray(), $e->options),
+            ], 409);
         } catch (ValidationException $e) {
             return response()->json([
                 'message' => $e->getMessage(),

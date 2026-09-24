@@ -25,10 +25,8 @@ class CheckoutRequest extends FormRequest
     {
         $input = $this->all();
 
-        // 1. Sincroniza shipping_cost_cents entre raiz e nó shipping
-        if (! isset($input['shipping_cost_cents']) && isset($input['shipping']['shipping_cost_cents'])) {
-            $input['shipping_cost_cents'] = $input['shipping']['shipping_cost_cents'];
-        }
+        // 1. shipping_cost_cents só é lido da raiz (valor exibido ao cliente, usado apenas para
+        //    detectar divergência); o frete cobrado é recalculado no servidor a partir de shipping_service.
 
         // 2. Mapeia shipping_address para shipping caso enviado no formato consolidado
         if (isset($input['shipping_address']) && is_array($input['shipping_address'])) {
@@ -42,14 +40,9 @@ class CheckoutRequest extends FormRequest
             $shipping['neighborhood']        = $shipping['neighborhood'] ?? $shippingAddress['neighborhood'] ?? null;
             $shipping['city']                = $shipping['city'] ?? $shippingAddress['city'] ?? null;
             $shipping['state']               = $shipping['state'] ?? $shippingAddress['state'] ?? null;
-            $shipping['shipping_cost_cents'] = $shipping['shipping_cost_cents'] ?? $input['shipping_cost_cents'] ?? 0;
             $shipping['service_name']        = $shipping['service_name'] ?? $input['shipping_service'] ?? 'PAC';
 
             $input['shipping'] = $shipping;
-        }
-
-        if (isset($input['shipping']['shipping_cost_cents']) && ! isset($input['shipping_cost_cents'])) {
-            $input['shipping_cost_cents'] = $input['shipping']['shipping_cost_cents'];
         }
 
         // 3. Mapeia payment_method, card_token, installments da raiz para payment
@@ -95,7 +88,8 @@ class CheckoutRequest extends FormRequest
             'shipping.state'                => ['required', 'string', 'size:2'],
             'shipping.shipping_cost_cents'  => ['nullable', 'integer', 'min:0'],
             'shipping.cost_in_cents'        => ['nullable', 'integer', 'min:0'],
-            'shipping_cost_cents'           => ['required', 'integer', 'min:0'],
+            'shipping_service'              => ['required', 'string', 'max:30'],
+            'shipping_cost_cents'           => ['nullable', 'integer', 'min:0'],
 
             // Lista de Itens com Validação Estrita de Material e UUIDs
             'items'                         => ['required', 'array', 'min:1'],
@@ -132,7 +126,9 @@ class CheckoutRequest extends FormRequest
             'shipping.neighborhood.required'=> 'O bairro de entrega é obrigatório.',
             'shipping.city.required'        => 'A cidade de entrega é obrigatória.',
             'shipping.state.required'       => 'O estado (UF) é obrigatório.',
-            'shipping_cost_cents.required'  => 'O valor do frete em centavos é obrigatório.',
+            'shipping_service.required'     => 'Escolha uma opção de frete para continuar.',
+            'shipping_service.string'       => 'A opção de frete informada é inválida.',
+            'shipping_service.max'          => 'A opção de frete informada é inválida.',
             'shipping_cost_cents.integer'   => 'O valor do frete deve ser um valor inteiro em centavos.',
             'shipping_cost_cents.min'       => 'O frete não pode ser negativo.',
             'items.required'                => 'A sacola de encomendas não pode estar vazia.',

@@ -18,7 +18,7 @@ use Tests\Feature\Characterization\Support\FakeMercadoPagoHttpClient;
  * Casos-ouro de cálculo do total (OrderCreationService).
  * Regra observada: unit = base + modificador do tamanho; subtotal = Σ unit × qtd;
  * PIX: desconto = (int) round(subtotal × 0.10) — só nas peças, arredondamento "meio para cima";
- * total = subtotal − desconto + shipping_cost_cents (valor enviado pelo cliente).
+ * total = subtotal − desconto + frete recalculado no servidor (1490 = PAC do fallback SP nos testes).
  */
 #[Group('characterization')]
 class CheckoutPricingTest extends CharacterizationTestCase
@@ -53,24 +53,24 @@ class CheckoutPricingTest extends CharacterizationTestCase
     {
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'approved'));
 
-        $this->postJson('/api/checkout', $this->checkoutPayload($this->goldenCart()['items'], 'credit_card', 1890))
+        $this->postJson('/api/checkout', $this->checkoutPayload($this->goldenCart()['items'], 'credit_card'))
             ->assertStatus(201)
-            ->assertJsonPath('total_cents', 29594)          // 27704 + 1890
-            ->assertJsonPath('total_formatted', 'R$ 295,94');
+            ->assertJsonPath('total_cents', 29194)          // 27704 + 1490
+            ->assertJsonPath('total_formatted', 'R$ 291,94');
 
-        $this->assertSame(296, (int) round($this->mpHttp->lastPayload()['transaction_amount']));
-        $this->assertEqualsWithDelta(295.94, $this->mpHttp->lastPayload()['transaction_amount'], 0.0001);
+        $this->assertSame(292, (int) round($this->mpHttp->lastPayload()['transaction_amount']));
+        $this->assertEqualsWithDelta(291.94, $this->mpHttp->lastPayload()['transaction_amount'], 0.0001);
     }
 
     public function test_caso_ouro_pix_desconto_so_nas_pecas(): void
     {
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
 
-        // desconto = round(2770.4) = 2770 → 27704 − 2770 + 1890 = 26824 (frete sem desconto)
-        $this->postJson('/api/checkout', $this->checkoutPayload($this->goldenCart()['items'], 'pix', 1890))
+        // desconto = round(2770.4) = 2770 → 27704 − 2770 + 1490 = 26424 (frete sem desconto)
+        $this->postJson('/api/checkout', $this->checkoutPayload($this->goldenCart()['items'], 'pix'))
             ->assertStatus(201)
-            ->assertJsonPath('total_cents', 26824)
-            ->assertJsonPath('total_formatted', 'R$ 268,24');
+            ->assertJsonPath('total_cents', 26424)
+            ->assertJsonPath('total_formatted', 'R$ 264,24');
 
         $this->assertStringContainsString('(Desconto PIX 10% aplicado: R$ 27,70)', Order::sole()->productionLogs()->sole()->notes);
     }
@@ -79,14 +79,14 @@ class CheckoutPricingTest extends CharacterizationTestCase
     {
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
 
-        $this->postJson('/api/checkout', $this->checkoutPayload($this->goldenCart()['items'], 'pix', 0))->assertStatus(201);
+        $this->postJson('/api/checkout', $this->checkoutPayload($this->goldenCart()['items'], 'pix'))->assertStatus(201);
 
         $units = Order::sole()->items()->orderBy('unit_price_cents')->pluck('unit_price_cents', 'quantity')->all();
         $this->assertSame([1 => 1234, 2 => 5000, 3 => 5490], $units);
     }
 
     /**
-     * Arredondamento do desconto PIX para subtotais ímpares (frete 0).
+     * Arredondamento do desconto PIX para subtotais ímpares ($expectedTotal = peças − desconto, sem o frete).
      *
      * @return array<string, array{int, int}>
      */
@@ -112,9 +112,9 @@ class CheckoutPricingTest extends CharacterizationTestCase
         ['product' => $product, 'color' => $color] = $this->catalogItem(['base_price_cents' => $priceCents]);
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
 
-        $this->postJson('/api/checkout', $this->checkoutPayload([$this->itemPayload($product, $color)], 'pix', 0))
+        $this->postJson('/api/checkout', $this->checkoutPayload([$this->itemPayload($product, $color)], 'pix'))
             ->assertStatus(201)
-            ->assertJsonPath('total_cents', $expectedTotal);
+            ->assertJsonPath('total_cents', $expectedTotal + self::SERVER_PAC_CENTS);
     }
 
     public function test_pix_desconto_calculado_sobre_o_subtotal_somado_e_nao_por_item(): void
@@ -123,9 +123,9 @@ class CheckoutPricingTest extends CharacterizationTestCase
         ['product' => $product, 'color' => $color] = $this->catalogItem(['base_price_cents' => 15]);
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
 
-        $this->postJson('/api/checkout', $this->checkoutPayload([$this->itemPayload($product, $color, null, 2)], 'pix', 0))
+        $this->postJson('/api/checkout', $this->checkoutPayload([$this->itemPayload($product, $color, null, 2)], 'pix'))
             ->assertStatus(201)
-            ->assertJsonPath('total_cents', 27);
+            ->assertJsonPath('total_cents', 27 + self::SERVER_PAC_CENTS);
     }
 
     public function test_mesmo_produto_em_duas_linhas_gera_dois_itens(): void
@@ -136,7 +136,7 @@ class CheckoutPricingTest extends CharacterizationTestCase
         $this->postJson('/api/checkout', $this->checkoutPayload([
             $this->itemPayload($product, $color, null, 1),
             $this->itemPayload($product, $color, null, 2),
-        ], 'credit_card', 0))->assertStatus(201)->assertJsonPath('total_cents', 3000);
+        ], 'credit_card'))->assertStatus(201)->assertJsonPath('total_cents', 3000 + self::SERVER_PAC_CENTS);
 
         $this->assertSame(2, Order::sole()->items()->count());
     }

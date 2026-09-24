@@ -37,12 +37,12 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
 
     public function test_pix_caminho_feliz_resposta_201_formato_exato_e_pedido_pendente(): void
     {
-        ['payload' => $payload] = $this->simpleCheckout('pix', 1500);
+        ['payload' => $payload] = $this->simpleCheckout('pix');
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(9001, 'pending', statusDetail: 'pending_waiting_transfer'));
 
         $response = $this->postJson('/api/checkout', $payload)->assertStatus(201);
 
-        // 5000 − round(5000 × 0,10) + 1500 = 6000
+        // 5000 − round(5000 × 0,10) + frete do servidor 1490 (PAC, fallback SP) = 5990
         $response->assertJson(fn (AssertableJson $json) => $json
             ->where('message', 'Pedido gerado com sucesso!')
             ->whereType('order_id', 'string')
@@ -50,8 +50,8 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
             ->where('tracking_token', fn (string $v): bool => (bool) preg_match(self::UUID_REGEX, $v))
             ->where('status', 'pending_payment')
             ->where('status_label', 'Aguardando Pagamento')
-            ->where('total_cents', 6000)
-            ->where('total_formatted', 'R$ 60,00')
+            ->where('total_cents', 5990)
+            ->where('total_formatted', 'R$ 59,90')
             ->has('payment', fn (AssertableJson $p) => $p
                 ->where('method', 'pix')
                 ->where('payment_id', '9001')
@@ -67,8 +67,8 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
         $order = Order::sole();
         $this->assertSame($response->json('order_id'), $order->id);
         $this->assertSame(OrderStatus::PENDING_PAYMENT, $order->status);
-        $this->assertSame(6000, $order->total_cents);
-        $this->assertSame(1500, $order->shipping_cost_cents);
+        $this->assertSame(5990, $order->total_cents);
+        $this->assertSame(self::SERVER_PAC_CENTS, $order->shipping_cost_cents);
         $this->assertNull($order->paid_at);
         // PERGUNTA: passedValidation() sanitiza CPF/telefone/CEP com merge(), mas o DTO lê
         // $request->validated(), que não recebe o merge. Resultado: os valores são gravados
@@ -96,7 +96,7 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
 
     public function test_pix_envia_payload_e_chave_de_idempotencia_ao_mercado_pago(): void
     {
-        ['payload' => $payload] = $this->simpleCheckout('pix', 1500);
+        ['payload' => $payload] = $this->simpleCheckout('pix');
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(9001, 'pending'));
 
         $response = $this->postJson('/api/checkout', $payload)->assertStatus(201);
@@ -109,7 +109,7 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
 
         $orderNumber = $response->json('order_number');
         $this->assertSame([
-            'transaction_amount' => 60,
+            'transaction_amount' => 59.9,
             'description' => "MIMOO LAB - Encomenda #{$orderNumber}",
             'payment_method_id' => 'pix',
             'external_reference' => $orderNumber,
@@ -142,12 +142,12 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
 
     public function test_cartao_aprovado_vai_para_in_queue_com_log_evento_e_job(): void
     {
-        ['payload' => $payload] = $this->simpleCheckout('credit_card', 1500);
+        ['payload' => $payload] = $this->simpleCheckout('credit_card');
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(777, 'approved'));
 
         $response = $this->postJson('/api/checkout', $payload)->assertStatus(201);
 
-        // Cartão: sem desconto. 5000 + 1500 = 6500
+        // Cartão: sem desconto. 5000 + frete do servidor 1490 = 6490
         $response->assertJson(fn (AssertableJson $json) => $json
             ->where('message', 'Pedido gerado com sucesso!')
             ->whereType('order_id', 'string')
@@ -155,8 +155,8 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
             ->whereType('tracking_token', 'string')
             ->where('status', 'in_queue')
             ->where('status_label', 'Na Fila de Impressão 3D')
-            ->where('total_cents', 6500)
-            ->where('total_formatted', 'R$ 65,00')
+            ->where('total_cents', 6490)
+            ->where('total_formatted', 'R$ 64,90')
             ->has('payment', fn (AssertableJson $p) => $p
                 ->where('method', 'credit_card')
                 ->where('payment_id', '777')
@@ -206,7 +206,7 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
 
         $orderNumber = $response->json('order_number');
         $this->assertSame([
-            'transaction_amount' => 65,
+            'transaction_amount' => 64.9,
             'token' => 'card-token-characterization',
             'installments' => 3,
             'payment_method_id' => 'visa',
@@ -248,13 +248,13 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
             'customer' => ['name' => 'Fernanda Souza', 'email' => 'f@example.com', 'cpf' => self::VALID_CPF, 'phone' => '11988887777'],
             'shipping_address' => ['cep' => '01001-000', 'street' => 'Praça da Sé', 'number' => '1', 'neighborhood' => 'Sé', 'city' => 'São Paulo', 'state' => 'SP'],
             'shipping_service' => 'SEDEX',
-            'shipping_cost_cents' => 2000,
+            'shipping_cost_cents' => 2290, // SEDEX do fallback SP, recalculado no servidor
             'payment_method' => 'credit_card',
             'card_token' => 'tok',
             'installments' => 2,
             'payment_method_id' => 'master',
             'items' => [$this->itemPayload($product, $color)],
-        ])->assertStatus(201)->assertJsonPath('total_cents', 7000);
+        ])->assertStatus(201)->assertJsonPath('total_cents', 7290);
 
         $this->assertSame('01001-000', Order::sole()->shipping_address['zip_code']);
         // service_name ('SEDEX') não é persistido no shipping_address.
