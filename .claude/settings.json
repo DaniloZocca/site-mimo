@@ -17,6 +17,7 @@
       "Read(./.env.*)",
       "Read(./backend/.env)",
       "Read(./backend/.env.production)",
+      "Bash(git push origin main*)",
       "Bash(git push --force*)",
       "Bash(php artisan migrate:fresh --env=production*)",
       "Bash(php artisan db:wipe*)"

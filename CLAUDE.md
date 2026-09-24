@@ -33,6 +33,7 @@ Na dúvida entre dois tamanhos, escolha o menor — exceto se tocar pagamento, q
 
 ## Como trabalhar neste repo
 - Leia os arquivos envolvidos e o padrão existente mais próximo antes de editar.
+- Um PR por bug, sempre com base na `main`, nunca empilhado. Não faça push na `main`.
 - Faça o menor diff que resolve a tarefa. Não refatore, renomeie ou reformate fora do escopo; liste outros problemas no final.
 - Não adicione dependências (npm/composer) sem pedir.
 - Não altere nem remova testes existentes para fazê-los passar; não hard-code valores esperados. Se um teste parecer errado, explique e pergunte.
