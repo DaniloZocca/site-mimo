@@ -139,6 +139,34 @@ class ShippingCalculationService
     }
 
     /**
+     * Recalcula as opções (mesmo caminho e mesmo cache da cotação pública) e devolve o serviço
+     * escolhido no checkout junto com todas as opções, ou null se o serviço não estiver disponível.
+     *
+     * @param iterable $items Itens no formato da cotação: [product_id, size_id, quantity]
+     * @return array{option: ?ShippingOptionDTO, options: array<int, ShippingOptionDTO>}
+     */
+    public function findOption(string $destinationCep, iterable $items, string $serviceCode): array
+    {
+        $options = $this->calculate($destinationCep, $items);
+
+        foreach ($options as $option) {
+            if ($option->serviceCode === $serviceCode) {
+                return ['option' => $option, 'options' => $options];
+            }
+        }
+
+        return ['option' => null, 'options' => $options];
+    }
+
+    /**
+     * Origem do preço de uma opção: 'fallback' (tabela regional) ou 'melhor_envio'.
+     */
+    public static function priceSource(ShippingOptionDTO $option): string
+    {
+        return ! empty($option->metadata['fallback']) ? 'fallback' : 'melhor_envio';
+    }
+
+    /**
      * Cotação de contingência baseada na faixa regional de CEP brasileira.
      * Garante que o checkout nunca quebre mesmo se as APIs externas estiverem fora do ar.
      *

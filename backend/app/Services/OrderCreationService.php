@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\CheckoutOrderDTO;
+use App\DTOs\ShippingOptionDTO;
 use App\Enums\MaterialType;
 use App\Enums\OrderStatus;
+use App\Exceptions\ShippingPriceChangedException;
 use App\Models\Color;
 use App\Models\Order;
 use App\Models\Product;
@@ -19,14 +21,71 @@ use Illuminate\Validation\ValidationException;
 
 class OrderCreationService
 {
+    public function __construct(
+        private readonly ShippingCalculationService $shippingService,
+    ) {}
+
+    /**
+     * Zero-Trust do frete: recalcula as opções no servidor (mesmos itens e cubagem da cotação,
+     * CEP do endereço de entrega) e devolve o serviço escolhido. Chamada externa (Melhor Envio):
+     * deve rodar ANTES e FORA de qualquer transação de banco.
+     *
+     * @throws ValidationException serviço inexistente/indisponível para o CEP (422)
+     * @throws ShippingPriceChangedException valor exibido ao cliente diverge do recalculado (409)
+     */
+    public function resolveShipping(CheckoutOrderDTO $dto): ShippingOptionDTO
+    {
+        $quoteItems = array_map(fn ($item): array => [
+            'product_id' => $item->productId,
+            'size_id'    => $item->sizeId,
+            'quantity'   => $item->quantity,
+        ], $dto->items);
+
+        ['option' => $option, 'options' => $options] = $this->shippingService->findOption(
+            (string) ($dto->shippingAddress['zip_code'] ?? ''),
+            $quoteItems,
+            $dto->shippingServiceCode,
+        );
+
+        if (! $option) {
+            throw ValidationException::withMessages([
+                'shipping_service' => ['A opção de frete escolhida não está disponível para este CEP. Escolha outra opção.'],
+            ]);
+        }
+
+        $source = ShippingCalculationService::priceSource($option);
+
+        if ($dto->declaredShippingCostCents !== null && $dto->declaredShippingCostCents !== $option->priceInCents) {
+            Log::warning('Checkout recusado: frete exibido diverge do recalculado no servidor.', [
+                'shipping_service'      => $option->serviceCode,
+                'declared_cents'        => $dto->declaredShippingCostCents,
+                'server_cents'          => $option->priceInCents,
+                'shipping_price_source' => $source,
+            ]);
+
+            throw new ShippingPriceChangedException($dto->declaredShippingCostCents, $option, $options);
+        }
+
+        Log::info('Frete do checkout recalculado no servidor.', [
+            'shipping_service'      => $option->serviceCode,
+            'server_cents'          => $option->priceInCents,
+            'shipping_price_source' => $source,
+        ]);
+
+        return $option;
+    }
+
     /**
      * Cria e persiste o pedido de forma determinística e atômica.
      * Regra Zero-Trust: Recalcula todos os valores financeiros diretamente no banco
      * e grava snapshots imutáveis de cada item encomendado.
      *
+     * $shipping: opção recalculada por resolveShipping() (caminho do checkout). Sem ela, usa
+     * $dto->shippingCostCents (apenas chamadores internos que já calcularam o frete no servidor).
+     *
      * @throws ValidationException|Exception
      */
-    public function createOrder(CheckoutOrderDTO $dto): Order
+    public function createOrder(CheckoutOrderDTO $dto, ?ShippingOptionDTO $shipping = null): Order
     {
         // 1. Pré-carregamento em lote para prevenir N+1 queries
         $productIds = array_map(fn ($item) => $item->productId, $dto->items);
@@ -117,14 +176,15 @@ class OrderCreationService
         }
 
         $piecesTotalAfterDiscount = max(0, $subtotalPiecesCents - $discountCents);
-        $totalCents = $piecesTotalAfterDiscount + (int) $dto->shippingCostCents;
+        $shippingCostCents = $shipping !== null ? $shipping->priceInCents : (int) $dto->shippingCostCents;
+        $totalCents = $piecesTotalAfterDiscount + $shippingCostCents;
 
         // 4. Geração de Identificador Único à Prova de Colisão (Prefixo + ULID)
         $orderNumber = 'MIMOO-' . strtoupper(substr((string) Str::ulid(), -8));
 
         // 5. Persistência Atômica dentro de transação PostgreSQL
         /** @var Order $order */
-        $order = DB::transaction(function () use ($dto, $orderNumber, $totalCents, $itemsToPersist, $isPix, $discountCents): Order {
+        $order = DB::transaction(function () use ($dto, $orderNumber, $totalCents, $shippingCostCents, $shipping, $itemsToPersist, $isPix, $discountCents): Order {
             $order = new Order();
             $order->order_number        = $orderNumber;
             $order->tracking_token      = (string) Str::uuid();
@@ -135,7 +195,16 @@ class OrderCreationService
             $order->shipping_address    = $dto->shippingAddress;
             $order->status              = OrderStatus::PENDING_PAYMENT;
             $order->total_cents         = $totalCents;
-            $order->shipping_cost_cents = $dto->shippingCostCents;
+            $order->shipping_cost_cents = $shippingCostCents;
+
+            if ($shipping !== null) {
+                $order->shipping_service_code  = $shipping->serviceCode;
+                $order->shipping_service_name  = $shipping->serviceName;
+                $order->shipping_carrier_name  = $shipping->carrierName;
+                $order->shipping_delivery_days = $shipping->totalEstimatedDays;
+                $order->shipping_price_source  = ShippingCalculationService::priceSource($shipping);
+            }
+
             $order->save();
 
             // Gravação dos itens com snapshots imutáveis em order_items

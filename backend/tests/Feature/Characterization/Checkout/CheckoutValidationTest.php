@@ -151,7 +151,7 @@ class CheckoutValidationTest extends CharacterizationTestCase
 
         $this->postItem(['size_id' => $foreign->id], 'credit_card')
             ->assertStatus(201)
-            ->assertJsonPath('total_cents', 1000 + 1500); // 5000 − 4000 + frete 1500
+            ->assertJsonPath('total_cents', 1000 + self::SERVER_PAC_CENTS); // 5000 − 4000 + frete do servidor
 
         $this->assertSame(1000, OrderItem::sole()->unit_price_cents);
     }
@@ -166,7 +166,7 @@ class CheckoutValidationTest extends CharacterizationTestCase
 
         $this->postItem(['size_id' => $size->id], 'credit_card')
             ->assertStatus(201)
-            ->assertJsonPath('total_cents', 1500); // max(0, −1000) + 1500: o subtotal é travado em 0, o unitário não
+            ->assertJsonPath('total_cents', self::SERVER_PAC_CENTS); // max(0, −1000) + frete: o subtotal é travado em 0, o unitário não
 
         $this->assertSame(-1000, OrderItem::sole()->unit_price_cents);
     }

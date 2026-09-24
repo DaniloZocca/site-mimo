@@ -24,6 +24,8 @@ readonly class CheckoutOrderDTO
         public ?string $cardToken = null,
         public ?string $paymentMethodId = null,
         public int $installments = 1,
+        public string $shippingServiceCode = '',
+        public ?int $declaredShippingCostCents = null,
     ) {}
 
     public static function fromRequest(CheckoutRequest $request): self
@@ -54,12 +56,15 @@ readonly class CheckoutOrderDTO
             customerCpf:       (string) $customer['cpf'],
             customerPhone:     (string) $customer['phone'],
             shippingAddress:   $shippingAddress,
-            shippingCostCents: (int) ($shipping['shipping_cost_cents'] ?? $validated['shipping_cost_cents'] ?? $shipping['cost_in_cents'] ?? 0),
+            // Frete cobrado vem do servidor (ShippingCalculationService); o do cliente só detecta divergência.
+            shippingCostCents: 0,
             items:             $items,
             paymentMethod:     (string) $payment['payment_method'],
             cardToken:         isset($payment['card_token']) ? (string) $payment['card_token'] : null,
             paymentMethodId:   isset($payment['payment_method_id']) ? (string) $payment['payment_method_id'] : null,
             installments:      max(1, (int) ($payment['installments'] ?? 1)),
+            shippingServiceCode: strtolower(trim((string) $validated['shipping_service'])),
+            declaredShippingCostCents: isset($validated['shipping_cost_cents']) ? (int) $validated['shipping_cost_cents'] : null,
         );
     }
 }

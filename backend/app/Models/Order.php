@@ -40,6 +40,7 @@ class Order extends Model
             'shipping_address'    => 'array',
             'total_cents'         => 'integer',
             'shipping_cost_cents' => 'integer',
+            'shipping_delivery_days' => 'integer',
             'paid_at'             => 'datetime',
         ];
     }

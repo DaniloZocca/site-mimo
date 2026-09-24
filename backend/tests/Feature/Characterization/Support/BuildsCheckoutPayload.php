@@ -19,6 +19,12 @@ trait BuildsCheckoutPayload
     protected const VALID_CPF_DIGITS = '52998224725';
 
     /**
+     * Frete que o servidor calcula para o CEP 01001-000 com o serviço 'pac' nos testes
+     * (sem token do Melhor Envio → fallback regional de SP). Enviado como "valor exibido".
+     */
+    protected const SERVER_PAC_CENTS = 1490;
+
+    /**
      * Produto ativo com uma cor vinculada (em estoque) e, opcionalmente, um tamanho vinculado.
      *
      * @param  array<string, mixed>  $productAttributes
@@ -56,10 +62,11 @@ trait BuildsCheckoutPayload
 
     /**
      * @param  array<int, array<string, mixed>>  $items
+     * @param  ?int  $shippingCents  valor exibido ao cliente; null = não envia shipping_cost_cents
      * @param  array<string, mixed>  $overrides  mesclado na raiz (array_replace_recursive)
      * @return array<string, mixed>
      */
-    protected function checkoutPayload(array $items, string $method = 'pix', int $shippingCents = 1500, array $overrides = []): array
+    protected function checkoutPayload(array $items, string $method = 'pix', ?int $shippingCents = self::SERVER_PAC_CENTS, array $overrides = []): array
     {
         $payment = ['payment_method' => $method];
 
@@ -85,10 +92,15 @@ trait BuildsCheckoutPayload
                 'city' => 'São Paulo',
                 'state' => 'sp',
             ],
+            'shipping_service' => 'pac',
             'shipping_cost_cents' => $shippingCents,
             'items' => $items,
             'payment' => $payment,
         ];
+
+        if ($shippingCents === null) {
+            unset($payload['shipping_cost_cents']);
+        }
 
         return array_replace_recursive($payload, $overrides);
     }
@@ -98,7 +110,7 @@ trait BuildsCheckoutPayload
      *
      * @return array{payload: array<string, mixed>, product: Product, color: Color}
      */
-    protected function simpleCheckout(string $method = 'pix', int $shippingCents = 1500): array
+    protected function simpleCheckout(string $method = 'pix', ?int $shippingCents = self::SERVER_PAC_CENTS): array
     {
         ['product' => $product, 'color' => $color] = $this->catalogItem();
 

@@ -27,24 +27,6 @@ class CheckoutKnownBugsTest extends CharacterizationTestCase
     use BuildsCheckoutPayload;
 
     /**
-     * P0 — gêmeo de CheckoutZeroTrustTest::test_frete_zero_enviado_pelo_cliente_vai_para_o_total
-     * e ::test_frete_absurdo_enviado_pelo_cliente_vai_para_o_total_e_para_o_gateway
-     */
-    public function test_frete_e_recalculado_no_servidor_e_ignora_o_valor_do_cliente(): void
-    {
-        ['product' => $product, 'color' => $color] = $this->catalogItem();
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(2, 'pending'));
-        $items = [$this->itemPayload($product, $color)];
-
-        $zero = $this->postJson('/api/checkout', $this->checkoutPayload($items, 'credit_card', 0))->json('total_cents');
-        $absurd = $this->postJson('/api/checkout', $this->checkoutPayload($items, 'credit_card', 99999999))->json('total_cents');
-
-        $this->assertSame($zero, $absurd, 'O total não pode depender do frete enviado pelo cliente.');
-        $this->assertNotSame(0, Order::orderBy('created_at')->first()->shipping_cost_cents, 'Frete 0 do cliente não deveria ser aceito.');
-    }
-
-    /**
      * P1 — gêmeo de CheckoutValidationTest::test_cor_nao_vinculada_ao_produto_e_aceita
      */
     public function test_cor_nao_vinculada_ao_produto_retorna_422(): void
