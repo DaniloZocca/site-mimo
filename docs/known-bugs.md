@@ -7,14 +7,13 @@ e dos gêmeos que afirmam o comportamento correto (`backend/tests/Feature/KnownB
 "known-bugs" passa a passar. Nesse momento, apague o teste characterization antigo e mova o gêmeo para
 `Characterization/` (trocando o grupo para `characterization`).
 
-- Rodar: `php artisan test --group=known-bugs` (deve falhar; 25 testes hoje).
+- Rodar: `php artisan test --group=known-bugs` (deve falhar; 24 testes hoje).
 - O grupo `known-bugs` está excluído da suíte padrão no `phpunit.xml`.
 
 Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado, dados expostos ou fluxo quebrado; **P2** = inconsistência sem dano imediato.
 
 | # | Bug | Sev. | Teste characterization (comportamento atual) | Teste known-bugs (comportamento esperado) | Causa provável (arquivo:linha) |
 |---|-----|------|----------------------------------------------|-------------------------------------------|--------------------------------|
-| 2 | `getPayment()` devolve `approved` para IDs `SIM_`/`TEST_` sem consultar a API | P0 | `Webhook/WebhookBackdoorTest::test_get_payment_com_prefixo_sim_devolve_aprovado_sem_consultar_api`, `::test_get_payment_com_prefixo_test_e_pedido_inexistente_devolve_aprovado_com_valor_100`, `::test_com_segredo_e_assinatura_valida_id_sim_tambem_aprova_sem_api` | `WebhookKnownBugsTest::test_get_payment_nao_tem_atalho_sim_test_e_sempre_consulta_a_api` | `app/Services/MercadoPagoService.php:179` |
 | 4 | `shipping_cost_cents` enviado pelo cliente entra no total sem recálculo (frete 0 ou absurdo) | P0 | `Checkout/CheckoutZeroTrustTest::test_frete_zero_enviado_pelo_cliente_vai_para_o_total`, `::test_frete_absurdo_enviado_pelo_cliente_vai_para_o_total_e_para_o_gateway` | `KnownBugs/Checkout/CheckoutKnownBugsTest::test_frete_e_recalculado_no_servidor_e_ignora_o_valor_do_cliente` | `app/DTOs/CheckoutOrderDTO.php:57`; `app/Services/OrderCreationService.php:120` |
 | 5 | Cor que não pertence ao produto é aceita | P1 | `Checkout/CheckoutValidationTest::test_cor_nao_vinculada_ao_produto_e_aceita` | `CheckoutKnownBugsTest::test_cor_nao_vinculada_ao_produto_retorna_422` | `app/Services/OrderCreationService.php:55` |
 | 6 | Tamanho que não pertence ao produto é aceito e o modificador é cobrado (inclusive negativo) | P1 | `CheckoutValidationTest::test_tamanho_nao_vinculado_ao_produto_e_aceito_com_modificador` | `CheckoutKnownBugsTest::test_tamanho_nao_vinculado_ao_produto_retorna_422` | `app/Services/OrderCreationService.php:63` e `:94` |
@@ -36,11 +35,12 @@ Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado
 | 22 | `dispatchOrder()` grava o código de rastreio antes de validar a transição | P2 | `TransitionSideEffectsTest::test_dispatch_order_invalido_grava_o_codigo_mesmo_assim` | `OrderStateMachineKnownBugsTest::test_dispatch_order_invalido_nao_grava_o_codigo` | `app/Services/ProductionWorkflowService.php:132` |
 | 23 | `SendOrderConfirmedNotification` registrado duas vezes (Event::listen + descoberta automática do Laravel 11) → e-mail em dobro quando o bug 13 for corrigido | P2 *(novo, a confirmar)* | `NotificationListenersTest::test_mapa_de_listeners_registrados`, `::test_webhook_aprovado_com_fila_database_enfileira_tres_listeners` | `OrderStateMachineKnownBugsTest::test_confirmacao_registrada_uma_unica_vez` | `app/Providers/AppServiceProvider.php:67-69` |
 
-Em aberto: 21 bugs, 25 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
+Em aberto: 20 bugs, 24 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
 
 ## Corrigidos
 
 | # | Bug | Sev. | Correção | Teste que agora garante (characterization) |
 |---|-----|------|----------|--------------------------------------------|
 | 1 | Webhook sem `MERCADOPAGO_WEBHOOK_SECRET` aceitava qualquer requisição (fail-open) | P0 | `fix/webhook-fail-closed`: sem segredo → 401 + log critical; `validateWebhookSignature()` devolve false | `Webhook/WebhookSignatureTest::test_sem_segredo_configurado_webhook_e_rejeitado_fail_closed`, `::test_validate_webhook_signature_do_servico_rejeita_sem_segredo` |
-| 3 | POST anônimo com `data.id=SIM_<pedido>_1` marcava o pedido como pago | P0 | resolvido pelo fail-closed do #1 (o atalho SIM_ em si é o #2) | `Webhook/WebhookBackdoorTest::test_webhook_forjado_com_id_sim_sem_segredo_nao_marca_pedido_como_pago` |
+| 2 | `getPayment()` devolvia `approved` para IDs `SIM_`/`TEST_` sem consultar a API | P0 | `fix/remove-sim-backdoor`: atalho removido; o comando `mimoo:simulate-order-flow` passou a usar um cliente HTTP falso do SDK só durante a execução e recusa rodar em produção ou sem segredo | `Webhook/WebhookBackdoorTest::test_get_payment_nao_tem_atalho_sim_test_e_sempre_consulta_a_api`, `::test_webhook_assinado_com_id_sim_nao_aprova_o_pedido`; `Console/SimulateOrderFlowCommandTest` |
+| 3 | POST anônimo com `data.id=SIM_<pedido>_1` marcava o pedido como pago | P0 | resolvido pelo fail-closed do #1 | `Webhook/WebhookBackdoorTest::test_webhook_forjado_com_id_sim_sem_segredo_nao_marca_pedido_como_pago` |

@@ -175,22 +175,6 @@ class MercadoPagoService
      */
     public function getPayment(string|int $paymentId): ?array
     {
-        // Suporte a Simulação E2E / Testes Automatizados Locais
-        if (is_string($paymentId) && (str_starts_with($paymentId, 'SIM_') || str_starts_with($paymentId, 'TEST_'))) {
-            $parts = explode('_', $paymentId, 3);
-            $orderNumber = $parts[1] ?? 'ORDER-TEST';
-            $order = Order::where('order_number', $orderNumber)->first();
-            $amount = $order ? ($order->total_cents / 100) : 100.0;
-
-            return [
-                'id'                 => $paymentId,
-                'status'             => 'approved',
-                'status_detail'      => 'accredited',
-                'external_reference' => (string) ($order?->order_number ?? $orderNumber),
-                'transaction_amount' => (float) $amount,
-            ];
-        }
-
         try {
             $payment = $this->client->get((int) $paymentId);
 

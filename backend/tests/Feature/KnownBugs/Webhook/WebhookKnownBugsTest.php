@@ -7,7 +7,6 @@ namespace Tests\Feature\KnownBugs\Webhook;
 use App\Enums\OrderStatus;
 use App\Events\OrderPaidEvent;
 use App\Models\Order;
-use App\Services\MercadoPagoService;
 use Illuminate\Support\Facades\Event;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Feature\Characterization\Support\CapturesLogs;
@@ -31,19 +30,6 @@ class WebhookKnownBugsTest extends CharacterizationTestCase
         parent::setUp();
         Event::fake([OrderPaidEvent::class]);
         $this->order = Order::factory()->create(['total_cents' => 10000]);
-    }
-
-    /**
-     * P0 — gêmeo de WebhookBackdoorTest::test_get_payment_com_prefixo_sim_devolve_aprovado_sem_consultar_api
-     */
-    public function test_get_payment_nao_tem_atalho_sim_test_e_sempre_consulta_a_api(): void
-    {
-        $this->mpHttp->pushApiError(404, ['message' => 'Payment not found']);
-
-        $result = app(MercadoPagoService::class)->getPayment("SIM_{$this->order->order_number}_1");
-
-        $this->assertNull($result);
-        $this->assertCount(1, $this->mpHttp->requests);
     }
 
     /**
