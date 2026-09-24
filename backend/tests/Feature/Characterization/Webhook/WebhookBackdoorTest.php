@@ -57,22 +57,6 @@ class WebhookBackdoorTest extends CharacterizationTestCase
         $this->assertCount(0, $this->mpHttp->requests);
     }
 
-    public function test_sem_segredo_webhook_forjado_com_sim_marca_pedido_como_pago(): void
-    {
-        // BUG CONHECIDO: fail-open + backdoor SIM_ = pedido pago sem pagamento — ver teste gêmeo em KnownBugs
-        $this->setWebhookSecret('');
-
-        $this->postWebhook("SIM_{$this->order->order_number}_1")
-            ->assertOk()
-            ->assertJsonPath('order_status', 'in_queue');
-
-        $this->order->refresh();
-        $this->assertSame(OrderStatus::IN_QUEUE, $this->order->status);
-        $this->assertNotNull($this->order->paid_at);
-        $this->assertCount(0, $this->mpHttp->requests, 'Nenhuma consulta à API foi feita.');
-        Event::assertDispatched(OrderPaidEvent::class);
-    }
-
     public function test_com_segredo_e_assinatura_valida_id_sim_tambem_aprova_sem_api(): void
     {
         // BUG CONHECIDO: backdoor SIM_/TEST_ em getPayment() — ver teste gêmeo em KnownBugs
@@ -80,5 +64,20 @@ class WebhookBackdoorTest extends CharacterizationTestCase
 
         $this->assertSame(OrderStatus::IN_QUEUE, $this->order->refresh()->status);
         $this->assertCount(0, $this->mpHttp->requests);
+    }
+
+    public function test_webhook_forjado_com_id_sim_sem_segredo_nao_marca_pedido_como_pago(): void
+    {
+        // Corrigido no bug #3 de docs/known-bugs.md: o fail-closed barra o POST anônimo
+        // antes de chegar ao atalho SIM_ (que continua existindo — bug #2).
+        $this->setWebhookSecret('');
+
+        $this->postWebhook("SIM_{$this->order->order_number}_1")->assertStatus(401);
+
+        $this->order->refresh();
+        $this->assertSame(OrderStatus::PENDING_PAYMENT, $this->order->status);
+        $this->assertNull($this->order->paid_at);
+        $this->assertCount(0, $this->mpHttp->requests);
+        Event::assertNotDispatched(OrderPaidEvent::class);
     }
 }
