@@ -78,18 +78,6 @@ class OrderStateMachineKnownBugsTest extends CharacterizationTestCase
     }
 
     /**
-     * P1 — gêmeo de FilamentOrderActionsTest::test_iniciar_impressao_a_partir_de_pendente_de_pagamento
-     */
-    public function test_admin_nao_inicia_impressao_de_pedido_nao_pago(): void
-    {
-        $this->asAdmin();
-        $order = Order::factory()->status(OrderStatus::PENDING_PAYMENT)->create();
-
-        Livewire::test(ListOrders::class)->assertTableActionHidden('startPrinting', $order);
-        $this->assertSame(OrderStatus::PENDING_PAYMENT, $order->fresh()->status);
-    }
-
-    /**
      * P2 — gêmeo de FilamentOrderActionsTest::test_iniciar_impressao_da_fila_dispara_order_print_started_sem_listener
      */
     public function test_admin_iniciar_impressao_dispara_evento_com_listener(): void

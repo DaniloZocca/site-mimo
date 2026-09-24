@@ -10,6 +10,7 @@ use App\Events\OrderShipped;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Models\ProductionLog;
+use App\Services\ProductionWorkflowService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -216,25 +217,15 @@ class OrderResource extends Resource
                     ->label('Iniciar Impressão')
                     ->icon('heroicon-m-cpu-chip')
                     ->color('info')
-                    ->visible(fn (Order $record): bool => in_array($record->status, [OrderStatus::IN_QUEUE, OrderStatus::PENDING_PAYMENT], true))
+                    ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::IN_QUEUE, OrderStatus::PRINTING))
                     ->requiresConfirmation()
                     ->modalHeading('Iniciar Fabricação 3D na Fazenda')
                     ->modalDescription('Confirmar que a impressora 3D foi abastecida com o filamento correto e o fatiamento foi disparado?')
                     ->modalSubmitActionLabel('Sim, iniciar extrusão')
                     ->action(function (Order $record): void {
-                        DB::transaction(function () use ($record): void {
-                            $previousStatus = $record->status->value;
-
-                            $record->status = OrderStatus::PRINTING;
-                            $record->save();
-
-                            $record->productionLogs()->create([
-                                'previous_status' => $previousStatus,
-                                'new_status'      => OrderStatus::PRINTING->value,
-                                'notes'           => 'Impressão 3D iniciada na fazenda de manufatura.',
-                                'created_at'      => Carbon::now(),
-                            ]);
-                        });
+                        if (! self::applyPanelTransition($record, OrderStatus::IN_QUEUE, OrderStatus::PRINTING, 'Impressão 3D iniciada na fazenda de manufatura.')) {
+                            return;
+                        }
 
                         event(new OrderPrintStarted($record));
 
@@ -250,21 +241,11 @@ class OrderResource extends Resource
                     ->label('Acabamento & Embalar')
                     ->icon('heroicon-m-gift')
                     ->color('primary')
-                    ->visible(fn (Order $record): bool => $record->status === OrderStatus::PRINTING)
+                    ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::PRINTING, OrderStatus::FINISHING_AND_PACKAGING))
                     ->action(function (Order $record): void {
-                        DB::transaction(function () use ($record): void {
-                            $previousStatus = $record->status->value;
-
-                            $record->status = OrderStatus::FINISHING_AND_PACKAGING;
-                            $record->save();
-
-                            $record->productionLogs()->create([
-                                'previous_status' => $previousStatus,
-                                'new_status'      => OrderStatus::FINISHING_AND_PACKAGING->value,
-                                'notes'           => 'Peça retirada da mesa de impressão, movida para conferência, acabamento e embalagem.',
-                                'created_at'      => Carbon::now(),
-                            ]);
-                        });
+                        if (! self::applyPanelTransition($record, OrderStatus::PRINTING, OrderStatus::FINISHING_AND_PACKAGING, 'Peça retirada da mesa de impressão, movida para conferência, acabamento e embalagem.')) {
+                            return;
+                        }
 
                         Notification::make()
                             ->title('Peça Impressa com Sucesso!')
@@ -278,7 +259,7 @@ class OrderResource extends Resource
                     ->label('Expedir Pedido')
                     ->icon('heroicon-m-truck')
                     ->color('success')
-                    ->visible(fn (Order $record): bool => $record->status === OrderStatus::FINISHING_AND_PACKAGING)
+                    ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::FINISHING_AND_PACKAGING, OrderStatus::SHIPPED))
                     ->form([
                         Forms\Components\TextInput::make('carrier_tracking_code')
                             ->label('Código de Rastreamento (Correios / Loggi / Jadlog)')
@@ -287,20 +268,18 @@ class OrderResource extends Resource
                             ->helperText('Informe o código de rastreamento postal gerado pela transportadora.'),
                     ])
                     ->action(function (Order $record, array $data): void {
-                        DB::transaction(function () use ($record, $data): void {
-                            $previousStatus = $record->status->value;
+                        // O código de rastreio entra no mesmo UPDATE condicional: só é gravado se a transição acontecer
+                        $shipped = self::applyPanelTransition(
+                            $record,
+                            OrderStatus::FINISHING_AND_PACKAGING,
+                            OrderStatus::SHIPPED,
+                            "Pacote despachado via transportadora com código de rastreio: {$data['carrier_tracking_code']}",
+                            ['carrier_tracking_code' => (string) $data['carrier_tracking_code']],
+                        );
 
-                            $record->status = OrderStatus::SHIPPED;
-                            $record->carrier_tracking_code = (string) $data['carrier_tracking_code'];
-                            $record->save();
-
-                            $record->productionLogs()->create([
-                                'previous_status' => $previousStatus,
-                                'new_status'      => OrderStatus::SHIPPED->value,
-                                'notes'           => "Pacote despachado via transportadora com código de rastreio: {$data['carrier_tracking_code']}",
-                                'created_at'      => Carbon::now(),
-                            ]);
-                        });
+                        if (! $shipped) {
+                            return;
+                        }
 
                         event(new OrderShipped($record));
 
@@ -315,6 +294,58 @@ class OrderResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([]);
+    }
+
+    /**
+     * Camada 1 (UI): a ação só aparece no status de origem, se a máquina de estados permitir o destino.
+     */
+    private static function canMove(Order $record, OrderStatus $from, OrderStatus $to): bool
+    {
+        return $record->status === $from && ProductionWorkflowService::allows($from, $to);
+    }
+
+    /**
+     * Camada 2 (servidor): muda o status com UPDATE condicional (WHERE status = origem), que funciona
+     * igual no Postgres e no SQLite. Se outro operador ou processo mudou o pedido antes (tela
+     * desatualizada), nenhuma linha é afetada: sem log, sem evento, e o operador é avisado.
+     *
+     * @param  array<string, mixed>  $extra  colunas gravadas junto com o status
+     */
+    private static function applyPanelTransition(Order $record, OrderStatus $from, OrderStatus $to, string $notes, array $extra = []): bool
+    {
+        $applied = DB::transaction(function () use ($record, $from, $to, $notes, $extra): bool {
+            $affected = Order::whereKey($record->getKey())
+                ->where('status', $from->value)
+                ->update(['status' => $to->value, 'updated_at' => Carbon::now()] + $extra);
+
+            if ($affected === 0) {
+                return false;
+            }
+
+            $record->productionLogs()->create([
+                'previous_status' => $from->value,
+                'new_status'      => $to->value,
+                'notes'           => $notes,
+                'code'            => ProductionLog::CODE_STATUS_CHANGE,
+                'is_internal'     => false,
+                'created_at'      => Carbon::now(),
+            ]);
+
+            return true;
+        });
+
+        if (! $applied) {
+            Notification::make()
+                ->title('O status deste pedido mudou. Atualize a página.')
+                ->danger()
+                ->send();
+
+            return false;
+        }
+
+        $record->refresh();
+
+        return true;
     }
 
     public static function getPages(): array

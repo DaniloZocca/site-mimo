@@ -27,6 +27,9 @@ class ProductionLog extends Model
         'reference',
     ];
 
+    /** Mudança de status de produção feita pelo painel (log público). */
+    public const CODE_STATUS_CHANGE = 'status_change';
+
     /** Pagamento aprovado que liberou a produção (reference = id do pagamento). */
     public const CODE_PAYMENT_APPROVED = 'payment_approved';
 
