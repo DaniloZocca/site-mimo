@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\URL;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Net\MPDefaultHttpClient;
 use Tests\TestCase;
@@ -123,6 +124,10 @@ abstract class CharacterizationTestCase extends TestCase
         MercadoPagoConfig::setHttpClient($this->mpHttp);
 
         $this->travelTo(self::FROZEN_NOW);
+
+        // A raiz das URLs (ex.: notification_url enviada ao Mercado Pago) é montada no boot a partir
+        // do APP_URL do .env, antes de createApplication() sobrescrever app.url. Fixa aqui.
+        URL::forceRootUrl('http://localhost');
     }
 
     protected function tearDown(): void
