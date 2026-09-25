@@ -29,9 +29,9 @@ class ShippingController extends Controller
             );
 
             return response()->json([
-                'success'         => true,
+                'success' => true,
                 'destination_cep' => $destinationCep,
-                'options'         => array_map(fn ($option) => $option->toArray(), $options),
+                'options' => array_map(fn ($option) => $option->toArray(), $options),
             ], 200);
 
         } catch (Throwable $e) {

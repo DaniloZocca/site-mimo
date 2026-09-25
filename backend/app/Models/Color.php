@@ -28,7 +28,7 @@ class Color extends Model
     {
         return [
             'material_type' => MaterialType::class,
-            'in_stock'      => 'boolean',
+            'in_stock' => 'boolean',
         ];
     }
 

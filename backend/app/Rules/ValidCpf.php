@@ -16,6 +16,7 @@ class ValidCpf implements ValidationRule
     {
         if (! is_string($value)) {
             $fail('O CPF informado deve ser um texto válido.');
+
             return;
         }
 
@@ -25,12 +26,14 @@ class ValidCpf implements ValidationRule
         // 2. Deve ter exatamente 11 dígitos numéricos
         if (strlen($cpf) !== 11) {
             $fail('O CPF informado deve conter exatamente 11 dígitos.');
+
             return;
         }
 
         // 3. Bloqueia sequências repetitivas conhecidas (ex: 000.000.000-00, 111.111.111-11)
         if (preg_match('/^(\d)\1{10}$/', $cpf)) {
             $fail('O CPF informado possui um formato inválido.');
+
             return;
         }
 
@@ -44,6 +47,7 @@ class ValidCpf implements ValidationRule
 
         if ($digit1 !== (int) $cpf[9]) {
             $fail('O CPF informado é inválido.');
+
             return;
         }
 

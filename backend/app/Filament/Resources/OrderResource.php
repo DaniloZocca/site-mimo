@@ -26,9 +26,13 @@ class OrderResource extends Resource
     protected static ?string $model = Order::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
+
     protected static ?string $navigationGroup = 'Produção & Vendas';
+
     protected static ?string $modelLabel = 'Encomenda';
+
     protected static ?string $pluralModelLabel = 'Fila de Produção';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -57,7 +61,7 @@ class OrderResource extends Resource
 
                                 Forms\Components\TextInput::make('paid_at')
                                     ->label('Data / Hora da Confirmação de Pagamento')
-                                    ->formatStateUsing(fn (mixed $state): string => ! empty($state) ? \Illuminate\Support\Carbon::parse($state)->format('d/m/Y H:i:s') : 'Aguardando Pagamento')
+                                    ->formatStateUsing(fn (mixed $state): string => ! empty($state) ? Carbon::parse($state)->format('d/m/Y H:i:s') : 'Aguardando Pagamento')
                                     ->disabled(),
                             ])
                             ->columns(2),
@@ -185,7 +189,7 @@ class OrderResource extends Resource
 
                 Tables\Columns\TextColumn::make('total_cents')
                     ->label('Total')
-                    ->formatStateUsing(fn (int $state): string => 'R$ ' . number_format($state / 100, 2, ',', '.'))
+                    ->formatStateUsing(fn (int $state): string => 'R$ '.number_format($state / 100, 2, ',', '.'))
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('carrier_tracking_code')
@@ -324,11 +328,11 @@ class OrderResource extends Resource
 
             $record->productionLogs()->create([
                 'previous_status' => $from->value,
-                'new_status'      => $to->value,
-                'notes'           => $notes,
-                'code'            => ProductionLog::CODE_STATUS_CHANGE,
-                'is_internal'     => false,
-                'created_at'      => Carbon::now(),
+                'new_status' => $to->value,
+                'notes' => $notes,
+                'code' => ProductionLog::CODE_STATUS_CHANGE,
+                'is_internal' => false,
+                'created_at' => Carbon::now(),
             ]);
 
             return true;
@@ -352,8 +356,8 @@ class OrderResource extends Resource
     {
         return [
             'index' => Pages\ListOrders::route('/'),
-            'view'  => Pages\ViewOrder::route('/{record}'),
-            'edit'  => Pages\EditOrder::route('/{record}/edit'),
+            'view' => Pages\ViewOrder::route('/{record}'),
+            'edit' => Pages\EditOrder::route('/{record}/edit'),
         ];
     }
 }

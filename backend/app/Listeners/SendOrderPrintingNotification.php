@@ -38,6 +38,7 @@ class SendOrderPrintingNotification implements ShouldQueue
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
             ]);
+
             return;
         }
 

@@ -36,55 +36,55 @@ class CheckoutHardeningTest extends TestCase
     {
         $category = Category::create([
             'name' => 'Decoração 3D',
-            'slug' => 'decoracao-3d-' . Str::random(6),
+            'slug' => 'decoracao-3d-'.Str::random(6),
         ]);
 
         $product = Product::create([
-            'title'                      => 'Vaso Minimalista Origami',
-            'slug'                       => 'vaso-origami-' . Str::random(6),
-            'base_price_cents'           => 5000, // R$ 50,00
-            'weight_grams'               => 150,
+            'title' => 'Vaso Minimalista Origami',
+            'slug' => 'vaso-origami-'.Str::random(6),
+            'base_price_cents' => 5000, // R$ 50,00
+            'weight_grams' => 150,
             'estimated_print_time_hours' => 8.5,
-            'allowed_materials'          => ['pla', 'petg'],
-            'is_active'                  => true,
+            'allowed_materials' => ['pla', 'petg'],
+            'is_active' => true,
         ]);
 
         $color = Color::create([
-            'name'          => 'Lilás Pastel',
-            'hex_code'      => '#D8B4FE',
+            'name' => 'Lilás Pastel',
+            'hex_code' => '#D8B4FE',
             'material_type' => 'pla',
-            'in_stock'      => true,
+            'in_stock' => true,
         ]);
 
         $size = Size::create([
-            'name'                    => 'Grande (18cm)',
+            'name' => 'Grande (18cm)',
             'price_modifier_in_cents' => 1500, // + R$ 15,00
         ]);
 
         $itemDTO = new CheckoutItemDTO(
             productId: $product->id,
-            colorId:   $color->id,
-            sizeId:    $size->id,
-            quantity:  2,
-            material:  'petg',
+            colorId: $color->id,
+            sizeId: $size->id,
+            quantity: 2,
+            material: 'petg',
         );
 
         $orderDTO = new CheckoutOrderDTO(
-            customerName:      'Lucas Ferreira',
-            customerEmail:     'lucas@exemplo.com',
-            customerCpf:       '12345678909',
-            customerPhone:     '11988887777',
-            shippingAddress:   [
-                'zip_code'     => '01001000',
-                'street'       => 'Praça da Sé',
-                'number'       => '100',
+            customerName: 'Lucas Ferreira',
+            customerEmail: 'lucas@exemplo.com',
+            customerCpf: '12345678909',
+            customerPhone: '11988887777',
+            shippingAddress: [
+                'zip_code' => '01001000',
+                'street' => 'Praça da Sé',
+                'number' => '100',
                 'neighborhood' => 'Sé',
-                'city'         => 'São Paulo',
-                'state'        => 'SP',
+                'city' => 'São Paulo',
+                'state' => 'SP',
             ],
             shippingCostCents: 1490, // R$ 14,90
-            items:             [$itemDTO],
-            paymentMethod:     'credit_card',
+            items: [$itemDTO],
+            paymentMethod: 'credit_card',
         );
 
         $order = $this->orderCreationService->createOrder($orderDTO);
@@ -116,46 +116,46 @@ class CheckoutHardeningTest extends TestCase
     public function test_order_creation_applies_ten_percent_discount_on_pieces_for_pix(): void
     {
         $product = Product::create([
-            'title'                      => 'Luminária Lua 3D',
-            'slug'                       => 'luminaria-lua-' . Str::random(6),
-            'base_price_cents'           => 10000, // R$ 100,00
-            'weight_grams'               => 300,
+            'title' => 'Luminária Lua 3D',
+            'slug' => 'luminaria-lua-'.Str::random(6),
+            'base_price_cents' => 10000, // R$ 100,00
+            'weight_grams' => 300,
             'estimated_print_time_hours' => 14.0,
-            'allowed_materials'          => ['pla'],
-            'is_active'                  => true,
+            'allowed_materials' => ['pla'],
+            'is_active' => true,
         ]);
 
         $color = Color::create([
-            'name'          => 'Branco Puro',
-            'hex_code'      => '#FFFFFF',
+            'name' => 'Branco Puro',
+            'hex_code' => '#FFFFFF',
             'material_type' => 'pla',
-            'in_stock'      => true,
+            'in_stock' => true,
         ]);
 
         $itemDTO = new CheckoutItemDTO(
             productId: $product->id,
-            colorId:   $color->id,
-            sizeId:    null,
-            quantity:  1,
-            material:  'pla',
+            colorId: $color->id,
+            sizeId: null,
+            quantity: 1,
+            material: 'pla',
         );
 
         $orderDTO = new CheckoutOrderDTO(
-            customerName:      'Mariana Costa',
-            customerEmail:     'mariana@exemplo.com',
-            customerCpf:       '98765432100',
-            customerPhone:     '11977776666',
-            shippingAddress:   [
-                'zip_code'     => '04001000',
-                'street'       => 'Av. Paulista',
-                'number'       => '1000',
+            customerName: 'Mariana Costa',
+            customerEmail: 'mariana@exemplo.com',
+            customerCpf: '98765432100',
+            customerPhone: '11977776666',
+            shippingAddress: [
+                'zip_code' => '04001000',
+                'street' => 'Av. Paulista',
+                'number' => '1000',
                 'neighborhood' => 'Bela Vista',
-                'city'         => 'São Paulo',
-                'state'        => 'SP',
+                'city' => 'São Paulo',
+                'state' => 'SP',
             ],
             shippingCostCents: 2000, // R$ 20,00
-            items:             [$itemDTO],
-            paymentMethod:     'pix', // PIX com 10% OFF
+            items: [$itemDTO],
+            paymentMethod: 'pix', // PIX com 10% OFF
         );
 
         $order = $this->orderCreationService->createOrder($orderDTO);
@@ -175,47 +175,47 @@ class CheckoutHardeningTest extends TestCase
     public function test_order_creation_throws_validation_exception_when_material_is_not_allowed(): void
     {
         $product = Product::create([
-            'title'                      => 'Suporte Gamer Articulado',
-            'slug'                       => 'suporte-gamer-' . Str::random(6),
-            'base_price_cents'           => 8000,
-            'weight_grams'               => 200,
+            'title' => 'Suporte Gamer Articulado',
+            'slug' => 'suporte-gamer-'.Str::random(6),
+            'base_price_cents' => 8000,
+            'weight_grams' => 200,
             'estimated_print_time_hours' => 10.0,
-            'allowed_materials'          => ['petg', 'abs'], // Apenas PETG e ABS
-            'is_active'                  => true,
+            'allowed_materials' => ['petg', 'abs'], // Apenas PETG e ABS
+            'is_active' => true,
         ]);
 
         $color = Color::create([
-            'name'          => 'Preto Galáxia',
-            'hex_code'      => '#1E1E2E',
+            'name' => 'Preto Galáxia',
+            'hex_code' => '#1E1E2E',
             'material_type' => 'petg',
-            'in_stock'      => true,
+            'in_stock' => true,
         ]);
 
         // Cliente tenta comprar com material 'tpu' (não homologado para esta peça)
         $itemDTO = new CheckoutItemDTO(
             productId: $product->id,
-            colorId:   $color->id,
-            sizeId:    null,
-            quantity:  1,
-            material:  'tpu',
+            colorId: $color->id,
+            sizeId: null,
+            quantity: 1,
+            material: 'tpu',
         );
 
         $orderDTO = new CheckoutOrderDTO(
-            customerName:      'Carlos Eduardo',
-            customerEmail:     'carlos@exemplo.com',
-            customerCpf:       '11122233344',
-            customerPhone:     '11955554444',
-            shippingAddress:   [
-                'zip_code'     => '01001000',
-                'street'       => 'Rua das Flores',
-                'number'       => '12',
+            customerName: 'Carlos Eduardo',
+            customerEmail: 'carlos@exemplo.com',
+            customerCpf: '11122233344',
+            customerPhone: '11955554444',
+            shippingAddress: [
+                'zip_code' => '01001000',
+                'street' => 'Rua das Flores',
+                'number' => '12',
                 'neighborhood' => 'Centro',
-                'city'         => 'São Paulo',
-                'state'        => 'SP',
+                'city' => 'São Paulo',
+                'state' => 'SP',
             ],
             shippingCostCents: 1500,
-            items:             [$itemDTO],
-            paymentMethod:     'credit_card',
+            items: [$itemDTO],
+            paymentMethod: 'credit_card',
         );
 
         $this->expectException(ValidationException::class);

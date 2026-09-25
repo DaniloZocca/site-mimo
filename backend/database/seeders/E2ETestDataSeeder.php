@@ -28,18 +28,18 @@ class E2ETestDataSeeder extends Seeder
         $colorPurple = Color::firstOrCreate(
             ['name' => 'Roxo MIMOO'],
             [
-                'hex_code'      => '#7C3AED',
+                'hex_code' => '#7C3AED',
                 'material_type' => MaterialType::PLA,
-                'in_stock'      => true,
+                'in_stock' => true,
             ]
         );
 
         $colorPink = Color::firstOrCreate(
             ['name' => 'Rosa Pastel'],
             [
-                'hex_code'      => '#F472B6',
+                'hex_code' => '#F472B6',
                 'material_type' => MaterialType::PETG,
-                'in_stock'      => true,
+                'in_stock' => true,
             ]
         );
 
@@ -62,12 +62,12 @@ class E2ETestDataSeeder extends Seeder
         $product = Product::firstOrCreate(
             ['slug' => 'mascote-vaquinha-articulada-3d'],
             [
-                'title'                      => 'Mascote Vaquinha Articulada 3D',
-                'description'                => 'A adorável vaquinha mascote da MIMOO LAB com articulações móveis impressa em camadas de alta precisão.',
-                'base_price_cents'           => 4990, // R$ 49,90
-                'weight_grams'               => 120,
+                'title' => 'Mascote Vaquinha Articulada 3D',
+                'description' => 'A adorável vaquinha mascote da MIMOO LAB com articulações móveis impressa em camadas de alta precisão.',
+                'base_price_cents' => 4990, // R$ 49,90
+                'weight_grams' => 120,
                 'estimated_print_time_hours' => 4.5,
-                'is_active'                  => true,
+                'is_active' => true,
             ]
         );
 

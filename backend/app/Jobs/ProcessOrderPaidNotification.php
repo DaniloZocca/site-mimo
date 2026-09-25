@@ -17,6 +17,7 @@ class ProcessOrderPaidNotification implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 60;
 
     public function __construct(
@@ -26,9 +27,9 @@ class ProcessOrderPaidNotification implements ShouldQueue
     public function handle(): void
     {
         Log::info("Processando notificações para a encomenda paga #{$this->order->order_number}", [
-            'order_id'       => $this->order->id,
+            'order_id' => $this->order->id,
             'customer_email' => $this->order->customer_email,
-            'total'          => $this->order->total_in_cents,
+            'total' => $this->order->total_in_cents,
         ]);
 
         // Aqui podem ser disparados os e-mails transacionais (Resend/Mailgun),

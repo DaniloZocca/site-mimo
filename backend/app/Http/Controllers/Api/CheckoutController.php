@@ -69,19 +69,19 @@ class CheckoutController extends Controller
             return $this->idempotency->responseForExisting($existing, $fingerprint);
         } catch (ShippingPriceChangedException $e) {
             return response()->json([
-                'code'                => 'shipping_price_changed',
-                'message'             => $e->getMessage(),
-                'shipping_service'    => $e->serverOption->serviceCode,
+                'code' => 'shipping_price_changed',
+                'message' => $e->getMessage(),
+                'shipping_service' => $e->serverOption->serviceCode,
                 'shipping_cost_cents' => $e->serverOption->priceInCents,
-                'shipping_options'    => array_map(fn ($option) => $option->toArray(), $e->options),
+                'shipping_options' => array_map(fn ($option) => $option->toArray(), $e->options),
             ], 409);
         } catch (ValidationException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
-                'errors'  => $e->errors(),
+                'errors' => $e->errors(),
             ], 422);
         } catch (Exception $e) {
-            Log::warning("Validação de catálogo falhou no checkout: " . $e->getMessage());
+            Log::warning('Validação de catálogo falhou no checkout: '.$e->getMessage());
 
             return response()->json([
                 'message' => $e->getMessage(),
@@ -97,27 +97,27 @@ class CheckoutController extends Controller
             }
         } catch (Exception $e) {
             // 5. Tratamento de Falha no Gateway e Atualização de Auditoria
-            Log::error("Falha ao processar pagamento do pedido #{$order->order_number}: " . $e->getMessage());
+            Log::error("Falha ao processar pagamento do pedido #{$order->order_number}: ".$e->getMessage());
 
             $previousStatus = $order->status->value;
-            $order->status  = OrderStatus::CANCELLED;
+            $order->status = OrderStatus::CANCELLED;
             $order->save();
 
             $order->productionLogs()->create([
                 'previous_status' => $previousStatus,
-                'new_status'      => OrderStatus::CANCELLED->value,
-                'notes'           => 'Cobrança não concluída no gateway: ' . $e->getMessage(),
-                'created_at'      => now(),
+                'new_status' => OrderStatus::CANCELLED->value,
+                'notes' => 'Cobrança não concluída no gateway: '.$e->getMessage(),
+                'created_at' => now(),
             ]);
 
             // Resposta persistida: um reenvio com a mesma chave recebe exatamente esta resposta
             $payment = $order->payments()->create([
-                'provider'        => 'mercadopago',
-                'method'          => $orderDTO->paymentMethod,
-                'status'          => 'error',
-                'failure_message' => 'Não foi possível processar a cobrança. ' . $e->getMessage(),
-                'http_status'     => 422,
-                'order_status'    => $order->status->value,
+                'provider' => 'mercadopago',
+                'method' => $orderDTO->paymentMethod,
+                'status' => 'error',
+                'failure_message' => 'Não foi possível processar a cobrança. '.$e->getMessage(),
+                'http_status' => 422,
+                'order_status' => $order->status->value,
             ]);
 
             return $this->idempotency->checkoutResponse($order, $payment);
@@ -132,17 +132,17 @@ class CheckoutController extends Controller
 
         // 5. Persiste o resultado do gateway e a resposta dada (base do replay idempotente)
         $payment = $order->payments()->create([
-            'provider'        => 'mercadopago',
-            'method'          => $orderDTO->paymentMethod,
-            'external_id'     => (string) $paymentResult['payment_id'],
-            'status'          => (string) $paymentResult['status'],
-            'status_detail'   => $paymentResult['status_detail'] ?? null,
-            'qr_code'         => $paymentResult['qr_code'] ?? null,
-            'qr_code_base64'  => $paymentResult['qr_code_base64'] ?? null,
-            'ticket_url'      => $paymentResult['ticket_url'] ?? null,
+            'provider' => 'mercadopago',
+            'method' => $orderDTO->paymentMethod,
+            'external_id' => (string) $paymentResult['payment_id'],
+            'status' => (string) $paymentResult['status'],
+            'status_detail' => $paymentResult['status_detail'] ?? null,
+            'qr_code' => $paymentResult['qr_code'] ?? null,
+            'qr_code_base64' => $paymentResult['qr_code_base64'] ?? null,
+            'ticket_url' => $paymentResult['ticket_url'] ?? null,
             'failure_message' => $underReview ? CheckoutIdempotencyService::PAYMENT_UNDER_REVIEW_MESSAGE : null,
-            'http_status'     => $underReview ? 202 : 201,
-            'order_status'    => $order->status->value,
+            'http_status' => $underReview ? 202 : 201,
+            'order_status' => $order->status->value,
         ]);
 
         return $this->idempotency->checkoutResponse($order, $payment);
@@ -194,11 +194,11 @@ class CheckoutController extends Controller
 
         $order->productionLogs()->create([
             'previous_status' => $previousStatus,
-            'new_status'      => OrderStatus::IN_QUEUE->value,
-            'notes'           => "Pagamento autorizado instantaneamente via cartão (ID: {$payment->id})",
-            'created_at'      => now(),
-            'code'            => ProductionLog::CODE_PAYMENT_APPROVED,
-            'reference'       => $payment->id,
+            'new_status' => OrderStatus::IN_QUEUE->value,
+            'notes' => "Pagamento autorizado instantaneamente via cartão (ID: {$payment->id})",
+            'created_at' => now(),
+            'code' => ProductionLog::CODE_PAYMENT_APPROVED,
+            'reference' => $payment->id,
         ]);
 
         event(new OrderPaid($order));

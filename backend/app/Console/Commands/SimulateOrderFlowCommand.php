@@ -16,7 +16,6 @@ use App\Services\ShippingCalculationService;
 use Database\Seeders\E2ETestDataSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Net\MPHttpClient;
@@ -82,9 +81,9 @@ class SimulateOrderFlowCommand extends Command
         /** @var Size $size */
         $size = Size::where('name', 'Colecionador')->firstOrFail();
 
-        $this->line("   • Produto: <info>{$product->title}</info> (R$ " . number_format($product->base_price_cents / 100, 2, ',', '.') . ")");
+        $this->line("   • Produto: <info>{$product->title}</info> (R$ ".number_format($product->base_price_cents / 100, 2, ',', '.').')');
         $this->line("   • Cor: <info>{$color->name}</info> ({$color->material_type->value})");
-        $this->line("   • Tamanho: <info>{$size->name}</info> (+R$ " . number_format($size->price_modifier_in_cents / 100, 2, ',', '.') . ")");
+        $this->line("   • Tamanho: <info>{$size->name}</info> (+R$ ".number_format($size->price_modifier_in_cents / 100, 2, ',', '.').')');
 
         // =====================================================================
         // ETAPA 1: CÁLCULO DINÂMICO DE FRETE E CUBAGEM
@@ -95,17 +94,17 @@ class SimulateOrderFlowCommand extends Command
 
         $shippingPayload = [
             [
-                'product_id'       => $product->id,
-                'size_id'          => $size->id,
-                'quantity'         => 1,
-                'size_name'        => $size->name,
-                'weight_grams'     => $product->weight_grams,
+                'product_id' => $product->id,
+                'size_id' => $size->id,
+                'quantity' => 1,
+                'size_name' => $size->name,
+                'weight_grams' => $product->weight_grams,
                 'print_time_hours' => (int) ceil((float) $product->estimated_print_time_hours),
             ],
         ];
 
         $shippingOptions = $shippingService->calculate($destinationCep, $shippingPayload);
-        
+
         // Seleciona SEDEX ou a primeira opção disponível
         $chosenShipping = null;
         foreach ($shippingOptions as $opt) {
@@ -118,7 +117,7 @@ class SimulateOrderFlowCommand extends Command
 
         $this->line("   • CEP Destino: <info>{$destinationCep}</info>");
         $this->line("   • Modalidade Selecionada: <info>{$chosenShipping->carrierName} {$chosenShipping->serviceName}</info>");
-        $this->line("   • Valor do Frete: <info>{$chosenShipping->priceInCents} centavos (R$ " . number_format($chosenShipping->price, 2, ',', '.') . ")</info>");
+        $this->line("   • Valor do Frete: <info>{$chosenShipping->priceInCents} centavos (R$ ".number_format($chosenShipping->price, 2, ',', '.').')</info>');
         $this->line("   • Prazo Desmembrado: 🖨️ <info>{$chosenShipping->manufacturingLeadTimeDays}d manufatura 3D</info> + 🚚 <info>{$chosenShipping->carrierDeliveryDays}d transporte</info> = <options=bold>{$chosenShipping->totalEstimatedDays} dias úteis</>");
 
         // =====================================================================
@@ -133,13 +132,13 @@ class SimulateOrderFlowCommand extends Command
             customerCpf: '52998224725',
             customerPhone: '11999998888',
             shippingAddress: [
-                'zip_code'     => '01310-100',
-                'street'       => 'Avenida Paulista',
-                'number'       => '1000',
-                'complement'   => 'Apto 42',
+                'zip_code' => '01310-100',
+                'street' => 'Avenida Paulista',
+                'number' => '1000',
+                'complement' => 'Apto 42',
                 'neighborhood' => 'Bela Vista',
-                'city'         => 'São Paulo',
-                'state'        => 'SP',
+                'city' => 'São Paulo',
+                'state' => 'SP',
             ],
             shippingCostCents: $chosenShipping->priceInCents,
             items: [
@@ -159,9 +158,9 @@ class SimulateOrderFlowCommand extends Command
         $subtotalCents = $order->total_cents - $order->shipping_cost_cents;
         $this->line("   • Pedido Gerado: <options=bold;fg=yellow>#{$order->order_number}</>");
         $this->line("   • Status Inicial: <fg=yellow>{$order->status->value}</>");
-        $this->line("   • Subtotal Peças: R$ " . number_format($subtotalCents / 100, 2, ',', '.'));
-        $this->line("   • Frete: R$ " . number_format($order->shipping_cost_cents / 100, 2, ',', '.'));
-        $this->line("   • Total Liquidável: <options=bold;fg=green>R$ " . number_format($order->total_cents / 100, 2, ',', '.') . "</>");
+        $this->line('   • Subtotal Peças: R$ '.number_format($subtotalCents / 100, 2, ',', '.'));
+        $this->line('   • Frete: R$ '.number_format($order->shipping_cost_cents / 100, 2, ',', '.'));
+        $this->line('   • Total Liquidável: <options=bold;fg=green>R$ '.number_format($order->total_cents / 100, 2, ',', '.').'</>');
         $this->line("   • Token Público de Rastreio (UUIDv4): <info>{$order->tracking_token}</info>");
 
         // =====================================================================
@@ -188,10 +187,10 @@ class SimulateOrderFlowCommand extends Command
         ];
 
         $server = [
-            'HTTP_X_SIGNATURE'  => $xSignature,
+            'HTTP_X_SIGNATURE' => $xSignature,
             'HTTP_X_REQUEST_ID' => $requestId,
-            'CONTENT_TYPE'      => 'application/json',
-            'HTTP_ACCEPT'       => 'application/json',
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
         ];
 
         $request = Request::create(
@@ -218,7 +217,8 @@ class SimulateOrderFlowCommand extends Command
         $statusCode = $response->getStatusCode();
 
         if ($statusCode !== 200) {
-            $this->error("❌ Falha na execução do Webhook (HTTP {$statusCode}): " . $response->getContent());
+            $this->error("❌ Falha na execução do Webhook (HTTP {$statusCode}): ".$response->getContent());
+
             return Command::FAILURE;
         }
 
@@ -227,6 +227,7 @@ class SimulateOrderFlowCommand extends Command
 
         if ($order->status !== OrderStatus::IN_QUEUE) {
             $this->error("❌ O status do pedido #{$order->order_number} deveria estar em 'in_queue', mas está em '{$order->status->value}'.");
+
             return Command::FAILURE;
         }
 
@@ -245,7 +246,7 @@ class SimulateOrderFlowCommand extends Command
         // RELATÓRIO DE SUCESSO
         // =====================================================================
         $totalDuration = round((microtime(true) - $startTime) * 1000, 2);
-        $trackingUrl = rtrim(config('app.url', 'http://localhost:5173'), '/') . "/?token={$order->tracking_token}&success=true";
+        $trackingUrl = rtrim(config('app.url', 'http://localhost:5173'), '/')."/?token={$order->tracking_token}&success=true";
 
         $this->info('');
         $this->line('🎉 <bg=green;fg=black;options=bold> SUCESSO ABSOLUTO: FLUXO E2E EXECUTADO COM SUCESSO! </>');
@@ -255,7 +256,7 @@ class SimulateOrderFlowCommand extends Command
                 ['Número da Encomenda', "#{$order->order_number}"],
                 ['Método de Pagamento', strtoupper($method)],
                 ['Status Atual da Produção', "🟣 {$order->status->value}"],
-                ['Total Liquidado', "R$ " . number_format($order->total_cents / 100, 2, ',', '.')],
+                ['Total Liquidado', 'R$ '.number_format($order->total_cents / 100, 2, ',', '.')],
                 ['URL Pública de Rastreio', $trackingUrl],
                 ['Tempo de Execução', "{$totalDuration} ms"],
             ]
@@ -276,13 +277,13 @@ class SimulateOrderFlowCommand extends Command
             public function send(MPRequest $request): MPResponse
             {
                 return new MPResponse(200, [
-                    'id'                 => $this->paymentId,
-                    'status'             => 'approved',
-                    'status_detail'      => 'accredited',
+                    'id' => $this->paymentId,
+                    'status' => 'approved',
+                    'status_detail' => 'accredited',
                     'external_reference' => $this->order->order_number,
                     'transaction_amount' => $this->order->total_cents / 100,
-                    'currency_id'        => 'BRL',
-                    'live_mode'          => false,
+                    'currency_id' => 'BRL',
+                    'live_mode' => false,
                 ]);
             }
         };

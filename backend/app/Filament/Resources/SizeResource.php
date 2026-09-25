@@ -17,9 +17,13 @@ class SizeResource extends Resource
     protected static ?string $model = Size::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrows-pointing-out';
+
     protected static ?string $navigationGroup = 'Catálogo 3D';
+
     protected static ?string $modelLabel = 'Tamanho / Escala';
+
     protected static ?string $pluralModelLabel = 'Tamanhos / Escalas';
+
     protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
@@ -61,7 +65,7 @@ class SizeResource extends Resource
 
                 Tables\Columns\TextColumn::make('price_modifier_in_cents')
                     ->label('Adicional de Preço')
-                    ->formatStateUsing(fn (int $state): string => $state > 0 ? '+ R$ ' . number_format($state / 100, 2, ',', '.') : 'Incluso no Base')
+                    ->formatStateUsing(fn (int $state): string => $state > 0 ? '+ R$ '.number_format($state / 100, 2, ',', '.') : 'Incluso no Base')
                     ->badge()
                     ->color(fn (int $state): string => $state > 0 ? 'warning' : 'gray')
                     ->sortable(),
@@ -93,9 +97,9 @@ class SizeResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListSizes::route('/'),
+            'index' => Pages\ListSizes::route('/'),
             'create' => Pages\CreateSize::route('/create'),
-            'edit'   => Pages\EditSize::route('/{record}/edit'),
+            'edit' => Pages\EditSize::route('/{record}/edit'),
         ];
     }
 }

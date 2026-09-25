@@ -13,22 +13,24 @@ use Illuminate\Support\Facades\Log;
 class ShippingCalculationService
 {
     private string $originCep;
+
     private string $melhorEnvioUrl;
+
     private string $melhorEnvioToken;
 
     public function __construct(
         private readonly PackagingService $packagingService
     ) {
-        $this->originCep        = (string) config('services.shipping.origin_cep', '01001000');
-        $this->melhorEnvioUrl   = (string) config('services.shipping.melhor_envio.url', 'https://sandbox.melhorenvio.com.br');
+        $this->originCep = (string) config('services.shipping.origin_cep', '01001000');
+        $this->melhorEnvioUrl = (string) config('services.shipping.melhor_envio.url', 'https://sandbox.melhorenvio.com.br');
         $this->melhorEnvioToken = (string) config('services.shipping.melhor_envio.token', '');
     }
 
     /**
      * Calcula as opções de frete (PAC, SEDEX, etc.) com tempo total combinado de manufatura 3D.
      *
-     * @param string $destinationCep CEP de destino (8 dígitos)
-     * @param iterable $items Itens do pedido para cubagem
+     * @param  string  $destinationCep  CEP de destino (8 dígitos)
+     * @param  iterable  $items  Itens do pedido para cubagem
      * @return array<int, ShippingOptionDTO>
      */
     public function calculate(string $destinationCep, iterable $items): array
@@ -43,12 +45,13 @@ class ShippingCalculationService
         $package = $this->packagingService->calculatePackage($items);
 
         // 2. Chave de cache inteligente baseada no CEP e cubagem (Validade: 6 horas)
-        $cacheKey = 'shipping_rate:' . md5("{$cleanCep}:" . json_encode($package));
+        $cacheKey = 'shipping_rate:'.md5("{$cleanCep}:".json_encode($package));
 
         return Cache::remember($cacheKey, now()->addHours(6), function () use ($cleanCep, $package): array {
             // Se o token da API não estiver configurado, usa fallback regional local
             if (empty($this->melhorEnvioToken)) {
                 Log::info("Cotação de frete para CEP {$cleanCep} calculada via Fallback Regional (Token do Melhor Envio não configurado).");
+
                 return $this->calculateFallbackShipping($cleanCep, $package);
             }
 
@@ -56,12 +59,12 @@ class ShippingCalculationService
                 $response = Http::timeout(5)
                     ->retry(2, 100)
                     ->withHeaders([
-                        'Accept'        => 'application/json',
-                        'Content-Type'  => 'application/json',
-                        'Authorization' => 'Bearer ' . $this->melhorEnvioToken,
-                        'User-Agent'    => 'MIMOO LAB 3D Store (contato@mimoolab.com.br)',
+                        'Accept' => 'application/json',
+                        'Content-Type' => 'application/json',
+                        'Authorization' => 'Bearer '.$this->melhorEnvioToken,
+                        'User-Agent' => 'MIMOO LAB 3D Store (contato@mimoolab.com.br)',
                     ])
-                    ->post(rtrim($this->melhorEnvioUrl, '/') . '/api/v2/me/shipment/calculate', [
+                    ->post(rtrim($this->melhorEnvioUrl, '/').'/api/v2/me/shipment/calculate', [
                         'from' => [
                             'postal_code' => $this->originCep,
                         ],
@@ -70,12 +73,12 @@ class ShippingCalculationService
                         ],
                         'package' => [
                             'height' => $package['height_cm'],
-                            'width'  => $package['width_cm'],
+                            'width' => $package['width_cm'],
                             'length' => $package['length_cm'],
                             'weight' => $package['weight_kg'],
                         ],
                         'options' => [
-                            'receipt'  => false,
+                            'receipt' => false,
                             'own_hand' => false,
                         ],
                         'services' => '1,2', // 1 = PAC, 2 = SEDEX
@@ -83,6 +86,7 @@ class ShippingCalculationService
 
                 if (! $response->successful()) {
                     Log::warning("Falha na resposta da API Melhor Envio (HTTP {$response->status()}): {$response->body()}");
+
                     return $this->calculateFallbackShipping($cleanCep, $package);
                 }
 
@@ -123,7 +127,7 @@ class ShippingCalculationService
                         totalEstimatedDays: $totalDays,
                         iconUrl: $rate['company']['picture'] ?? null,
                         metadata: [
-                            'package'             => $package,
+                            'package' => $package,
                             'manufacturing_hours' => $package['manufacturing_hours'],
                         ]
                     );
@@ -133,6 +137,7 @@ class ShippingCalculationService
 
             } catch (Exception $e) {
                 Log::error("Exceção ao cotar frete no Melhor Envio: {$e->getMessage()}");
+
                 return $this->calculateFallbackShipping($cleanCep, $package);
             }
         });
@@ -142,7 +147,7 @@ class ShippingCalculationService
      * Recalcula as opções (mesmo caminho e mesmo cache da cotação pública) e devolve o serviço
      * escolhido no checkout junto com todas as opções, ou null se o serviço não estiver disponível.
      *
-     * @param iterable $items Itens no formato da cotação: [product_id, size_id, quantity]
+     * @param  iterable  $items  Itens no formato da cotação: [product_id, size_id, quantity]
      * @return array{option: ?ShippingOptionDTO, options: array<int, ShippingOptionDTO>}
      */
     public function findOption(string $destinationCep, iterable $items, string $serviceCode): array
@@ -222,9 +227,9 @@ class ShippingCalculationService
                 totalEstimatedDays: $pacDays + $manufacturingDays,
                 iconUrl: null,
                 metadata: [
-                    'package'             => $package,
+                    'package' => $package,
                     'manufacturing_hours' => $package['manufacturing_hours'],
-                    'fallback'            => true,
+                    'fallback' => true,
                 ]
             ),
             new ShippingOptionDTO(
@@ -238,9 +243,9 @@ class ShippingCalculationService
                 totalEstimatedDays: $sedexDays + $manufacturingDays,
                 iconUrl: null,
                 metadata: [
-                    'package'             => $package,
+                    'package' => $package,
                     'manufacturing_hours' => $package['manufacturing_hours'],
-                    'fallback'            => true,
+                    'fallback' => true,
                 ]
             ),
         ];

@@ -7,6 +7,4 @@ namespace App\Http\Resources;
 /**
  * Backward compatibility alias for ProductResource.
  */
-class ProductApiResource extends ProductResource
-{
-}
+class ProductApiResource extends ProductResource {}
