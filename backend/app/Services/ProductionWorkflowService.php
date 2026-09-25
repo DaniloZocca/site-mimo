@@ -44,6 +44,14 @@ class ProductionWorkflowService
     ];
 
     /**
+     * Consulta pura: a máquina de estados permite ir de $from para $to?
+     */
+    public static function allows(OrderStatus $from, OrderStatus $to): bool
+    {
+        return in_array($to, self::ALLOWED_TRANSITIONS[$from->value] ?? [], true);
+    }
+
+    /**
      * Executa a transição de status atômica com validação formal da máquina de estados.
      *
      * @throws InvalidOrderStatusTransitionException

@@ -59,7 +59,7 @@ class FilamentOrderActionsTest extends CharacterizationTestCase
     public static function visibility(): array
     {
         return [
-            'pending_payment' => ['pending_payment', ['startPrinting']],
+            'pending_payment' => ['pending_payment', []],
             'in_queue' => ['in_queue', ['startPrinting']],
             'printing' => ['printing', ['startPackaging']],
             'finishing_and_packaging' => ['finishing_and_packaging', ['markAsShipped']],
@@ -83,18 +83,6 @@ class FilamentOrderActionsTest extends CharacterizationTestCase
                 ? $component->assertTableActionVisible($action, $order)
                 : $component->assertTableActionHidden($action, $order);
         }
-    }
-
-    public function test_iniciar_impressao_a_partir_de_pendente_de_pagamento(): void
-    {
-        // BUG CONHECIDO: o admin inicia impressão de pedido não pago — ver teste gêmeo em KnownBugs
-        $order = Order::factory()->status(OrderStatus::PENDING_PAYMENT)->create();
-
-        Livewire::test(ListOrders::class)->callTableAction('startPrinting', $order)->assertHasNoTableActionErrors();
-
-        $this->assertSame(OrderStatus::PRINTING, $order->fresh()->status);
-        $log = $order->productionLogs()->sole();
-        $this->assertSame(['pending_payment', 'printing', 'Impressão 3D iniciada na fazenda de manufatura.'], [$log->previous_status, $log->new_status, $log->notes]);
     }
 
     public function test_iniciar_impressao_da_fila_dispara_order_print_started_sem_listener(): void
