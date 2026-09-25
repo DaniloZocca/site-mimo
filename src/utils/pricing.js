@@ -173,8 +173,8 @@ export const calculateCartTotals = (
   const subtotalCartaoCents = cartItems.reduce((acc, item) => {
     const qty = parseInt(item.quantity, 10) || 1;
     // Itens do CartContext já trazem o unitário (base + tamanho) em centavos
-    if (Number.isInteger(item.unitTotalCents)) {
-      return acc + (item.unitTotalCents * qty);
+    if (Number.isFinite(Number(item.unitTotalCents))) {
+      return acc + (Math.round(Number(item.unitTotalCents)) * qty);
     }
     const baseCents = item.product?.base_price_cents ?? normalizeToCents(item.product?.price, false);
     const sizeModifierCents = item.selectedSize?.price_modifier_cents ?? normalizeToCents(item.selectedSize?.addPrice, false);
