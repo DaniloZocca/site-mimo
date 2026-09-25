@@ -29,15 +29,15 @@ class OrderTrackingResource extends JsonResource
 
         // 2. Destino protegido (Apenas Cidade/UF, sem número de residência ou logradouro)
         $shipping = is_array($this->shipping_address) ? $this->shipping_address : [];
-        $destinationCity  = (string) ($shipping['city'] ?? 'Brasil');
+        $destinationCity = (string) ($shipping['city'] ?? 'Brasil');
         $destinationState = (string) ($shipping['state'] ?? 'BR');
 
         // 3. Formatação da lista de peças manufaturadas (sem dados fiscais ou preços unitários)
         $items = $this->items->map(function (OrderItem $item): array {
             return [
-                'title'    => $item->product_title_snapshot,
-                'color'    => $item->color_name_snapshot,
-                'size'     => $item->size_name_snapshot ?: 'Padrão (12cm)',
+                'title' => $item->product_title_snapshot,
+                'color' => $item->color_name_snapshot,
+                'size' => $item->size_name_snapshot ?: 'Padrão (12cm)',
                 'material' => $item->material_name_snapshot ?: 'PLA Premium',
                 'quantity' => $item->quantity,
             ];
@@ -51,29 +51,29 @@ class OrderTrackingResource extends JsonResource
             $cleanNotes = preg_replace('/^\[.*?\]\s*/', '', (string) $log->notes);
 
             return [
-                'status'      => $log->new_status,
-                'label'       => $statusEnum?->getLabel() ?? ucfirst($log->new_status),
-                'color'       => $statusEnum?->getColor() ?? 'gray',
+                'status' => $log->new_status,
+                'label' => $statusEnum?->getLabel() ?? ucfirst($log->new_status),
+                'color' => $statusEnum?->getColor() ?? 'gray',
                 'description' => $cleanNotes,
-                'timestamp'   => $log->created_at?->format('d/m/Y H:i'),
-                'iso_date'    => $log->created_at?->toIso8601String(),
+                'timestamp' => $log->created_at?->format('d/m/Y H:i'),
+                'iso_date' => $log->created_at?->toIso8601String(),
             ];
         })->values()->toArray();
 
         return [
-            'order_number'            => $this->order_number,
-            'tracking_token'          => $this->tracking_token,
-            'customer_first_name'     => $firstName,
-            'destination'             => "{$destinationCity} - {$destinationState}",
-            'status'                  => $this->status->value,
-            'status_label'            => $this->status->getLabel(),
-            'status_color'            => $this->status->getColor(),
-            'status_icon'             => $this->status->getIcon(),
-            'carrier_tracking_code'   => $this->carrier_tracking_code,
-            'created_at'              => $this->created_at?->format('d/m/Y H:i'),
-            'paid_at'                 => $this->paid_at?->format('d/m/Y H:i'),
-            'items'                   => $items,
-            'timeline'                => $timeline,
+            'order_number' => $this->order_number,
+            'tracking_token' => $this->tracking_token,
+            'customer_first_name' => $firstName,
+            'destination' => "{$destinationCity} - {$destinationState}",
+            'status' => $this->status->value,
+            'status_label' => $this->status->getLabel(),
+            'status_color' => $this->status->getColor(),
+            'status_icon' => $this->status->getIcon(),
+            'carrier_tracking_code' => $this->carrier_tracking_code,
+            'created_at' => $this->created_at?->format('d/m/Y H:i'),
+            'paid_at' => $this->paid_at?->format('d/m/Y H:i'),
+            'items' => $items,
+            'timeline' => $timeline,
         ];
     }
 }

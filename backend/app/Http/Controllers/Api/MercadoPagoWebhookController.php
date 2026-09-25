@@ -45,7 +45,7 @@ class MercadoPagoWebhookController extends Controller
 
         // Identificador do recurso enviado na notificação
         $dataId = (string) ($request->input('data.id') ?? $request->input('id') ?? '');
-        $type   = (string) ($request->input('type') ?? $request->input('action') ?? '');
+        $type = (string) ($request->input('type') ?? $request->input('action') ?? '');
 
         // =========================================================================
         // CAMADA A: PRESENÇA DE HEADERS OBRIGATÓRIOS (FAIL-CLOSED)
@@ -94,6 +94,7 @@ class MercadoPagoWebhookController extends Controller
 
             if (! $ts || ! $v1) {
                 Log::warning('⛔ [Webhook Fail-Closed] Formato inválido no header x-signature.', ['x_signature' => $xSignature]);
+
                 return response()->json(['message' => 'Unauthorized: Formato de assinatura inválido.'], 401);
             }
 
@@ -102,7 +103,7 @@ class MercadoPagoWebhookController extends Controller
 
             if (abs($currentTimestamp - $requestTimestamp) > 300) {
                 Log::warning('⛔ [Webhook Fail-Closed] Replay Attack mitigado: Diferença de timestamp superior a 300s.', [
-                    'ts'  => $requestTimestamp,
+                    'ts' => $requestTimestamp,
                     'now' => $currentTimestamp,
                 ]);
 
@@ -117,7 +118,7 @@ class MercadoPagoWebhookController extends Controller
 
             if (! hash_equals($calculatedHash, $v1)) {
                 Log::warning('⛔ [Webhook Fail-Closed] Assinatura HMAC inválida (Timing Attack / Spoofing bloqueado).', [
-                    'ip'       => $request->ip(),
+                    'ip' => $request->ip(),
                     'manifest' => $manifest,
                 ]);
 
@@ -137,15 +138,17 @@ class MercadoPagoWebhookController extends Controller
 
         if (! $paymentData) {
             Log::error("❌ Falha na consulta reversa do pagamento #{$dataId} no gateway Mercado Pago.");
+
             return response()->json(['message' => 'Falha na verificação reversa do pagamento'], 422);
         }
 
-        $payment           = GatewayPayment::fromMercadoPago($paymentData);
-        $paymentStatus     = $payment->status;
+        $payment = GatewayPayment::fromMercadoPago($paymentData);
+        $paymentStatus = $payment->status;
         $externalReference = (string) ($payment->externalReference ?? '');
 
         if (empty($externalReference)) {
             Log::warning("⚠️ Pagamento #{$dataId} sem external_reference associada.");
+
             return response()->json(['message' => 'external_reference ausente'], 200);
         }
 
@@ -167,6 +170,7 @@ class MercadoPagoWebhookController extends Controller
 
                 if (! $order) {
                     Log::warning("⚠️ Pedido não localizado para a external_reference '{$externalReference}'");
+
                     return response()->json(['message' => 'Pedido não localizado'], 200);
                 }
 
@@ -180,7 +184,7 @@ class MercadoPagoWebhookController extends Controller
                     }
 
                     return response()->json([
-                        'message'      => 'Evento idempotente já processado.',
+                        'message' => 'Evento idempotente já processado.',
                         'order_status' => $order->status->value,
                     ], 200);
                 }
@@ -194,7 +198,7 @@ class MercadoPagoWebhookController extends Controller
                         $this->approvalValidator->reportDivergence($order, $payment, $reasons, 'webhook');
 
                         return response()->json([
-                            'message'      => 'Pagamento em revisão: divergência registrada.',
+                            'message' => 'Pagamento em revisão: divergência registrada.',
                             'order_status' => OrderStatus::PENDING_PAYMENT->value,
                         ], 200);
                     }
@@ -212,7 +216,7 @@ class MercadoPagoWebhookController extends Controller
                         Log::info("ℹ️ Evento idempotente recebido: Pedido #{$order->order_number} já está em '{$order->status->value}'.");
 
                         return response()->json([
-                            'message'      => 'Evento idempotente já processado.',
+                            'message' => 'Evento idempotente já processado.',
                             'order_status' => $order->status->value,
                         ], 200);
                     }
@@ -221,11 +225,11 @@ class MercadoPagoWebhookController extends Controller
 
                     $order->productionLogs()->create([
                         'previous_status' => $previousStatus,
-                        'new_status'      => OrderStatus::IN_QUEUE->value,
-                        'notes'           => "Pagamento aprovado via Webhook Mercado Pago (Payment ID: {$dataId})",
-                        'created_at'      => now(),
-                        'code'            => ProductionLog::CODE_PAYMENT_APPROVED,
-                        'reference'       => $payment->id,
+                        'new_status' => OrderStatus::IN_QUEUE->value,
+                        'notes' => "Pagamento aprovado via Webhook Mercado Pago (Payment ID: {$dataId})",
+                        'created_at' => now(),
+                        'code' => ProductionLog::CODE_PAYMENT_APPROVED,
+                        'reference' => $payment->id,
                     ]);
 
                     // Dispara evento de domínio para listeners de e-mail e WebSocket da fazenda
@@ -234,13 +238,13 @@ class MercadoPagoWebhookController extends Controller
                     $executionTimeMs = round((microtime(true) - $startTime) * 1000, 2);
 
                     Log::info("✅ [Webhook] Pedido #{$order->order_number} confirmado e movido para a Fila de Impressão 3D ({$executionTimeMs}ms)", [
-                        'order_id'   => $order->id,
+                        'order_id' => $order->id,
                         'payment_id' => $dataId,
-                        'total'      => $order->total_cents,
+                        'total' => $order->total_cents,
                     ]);
 
                     return response()->json([
-                        'message'      => 'Pagamento aprovado e pedido encaminhado para a fila de manufatura 3D.',
+                        'message' => 'Pagamento aprovado e pedido encaminhado para a fila de manufatura 3D.',
                         'order_status' => OrderStatus::IN_QUEUE->value,
                     ], 200);
                 }
@@ -254,22 +258,22 @@ class MercadoPagoWebhookController extends Controller
 
                     $order->productionLogs()->create([
                         'previous_status' => $previousStatus,
-                        'new_status'      => OrderStatus::CANCELLED->value,
-                        'notes'           => "Status de gateway recebido: {$paymentStatus}",
-                        'created_at'      => now(),
+                        'new_status' => OrderStatus::CANCELLED->value,
+                        'notes' => "Status de gateway recebido: {$paymentStatus}",
+                        'created_at' => now(),
                     ]);
 
                     Log::warning("⚠️ Pedido #{$order->order_number} cancelado via webhook com status: {$paymentStatus}");
                 }
 
                 return response()->json([
-                    'message'        => 'Notificação processada com sucesso.',
+                    'message' => 'Notificação processada com sucesso.',
                     'payment_status' => $paymentStatus,
                 ], 200);
             });
 
         } catch (Exception $e) {
-            Log::error("❌ Exceção ao processar webhook para #{$externalReference}: " . $e->getMessage(), [
+            Log::error("❌ Exceção ao processar webhook para #{$externalReference}: ".$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
 

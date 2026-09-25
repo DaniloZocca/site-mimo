@@ -24,9 +24,9 @@ class TrackOrderRequest extends FormRequest
             'tracking_token' => ['nullable', 'uuid'],
 
             // Opção 2: Acesso por chave composta (Número do Pedido + CPF/E-mail)
-            'order_number'   => ['nullable', 'string', 'max:32'],
-            'cpf_prefix'     => ['nullable', 'string', 'max:14'],
-            'email'          => ['nullable', 'email', 'max:150'],
+            'order_number' => ['nullable', 'string', 'max:32'],
+            'cpf_prefix' => ['nullable', 'string', 'max:14'],
+            'email' => ['nullable', 'email', 'max:150'],
         ];
     }
 
@@ -37,13 +37,14 @@ class TrackOrderRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                $token       = $this->input('tracking_token');
+                $token = $this->input('tracking_token');
                 $orderNumber = $this->input('order_number');
-                $cpfPrefix   = $this->input('cpf_prefix');
-                $email       = $this->input('email');
+                $cpfPrefix = $this->input('cpf_prefix');
+                $email = $this->input('email');
 
                 if (empty($token) && empty($orderNumber)) {
                     $validator->errors()->add('identifier', 'Informe o token de rastreio ou o número da encomenda.');
+
                     return;
                 }
 

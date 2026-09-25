@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Events\OrderPrintingStartedEvent;
+use App\Events\OrderShippedEvent;
 use App\Events\OrderStatusUpdatedEvent;
 use App\Exceptions\InvalidOrderStatusTransitionException;
 use App\Models\Order;
@@ -68,6 +70,7 @@ class ProductionWorkflowService
         // Se o status já for o desejado, operação é idempotente
         if ($currentStatus === $newStatus) {
             Log::info("Transição idempotente ignorada para o pedido #{$order->order_number}: já se encontra em '{$newStatus->value}'.");
+
             return $order;
         }
 
@@ -90,17 +93,17 @@ class ProductionWorkflowService
 
             $lockedOrder->productionLogs()->create([
                 'previous_status' => $currentStatus->value,
-                'new_status'      => $newStatus->value,
-                'notes'           => $auditNote,
-                'created_at'      => now(),
+                'new_status' => $newStatus->value,
+                'notes' => $auditNote,
+                'created_at' => now(),
             ]);
 
             return $lockedOrder;
         });
 
         Log::info("🔄 Status do pedido #{$updatedOrder->order_number} atualizado com sucesso: '{$currentStatus->value}' -> '{$newStatus->value}'", [
-            'order_id'   => $updatedOrder->id,
-            'notes'      => $notes,
+            'order_id' => $updatedOrder->id,
+            'notes' => $notes,
         ]);
 
         // Dispara evento genérico de atualização
@@ -108,9 +111,9 @@ class ProductionWorkflowService
 
         // Disparo de eventos específicos de ciclo de vida para notificações transacionais
         if ($newStatus === OrderStatus::PRINTING) {
-            event(new \App\Events\OrderPrintingStartedEvent($updatedOrder, $notes));
+            event(new OrderPrintingStartedEvent($updatedOrder, $notes));
         } elseif ($newStatus === OrderStatus::SHIPPED) {
-            event(new \App\Events\OrderShippedEvent($updatedOrder, $updatedOrder->carrier_tracking_code ?? ''));
+            event(new OrderShippedEvent($updatedOrder, $updatedOrder->carrier_tracking_code ?? ''));
         }
 
         return $updatedOrder;
@@ -141,6 +144,7 @@ class ProductionWorkflowService
         $order->save();
 
         $formattedNotes = "{$notes} | Rastreio: {$carrierTrackingCode}";
+
         return $this->transitionTo($order, OrderStatus::SHIPPED, $formattedNotes);
     }
 

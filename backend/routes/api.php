@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\MercadoPagoWebhookController;
 use App\Http\Controllers\Api\OrderTrackingController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ShippingController;
 use App\Models\Category;
 use App\Models\Color;
 use App\Models\Size;
@@ -59,7 +60,7 @@ Route::middleware(['throttle:10,1'])->group(function (): void {
 // 4. Cotação de Frete Dinâmica & Logística (Throttle: 30,1)
 // =========================================================================
 Route::middleware(['throttle:30,1'])->group(function (): void {
-    Route::post('/shipping/calculate', [\App\Http\Controllers\Api\ShippingController::class, 'calculate']);
+    Route::post('/shipping/calculate', [ShippingController::class, 'calculate']);
 });
 
 // =========================================================================

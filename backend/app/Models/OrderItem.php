@@ -33,7 +33,7 @@ class OrderItem extends Model
     {
         return [
             'unit_price_cents' => 'integer',
-            'quantity'         => 'integer',
+            'quantity' => 'integer',
         ];
     }
 

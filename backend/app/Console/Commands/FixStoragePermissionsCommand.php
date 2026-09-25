@@ -60,7 +60,7 @@ class FixStoragePermissionsCommand extends Command
         // 2. Criação do .gitignore no livewire-tmp
         $this->newLine();
         $this->line('🛡️ <fg=yellow>Configurando proteção do diretório temporário...</>');
-        
+
         $gitignorePath = storage_path('app/livewire-tmp/.gitignore');
         $gitignoreContent = "*\n!.gitignore\n";
 
@@ -93,7 +93,7 @@ class FixStoragePermissionsCommand extends Command
                 ['upload_max_filesize', ini_get('upload_max_filesize') ?: 'N/A', '>= 30M'],
                 ['post_max_size', ini_get('post_max_size') ?: 'N/A', '>= 35M'],
                 ['memory_limit', ini_get('memory_limit') ?: 'N/A', '>= 256M'],
-                ['max_execution_time', (ini_get('max_execution_time') ?: '0') . 's', '>= 120s'],
+                ['max_execution_time', (ini_get('max_execution_time') ?: '0').'s', '>= 120s'],
             ]
         );
 

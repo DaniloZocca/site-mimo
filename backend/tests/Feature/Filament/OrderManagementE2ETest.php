@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
-use App\Enums\MaterialType;
 use App\Enums\OrderStatus;
 use App\Events\OrderPrintingStartedEvent;
 use App\Events\OrderShippedEvent;
-use App\Models\Category;
 use App\Models\Color;
 use App\Models\Order;
 use App\Models\Product;
@@ -26,6 +24,7 @@ class OrderManagementE2ETest extends TestCase
     use DatabaseTransactions;
 
     private User $adminOperator;
+
     private User $regularCustomer;
 
     protected function setUp(): void
@@ -34,17 +33,17 @@ class OrderManagementE2ETest extends TestCase
 
         // 1. Cria Operador Autorizado da Oficina 3D (Admin)
         $this->adminOperator = User::factory()->create([
-            'name'              => 'Operador 3D Chefe',
-            'email'             => 'operador@mimoolab.com.br',
-            'is_admin'          => true,
+            'name' => 'Operador 3D Chefe',
+            'email' => 'operador@mimoolab.com.br',
+            'is_admin' => true,
             'email_verified_at' => now(),
         ]);
 
         // 2. Cria Comprador Comum (Não-Admin)
         $this->regularCustomer = User::factory()->create([
-            'name'              => 'Comprador Comum',
-            'email'             => 'cliente@mimoolab.com.br',
-            'is_admin'          => false,
+            'name' => 'Comprador Comum',
+            'email' => 'cliente@mimoolab.com.br',
+            'is_admin' => false,
             'email_verified_at' => now(),
         ]);
     }
@@ -91,37 +90,37 @@ class OrderManagementE2ETest extends TestCase
         $size = Size::where('name', 'Colecionador')->firstOrFail();
 
         // Cria pedido real no banco
-        $order = new Order();
-        $order->order_number        = 'MIMOO-TEST01';
-        $order->tracking_token      = (string) Str::uuid();
-        $order->customer_name       = 'Carlos Cliente';
-        $order->customer_email      = 'carlos@teste.com';
-        $order->customer_cpf        = '52998224725';
-        $order->customer_phone      = '11988887777';
-        $order->shipping_address    = [
-            'zip_code'     => '01310-100',
-            'street'       => 'Av Paulista',
-            'number'       => '100',
+        $order = new Order;
+        $order->order_number = 'MIMOO-TEST01';
+        $order->tracking_token = (string) Str::uuid();
+        $order->customer_name = 'Carlos Cliente';
+        $order->customer_email = 'carlos@teste.com';
+        $order->customer_cpf = '52998224725';
+        $order->customer_phone = '11988887777';
+        $order->shipping_address = [
+            'zip_code' => '01310-100',
+            'street' => 'Av Paulista',
+            'number' => '100',
             'neighborhood' => 'Bela Vista',
-            'city'         => 'São Paulo',
-            'state'        => 'SP',
+            'city' => 'São Paulo',
+            'state' => 'SP',
         ];
-        $order->status              = OrderStatus::IN_QUEUE;
-        $order->total_cents         = 9780; // R$ 97,80
+        $order->status = OrderStatus::IN_QUEUE;
+        $order->total_cents = 9780; // R$ 97,80
         $order->shipping_cost_cents = 2290;
-        $order->paid_at             = now();
+        $order->paid_at = now();
         $order->save();
 
         $order->items()->create([
-            'product_id'             => $product->id,
-            'color_id'               => $color->id,
-            'size_id'                => $size->id,
+            'product_id' => $product->id,
+            'color_id' => $color->id,
+            'size_id' => $size->id,
             'product_title_snapshot' => $product->title,
-            'color_name_snapshot'    => $color->name,
-            'size_name_snapshot'     => $size->name,
-            'unit_price_cents'       => 7490,
-            'quantity'               => 1,
-            'total_price_cents'      => 7490,
+            'color_name_snapshot' => $color->name,
+            'size_name_snapshot' => $size->name,
+            'unit_price_cents' => 7490,
+            'quantity' => 1,
+            'total_price_cents' => 7490,
         ]);
 
         // Acesso à tela de edição/visualização da encomenda pelo operador
@@ -145,25 +144,25 @@ class OrderManagementE2ETest extends TestCase
         ]);
 
         // 1. Criação do Pedido em Fila de Espera (Após Pagamento Aprovado)
-        $order = new Order();
-        $order->order_number        = 'MIMOO-E2E-LIFECYCLE';
-        $order->tracking_token      = (string) Str::uuid();
-        $order->customer_name       = 'Juliana Engenharia';
-        $order->customer_email      = 'juliana@empresa.com.br';
-        $order->customer_cpf        = '52998224725';
-        $order->customer_phone      = '11977776666';
-        $order->shipping_address    = [
-            'zip_code'     => '01001-000',
-            'street'       => 'Praça da Sé',
-            'number'       => '1',
+        $order = new Order;
+        $order->order_number = 'MIMOO-E2E-LIFECYCLE';
+        $order->tracking_token = (string) Str::uuid();
+        $order->customer_name = 'Juliana Engenharia';
+        $order->customer_email = 'juliana@empresa.com.br';
+        $order->customer_cpf = '52998224725';
+        $order->customer_phone = '11977776666';
+        $order->shipping_address = [
+            'zip_code' => '01001-000',
+            'street' => 'Praça da Sé',
+            'number' => '1',
             'neighborhood' => 'Centro',
-            'city'         => 'São Paulo',
-            'state'        => 'SP',
+            'city' => 'São Paulo',
+            'state' => 'SP',
         ];
-        $order->status              = OrderStatus::IN_QUEUE;
-        $order->total_cents         = 12000;
+        $order->status = OrderStatus::IN_QUEUE;
+        $order->total_cents = 12000;
         $order->shipping_cost_cents = 1500;
-        $order->paid_at             = now();
+        $order->paid_at = now();
         $order->save();
 
         /** @var ProductionWorkflowService $workflowService */
@@ -179,14 +178,14 @@ class OrderManagementE2ETest extends TestCase
 
         $this->assertEquals(OrderStatus::PRINTING, $order->status);
         $this->assertDatabaseHas('orders', [
-            'id'     => $order->id,
+            'id' => $order->id,
             'status' => OrderStatus::PRINTING->value,
         ]);
 
         $this->assertDatabaseHas('production_logs', [
-            'order_id'        => $order->id,
+            'order_id' => $order->id,
             'previous_status' => OrderStatus::IN_QUEUE->value,
-            'new_status'      => OrderStatus::PRINTING->value,
+            'new_status' => OrderStatus::PRINTING->value,
         ]);
 
         Event::assertDispatched(OrderPrintingStartedEvent::class, function (OrderPrintingStartedEvent $event) use ($order) {
@@ -203,9 +202,9 @@ class OrderManagementE2ETest extends TestCase
 
         $this->assertEquals(OrderStatus::FINISHING_AND_PACKAGING, $order->status);
         $this->assertDatabaseHas('production_logs', [
-            'order_id'        => $order->id,
+            'order_id' => $order->id,
             'previous_status' => OrderStatus::PRINTING->value,
-            'new_status'      => OrderStatus::FINISHING_AND_PACKAGING->value,
+            'new_status' => OrderStatus::FINISHING_AND_PACKAGING->value,
         ]);
 
         // =====================================================================
@@ -222,15 +221,15 @@ class OrderManagementE2ETest extends TestCase
         $this->assertEquals($trackingCode, $order->carrier_tracking_code);
 
         $this->assertDatabaseHas('orders', [
-            'id'                    => $order->id,
-            'status'                => OrderStatus::SHIPPED->value,
+            'id' => $order->id,
+            'status' => OrderStatus::SHIPPED->value,
             'carrier_tracking_code' => $trackingCode,
         ]);
 
         $this->assertDatabaseHas('production_logs', [
-            'order_id'        => $order->id,
+            'order_id' => $order->id,
             'previous_status' => OrderStatus::FINISHING_AND_PACKAGING->value,
-            'new_status'      => OrderStatus::SHIPPED->value,
+            'new_status' => OrderStatus::SHIPPED->value,
         ]);
 
         Event::assertDispatched(OrderShippedEvent::class, function (OrderShippedEvent $event) use ($order, $trackingCode) {

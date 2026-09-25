@@ -8,6 +8,7 @@ use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -35,7 +36,7 @@ class OrderPrintingStartedMail extends Mailable implements ShouldQueue
             view: 'emails.orders.printing',
             with: [
                 'order' => $this->order,
-                'trackingUrl' => rtrim(config('app.url', 'http://localhost:5173'), '/') . "/?token={$this->order->tracking_token}",
+                'trackingUrl' => rtrim(config('app.url', 'http://localhost:5173'), '/')."/?token={$this->order->tracking_token}",
             ],
         );
     }
@@ -43,7 +44,7 @@ class OrderPrintingStartedMail extends Mailable implements ShouldQueue
     /**
      * Get the attachments for the message.
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     * @return array<int, Attachment>
      */
     public function attachments(): array
     {

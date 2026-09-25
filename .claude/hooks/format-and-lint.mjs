@@ -12,10 +12,19 @@ const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const abs = path.resolve(root, file);
 const win = process.platform === 'win32';
 
+// Pint só no arquivo editado (nunca --dirty nem o backend inteiro). Como o backend está 100%
+// formatado, o diff fica restrito às linhas editadas. Argumentos em array, sem shell: caminhos
+// com espaço funcionam, inclusive no Git Bash do Windows. Pint com erro = aviso (exit 2).
 if (abs.endsWith('.php')) {
   const backend = path.join(root, 'backend');
   const pint = path.join(backend, 'vendor', 'bin', 'pint');
-  if (existsSync(pint)) spawnSync('php', [pint, abs, '-q'], { cwd: backend, stdio: 'ignore' });
+  if (!existsSync(pint)) process.exit(0);
+  const r = spawnSync('php', [pint, abs], { cwd: backend, encoding: 'utf8' });
+  if (r.error || r.status !== 0) {
+    const detail = r.error ? r.error.message : `${r.stdout}${r.stderr}`.trim();
+    process.stderr.write(`Pint falhou em ${path.relative(root, abs)} (status ${r.status ?? 'n/d'}); o arquivo não foi formatado.\n${detail}\n`);
+    process.exit(2);
+  }
   process.exit(0);
 }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
+use App\Enums\MaterialType;
 use App\Filament\Resources\ColorResource\Pages;
 use App\Models\Color;
 use Filament\Forms;
@@ -17,9 +18,13 @@ class ColorResource extends Resource
     protected static ?string $model = Color::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-swatch';
+
     protected static ?string $navigationGroup = 'Catálogo 3D';
+
     protected static ?string $modelLabel = 'Cor de Filamento';
+
     protected static ?string $pluralModelLabel = 'Cores de Filamento';
+
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
@@ -41,8 +46,8 @@ class ColorResource extends Resource
 
                         Forms\Components\Select::make('material_type')
                             ->label('Tipo de Polímero / Material')
-                            ->options(\App\Enums\MaterialType::class)
-                            ->default(\App\Enums\MaterialType::PLA)
+                            ->options(MaterialType::class)
+                            ->default(MaterialType::PLA)
                             ->required(),
 
                         Forms\Components\Toggle::make('in_stock')
@@ -87,7 +92,7 @@ class ColorResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('material_type')
                     ->label('Filtrar por Material')
-                    ->options(\App\Enums\MaterialType::class),
+                    ->options(MaterialType::class),
 
                 Tables\Filters\TernaryFilter::make('in_stock')
                     ->label('Status de Estoque')
@@ -108,9 +113,9 @@ class ColorResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListColors::route('/'),
+            'index' => Pages\ListColors::route('/'),
             'create' => Pages\CreateColor::route('/create'),
-            'edit'   => Pages\EditColor::route('/{record}/edit'),
+            'edit' => Pages\EditColor::route('/{record}/edit'),
         ];
     }
 }

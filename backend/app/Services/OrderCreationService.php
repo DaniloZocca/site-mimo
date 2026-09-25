@@ -37,8 +37,8 @@ class OrderCreationService
     {
         $quoteItems = array_map(fn ($item): array => [
             'product_id' => $item->productId,
-            'size_id'    => $item->sizeId,
-            'quantity'   => $item->quantity,
+            'size_id' => $item->sizeId,
+            'quantity' => $item->quantity,
         ], $dto->items);
 
         ['option' => $option, 'options' => $options] = $this->shippingService->findOption(
@@ -57,9 +57,9 @@ class OrderCreationService
 
         if ($dto->declaredShippingCostCents !== null && $dto->declaredShippingCostCents !== $option->priceInCents) {
             Log::warning('Checkout recusado: frete exibido diverge do recalculado no servidor.', [
-                'shipping_service'      => $option->serviceCode,
-                'declared_cents'        => $dto->declaredShippingCostCents,
-                'server_cents'          => $option->priceInCents,
+                'shipping_service' => $option->serviceCode,
+                'declared_cents' => $dto->declaredShippingCostCents,
+                'server_cents' => $option->priceInCents,
                 'shipping_price_source' => $source,
             ]);
 
@@ -67,8 +67,8 @@ class OrderCreationService
         }
 
         Log::info('Frete do checkout recalculado no servidor.', [
-            'shipping_service'      => $option->serviceCode,
-            'server_cents'          => $option->priceInCents,
+            'shipping_service' => $option->serviceCode,
+            'server_cents' => $option->priceInCents,
             'shipping_price_source' => $source,
         ]);
 
@@ -93,15 +93,15 @@ class OrderCreationService
     ): Order {
         // 1. Pré-carregamento em lote para prevenir N+1 queries
         $productIds = array_map(fn ($item) => $item->productId, $dto->items);
-        $colorIds   = array_map(fn ($item) => $item->colorId, $dto->items);
-        $sizeIds    = array_filter(array_map(fn ($item) => $item->sizeId, $dto->items));
+        $colorIds = array_map(fn ($item) => $item->colorId, $dto->items);
+        $sizeIds = array_filter(array_map(fn ($item) => $item->sizeId, $dto->items));
 
         $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
-        $colors   = Color::whereIn('id', $colorIds)->get()->keyBy('id');
-        $sizes    = ! empty($sizeIds) ? Size::whereIn('id', $sizeIds)->get()->keyBy('id') : collect();
+        $colors = Color::whereIn('id', $colorIds)->get()->keyBy('id');
+        $sizes = ! empty($sizeIds) ? Size::whereIn('id', $sizeIds)->get()->keyBy('id') : collect();
 
         $subtotalPiecesCents = 0;
-        $itemsToPersist      = [];
+        $itemsToPersist = [];
 
         // 2. Zero-Trust Pricing: Recálculo de preços, validação de catálogo e auditoria de materiais
         foreach ($dto->items as $item) {
@@ -132,7 +132,7 @@ class OrderCreationService
 
             // Normalização e validação do polímero contra allowed_materials do modelo 3D
             $materialValue = strtolower(trim((string) ($item->material ?? 'pla')));
-            $materialEnum  = MaterialType::tryFrom($materialValue);
+            $materialEnum = MaterialType::tryFrom($materialValue);
 
             if (! $materialEnum) {
                 throw ValidationException::withMessages([
@@ -159,15 +159,15 @@ class OrderCreationService
 
             // Monta o snapshot fixo da peça para gravação em order_items
             $itemsToPersist[] = [
-                'product_id'             => $product->id,
-                'color_id'               => $color->id,
-                'size_id'                => $size?->id,
+                'product_id' => $product->id,
+                'color_id' => $color->id,
+                'size_id' => $size?->id,
                 'product_title_snapshot' => $product->title,
-                'color_name_snapshot'    => $color->name,
-                'size_name_snapshot'     => $size?->name ?? 'Tamanho Padrão',
+                'color_name_snapshot' => $color->name,
+                'size_name_snapshot' => $size?->name ?? 'Tamanho Padrão',
                 'material_name_snapshot' => $materialEnum->label(),
-                'unit_price_cents'       => $unitPriceCents,
-                'quantity'               => $item->quantity,
+                'unit_price_cents' => $unitPriceCents,
+                'quantity' => $item->quantity,
             ];
         }
 
@@ -184,35 +184,35 @@ class OrderCreationService
         $totalCents = $piecesTotalAfterDiscount + $shippingCostCents;
 
         // 4. Geração de Identificador Único à Prova de Colisão (Prefixo + ULID)
-        $orderNumber = 'MIMOO-' . strtoupper(substr((string) Str::ulid(), -8));
+        $orderNumber = 'MIMOO-'.strtoupper(substr((string) Str::ulid(), -8));
 
         // 5. Persistência Atômica dentro de transação PostgreSQL
         /** @var Order $order */
         $order = DB::transaction(function () use ($dto, $orderNumber, $totalCents, $shippingCostCents, $shipping, $itemsToPersist, $isPix, $discountCents, $idempotencyKey, $requestFingerprint): Order {
-            $order = new Order();
-            $order->order_number        = $orderNumber;
-            $order->tracking_token      = (string) Str::uuid();
-            $order->customer_name       = $dto->customerName;
-            $order->customer_email      = $dto->customerEmail;
-            $order->customer_cpf        = $dto->customerCpf;
-            $order->customer_phone      = $dto->customerPhone;
-            $order->shipping_address    = $dto->shippingAddress;
-            $order->status              = OrderStatus::PENDING_PAYMENT;
-            $order->total_cents         = $totalCents;
+            $order = new Order;
+            $order->order_number = $orderNumber;
+            $order->tracking_token = (string) Str::uuid();
+            $order->customer_name = $dto->customerName;
+            $order->customer_email = $dto->customerEmail;
+            $order->customer_cpf = $dto->customerCpf;
+            $order->customer_phone = $dto->customerPhone;
+            $order->shipping_address = $dto->shippingAddress;
+            $order->status = OrderStatus::PENDING_PAYMENT;
+            $order->total_cents = $totalCents;
             $order->shipping_cost_cents = $shippingCostCents;
 
             // Idempotência: UNIQUE em idempotency_key barra o segundo pedido da mesma tentativa;
             // payment_idempotency_key vai no X-Idempotency-Key de toda criação de pagamento deste pedido.
-            $order->idempotency_key         = $idempotencyKey;
-            $order->request_fingerprint     = $requestFingerprint;
+            $order->idempotency_key = $idempotencyKey;
+            $order->request_fingerprint = $requestFingerprint;
             $order->payment_idempotency_key = (string) Str::uuid();
 
             if ($shipping !== null) {
-                $order->shipping_service_code  = $shipping->serviceCode;
-                $order->shipping_service_name  = $shipping->serviceName;
-                $order->shipping_carrier_name  = $shipping->carrierName;
+                $order->shipping_service_code = $shipping->serviceCode;
+                $order->shipping_service_name = $shipping->serviceName;
+                $order->shipping_carrier_name = $shipping->carrierName;
                 $order->shipping_delivery_days = $shipping->totalEstimatedDays;
-                $order->shipping_price_source  = ShippingCalculationService::priceSource($shipping);
+                $order->shipping_price_source = ShippingCalculationService::priceSource($shipping);
             }
 
             $order->save();
@@ -220,39 +220,39 @@ class OrderCreationService
             // Gravação dos itens com snapshots imutáveis em order_items
             foreach ($itemsToPersist as $itemData) {
                 $order->items()->create([
-                    'product_id'             => $itemData['product_id'],
-                    'color_id'               => $itemData['color_id'],
-                    'size_id'                => $itemData['size_id'],
+                    'product_id' => $itemData['product_id'],
+                    'color_id' => $itemData['color_id'],
+                    'size_id' => $itemData['size_id'],
                     'product_title_snapshot' => $itemData['product_title_snapshot'],
-                    'color_name_snapshot'    => $itemData['color_name_snapshot'],
-                    'size_name_snapshot'     => $itemData['size_name_snapshot'],
+                    'color_name_snapshot' => $itemData['color_name_snapshot'],
+                    'size_name_snapshot' => $itemData['size_name_snapshot'],
                     'material_name_snapshot' => $itemData['material_name_snapshot'],
-                    'unit_price_cents'       => $itemData['unit_price_cents'],
-                    'quantity'               => $itemData['quantity'],
+                    'unit_price_cents' => $itemData['unit_price_cents'],
+                    'quantity' => $itemData['quantity'],
                 ]);
             }
 
             $discountNote = $isPix && $discountCents > 0
-                ? " (Desconto PIX 10% aplicado: R$ " . number_format($discountCents / 100, 2, ',', '.') . ")"
-                : "";
+                ? ' (Desconto PIX 10% aplicado: R$ '.number_format($discountCents / 100, 2, ',', '.').')'
+                : '';
 
             $order->productionLogs()->create([
                 'previous_status' => 'checkout',
-                'new_status'      => OrderStatus::PENDING_PAYMENT->value,
-                'notes'           => "Pedido persistido com snapshots e valores auditados pelo backend{$discountNote}.",
-                'created_at'      => now(),
+                'new_status' => OrderStatus::PENDING_PAYMENT->value,
+                'notes' => "Pedido persistido com snapshots e valores auditados pelo backend{$discountNote}.",
+                'created_at' => now(),
             ]);
 
             return $order;
         });
 
         Log::info("✅ Pedido #{$order->order_number} criado com sucesso no banco de dados.", [
-            'order_id'              => $order->id,
-            'total_cents'           => $order->total_cents,
+            'order_id' => $order->id,
+            'total_cents' => $order->total_cents,
             'subtotal_pieces_cents' => $subtotalPiecesCents,
-            'discount_cents'        => $discountCents,
-            'shipping_cost_cents'   => $order->shipping_cost_cents,
-            'is_pix'                => $isPix,
+            'discount_cents' => $discountCents,
+            'shipping_cost_cents' => $order->shipping_cost_cents,
+            'is_pix' => $isPix,
         ]);
 
         return $order->load(['items', 'productionLogs']);

@@ -20,9 +20,13 @@ class ProductResource extends Resource
     protected static ?string $model = Product::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-cube';
+
     protected static ?string $navigationGroup = 'Catálogo 3D';
+
     protected static ?string $modelLabel = 'Produto';
+
     protected static ?string $pluralModelLabel = 'Produtos';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
@@ -242,7 +246,7 @@ class ProductResource extends Resource
 
                 Tables\Columns\TextColumn::make('base_price_cents')
                     ->label('Preço Base')
-                    ->formatStateUsing(fn (int $state): string => 'R$ ' . number_format($state / 100, 2, ',', '.'))
+                    ->formatStateUsing(fn (int $state): string => 'R$ '.number_format($state / 100, 2, ',', '.'))
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('weight_grams')
@@ -282,9 +286,9 @@ class ProductResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListProducts::route('/'),
+            'index' => Pages\ListProducts::route('/'),
             'create' => Pages\CreateProduct::route('/create'),
-            'edit'   => Pages\EditProduct::route('/{record}/edit'),
+            'edit' => Pages\EditProduct::route('/{record}/edit'),
         ];
     }
 }

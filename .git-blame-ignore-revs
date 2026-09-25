@@ -1,0 +1,5 @@
+# Commits só de formatação, ignorados pelo `git blame` (o GitHub lê este arquivo sozinho).
+# Localmente: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style(backend): aplicar Pint em todo o backend (sem mudança de lógica)
+581a3947197b4a00aaeacd089af563b80beae48e

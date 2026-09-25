@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CalculateShippingRequest extends FormRequest
@@ -31,7 +32,7 @@ class CalculateShippingRequest extends FormRequest
     /**
      * Regras rigorosas de validação Zero-Trust para cotação de frete.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -76,16 +77,16 @@ class CalculateShippingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'destination_cep.required'  => 'O CEP de destino é obrigatório.',
-            'destination_cep.size'      => 'O CEP deve conter exatamente 8 dígitos numéricos.',
-            'destination_cep.regex'     => 'Formato de CEP inválido.',
-            'items.required'            => 'A lista de itens do pedido é obrigatória.',
-            'items.min'                 => 'Informe ao menos um produto para calcular o frete.',
+            'destination_cep.required' => 'O CEP de destino é obrigatório.',
+            'destination_cep.size' => 'O CEP deve conter exatamente 8 dígitos numéricos.',
+            'destination_cep.regex' => 'Formato de CEP inválido.',
+            'items.required' => 'A lista de itens do pedido é obrigatória.',
+            'items.min' => 'Informe ao menos um produto para calcular o frete.',
             'items.*.product_id.exists' => 'Um dos produtos informados não existe em nosso catálogo.',
-            'items.*.product_id.uuid'   => 'Identificador de produto inválido.',
-            'items.*.size_id.exists'    => 'A variação de tamanho selecionada não foi encontrada.',
-            'items.*.quantity.min'      => 'A quantidade mínima por item é de 1 unidade.',
-            'items.*.quantity.max'      => 'A quantidade máxima para cotação de frete por pacote é de 50 unidades.',
+            'items.*.product_id.uuid' => 'Identificador de produto inválido.',
+            'items.*.size_id.exists' => 'A variação de tamanho selecionada não foi encontrada.',
+            'items.*.quantity.min' => 'A quantidade mínima por item é de 1 unidade.',
+            'items.*.quantity.max' => 'A quantidade máxima para cotação de frete por pacote é de 50 unidades.',
         ];
     }
 }

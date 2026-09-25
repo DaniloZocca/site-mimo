@@ -18,10 +18,10 @@ class OrderTrackingController extends Controller
      */
     public function __invoke(TrackOrderRequest $request): JsonResponse|OrderTrackingResource
     {
-        $token       = $request->input('tracking_token');
+        $token = $request->input('tracking_token');
         $orderNumber = $request->input('order_number');
-        $cpfPrefix   = (string) $request->input('cpf_prefix', '');
-        $email       = (string) $request->input('email', '');
+        $cpfPrefix = (string) $request->input('cpf_prefix', '');
+        $email = (string) $request->input('email', '');
 
         // Registros internos (revisão de pagamento etc.) nunca são carregados na resposta pública
         $query = Order::with(['items', 'productionLogs' => fn ($logs) => $logs->public()]);

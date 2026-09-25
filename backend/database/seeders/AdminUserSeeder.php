@@ -22,9 +22,9 @@ class AdminUserSeeder extends Seeder
         User::updateOrCreate(
             ['email' => $adminEmail],
             [
-                'name'              => 'Administrador MIMOO LAB',
-                'password'          => Hash::make($adminPassword),
-                'is_admin'          => true,
+                'name' => 'Administrador MIMOO LAB',
+                'password' => Hash::make($adminPassword),
+                'is_admin' => true,
                 'email_verified_at' => now(),
             ]
         );

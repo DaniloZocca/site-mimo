@@ -8,6 +8,7 @@ As regras abaixo descrevem o comportamento-alvo; onde o código ainda diverge, e
 ## Comandos
 - Front: `npm run dev` | `npm run lint` (oxlint) | `npm run build`. Ainda não há testes de front (Vitest não instalado).
 - Back (dentro de `backend/`): `php artisan serve` (porta 8000) | `php artisan test` (PHPUnit) | `vendor/bin/pint --dirty`
+- O backend está 100% formatado pelo Pint; `vendor/bin/pint --test` deve passar em todo PR. Edite PHP normalmente pelas ferramentas de edição (o hook formata só o arquivo editado).
 - Testes de caracterização: `php artisan test --group=characterization` (deve ficar 100% verde) e `php artisan test --group=known-bugs` (falha de propósito; um gêmeo por bug em `docs/known-bugs.md`; excluído da suíte padrão). Exigem a extensão `pdo_sqlite` no PHP.
 - Rode o teste mais específico (`php artisan test --filter=NomeDoTeste`); a suíte completa só ao final da tarefa.
 - Larastan/PHPStan e Pest não estão instalados: não os invoque sem pedir para instalar.

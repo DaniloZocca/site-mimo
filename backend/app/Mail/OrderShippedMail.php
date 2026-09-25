@@ -8,6 +8,7 @@ use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -31,7 +32,7 @@ class OrderShippedMail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        $correiosUrl = $this->order->carrier_tracking_code 
+        $correiosUrl = $this->order->carrier_tracking_code
             ? "https://rastreamento.correios.com.br/app/index.php?codigo={$this->order->carrier_tracking_code}"
             : null;
 
@@ -39,7 +40,7 @@ class OrderShippedMail extends Mailable implements ShouldQueue
             view: 'emails.orders.shipped',
             with: [
                 'order' => $this->order,
-                'trackingUrl' => rtrim(config('app.url', 'http://localhost:5173'), '/') . "/?token={$this->order->tracking_token}",
+                'trackingUrl' => rtrim(config('app.url', 'http://localhost:5173'), '/')."/?token={$this->order->tracking_token}",
                 'correiosUrl' => $correiosUrl,
             ],
         );
@@ -48,7 +49,7 @@ class OrderShippedMail extends Mailable implements ShouldQueue
     /**
      * Get the attachments for the message.
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     * @return array<int, Attachment>
      */
     public function attachments(): array
     {

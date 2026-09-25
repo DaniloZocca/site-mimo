@@ -33,14 +33,14 @@ class CheckoutRequest extends FormRequest
             $shippingAddress = $input['shipping_address'];
             $shipping = $input['shipping'] ?? [];
 
-            $shipping['zip_code']            = $shipping['zip_code'] ?? $shippingAddress['cep'] ?? $shippingAddress['zip_code'] ?? null;
-            $shipping['street']              = $shipping['street'] ?? $shippingAddress['street'] ?? null;
-            $shipping['number']              = $shipping['number'] ?? $shippingAddress['number'] ?? null;
-            $shipping['complement']          = $shipping['complement'] ?? $shippingAddress['complement'] ?? null;
-            $shipping['neighborhood']        = $shipping['neighborhood'] ?? $shippingAddress['neighborhood'] ?? null;
-            $shipping['city']                = $shipping['city'] ?? $shippingAddress['city'] ?? null;
-            $shipping['state']               = $shipping['state'] ?? $shippingAddress['state'] ?? null;
-            $shipping['service_name']        = $shipping['service_name'] ?? $input['shipping_service'] ?? 'PAC';
+            $shipping['zip_code'] = $shipping['zip_code'] ?? $shippingAddress['cep'] ?? $shippingAddress['zip_code'] ?? null;
+            $shipping['street'] = $shipping['street'] ?? $shippingAddress['street'] ?? null;
+            $shipping['number'] = $shipping['number'] ?? $shippingAddress['number'] ?? null;
+            $shipping['complement'] = $shipping['complement'] ?? $shippingAddress['complement'] ?? null;
+            $shipping['neighborhood'] = $shipping['neighborhood'] ?? $shippingAddress['neighborhood'] ?? null;
+            $shipping['city'] = $shipping['city'] ?? $shippingAddress['city'] ?? null;
+            $shipping['state'] = $shipping['state'] ?? $shippingAddress['state'] ?? null;
+            $shipping['service_name'] = $shipping['service_name'] ?? $input['shipping_service'] ?? 'PAC';
 
             $input['shipping'] = $shipping;
         }
@@ -73,37 +73,37 @@ class CheckoutRequest extends FormRequest
     {
         return [
             // Dados do Comprador
-            'customer.name'                 => ['required', 'string', 'min:3', 'max:150'],
-            'customer.email'                => ['required', 'email', 'max:150'],
-            'customer.cpf'                  => ['required', 'string', new ValidCpf()],
-            'customer.phone'                => ['required', 'string', 'min:10', 'max:20'],
+            'customer.name' => ['required', 'string', 'min:3', 'max:150'],
+            'customer.email' => ['required', 'email', 'max:150'],
+            'customer.cpf' => ['required', 'string', new ValidCpf],
+            'customer.phone' => ['required', 'string', 'min:10', 'max:20'],
 
             // Endereço de Entrega
-            'shipping.zip_code'             => ['required', 'string', 'regex:/^\d{5}\-?\d{3}$/'],
-            'shipping.street'               => ['required', 'string', 'max:150'],
-            'shipping.number'               => ['required', 'string', 'max:30'],
-            'shipping.complement'           => ['nullable', 'string', 'max:100'],
-            'shipping.neighborhood'         => ['required', 'string', 'max:100'],
-            'shipping.city'                 => ['required', 'string', 'max:100'],
-            'shipping.state'                => ['required', 'string', 'size:2'],
-            'shipping.shipping_cost_cents'  => ['nullable', 'integer', 'min:0'],
-            'shipping.cost_in_cents'        => ['nullable', 'integer', 'min:0'],
-            'shipping_service'              => ['required', 'string', 'max:30'],
-            'shipping_cost_cents'           => ['nullable', 'integer', 'min:0'],
+            'shipping.zip_code' => ['required', 'string', 'regex:/^\d{5}\-?\d{3}$/'],
+            'shipping.street' => ['required', 'string', 'max:150'],
+            'shipping.number' => ['required', 'string', 'max:30'],
+            'shipping.complement' => ['nullable', 'string', 'max:100'],
+            'shipping.neighborhood' => ['required', 'string', 'max:100'],
+            'shipping.city' => ['required', 'string', 'max:100'],
+            'shipping.state' => ['required', 'string', 'size:2'],
+            'shipping.shipping_cost_cents' => ['nullable', 'integer', 'min:0'],
+            'shipping.cost_in_cents' => ['nullable', 'integer', 'min:0'],
+            'shipping_service' => ['required', 'string', 'max:30'],
+            'shipping_cost_cents' => ['nullable', 'integer', 'min:0'],
 
             // Lista de Itens com Validação Estrita de Material e UUIDs
-            'items'                         => ['required', 'array', 'min:1'],
-            'items.*.product_id'            => ['required', 'uuid', 'exists:products,id'],
-            'items.*.color_id'              => ['required', 'uuid', 'exists:colors,id'],
-            'items.*.size_id'               => ['nullable', 'uuid', 'exists:sizes,id'],
-            'items.*.material'              => ['required', 'string', new Enum(MaterialType::class)],
-            'items.*.quantity'              => ['required', 'integer', 'min:1', 'max:50'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'uuid', 'exists:products,id'],
+            'items.*.color_id' => ['required', 'uuid', 'exists:colors,id'],
+            'items.*.size_id' => ['nullable', 'uuid', 'exists:sizes,id'],
+            'items.*.material' => ['required', 'string', new Enum(MaterialType::class)],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:50'],
 
             // Método e Dados de Pagamento (PCI-DSS: Apenas tokens do Checkout Bricks)
-            'payment.payment_method'        => ['required', 'string', Rule::in(['pix', 'credit_card'])],
-            'payment.card_token'            => ['required_if:payment.payment_method,credit_card', 'nullable', 'string'],
-            'payment.installments'          => ['required_if:payment.payment_method,credit_card', 'nullable', 'integer', 'min:1', 'max:12'],
-            'payment.payment_method_id'     => ['required_if:payment.payment_method,credit_card', 'nullable', 'string'],
+            'payment.payment_method' => ['required', 'string', Rule::in(['pix', 'credit_card'])],
+            'payment.card_token' => ['required_if:payment.payment_method,credit_card', 'nullable', 'string'],
+            'payment.installments' => ['required_if:payment.payment_method,credit_card', 'nullable', 'integer', 'min:1', 'max:12'],
+            'payment.payment_method_id' => ['required_if:payment.payment_method,credit_card', 'nullable', 'string'],
         ];
     }
 
@@ -115,39 +115,39 @@ class CheckoutRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'customer.name.required'        => 'O nome completo do comprador é obrigatório.',
-            'customer.email.required'       => 'O e-mail para envio do rastreio é obrigatório.',
-            'customer.email.email'          => 'Informe um endereço de e-mail válido.',
-            'customer.cpf.required'         => 'O CPF é obrigatório para emissão da nota fiscal.',
-            'customer.phone.required'       => 'O telefone/WhatsApp é obrigatório.',
-            'shipping.zip_code.required'    => 'O CEP de entrega é obrigatório.',
-            'shipping.street.required'      => 'A rua/logradouro de entrega é obrigatória.',
-            'shipping.number.required'      => 'O número do imóvel é obrigatório.',
-            'shipping.neighborhood.required'=> 'O bairro de entrega é obrigatório.',
-            'shipping.city.required'        => 'A cidade de entrega é obrigatória.',
-            'shipping.state.required'       => 'O estado (UF) é obrigatório.',
-            'shipping_service.required'     => 'Escolha uma opção de frete para continuar.',
-            'shipping_service.string'       => 'A opção de frete informada é inválida.',
-            'shipping_service.max'          => 'A opção de frete informada é inválida.',
-            'shipping_cost_cents.integer'   => 'O valor do frete deve ser um valor inteiro em centavos.',
-            'shipping_cost_cents.min'       => 'O frete não pode ser negativo.',
-            'items.required'                => 'A sacola de encomendas não pode estar vazia.',
-            'items.min'                     => 'Adicione pelo menos um item à sacola para finalizar a compra.',
-            'items.*.product_id.required'   => 'O identificador do produto é obrigatório.',
-            'items.*.product_id.uuid'       => 'O identificador do produto deve ser um UUID válido.',
-            'items.*.product_id.exists'     => 'Um dos produtos informados não existe no catálogo.',
-            'items.*.color_id.required'     => 'A cor do filamento é obrigatória para cada peça.',
-            'items.*.color_id.uuid'         => 'O identificador da cor deve ser um UUID válido.',
-            'items.*.color_id.exists'       => 'A cor selecionada não foi encontrada no catálogo.',
-            'items.*.size_id.uuid'          => 'O identificador do tamanho deve ser um UUID válido.',
-            'items.*.size_id.exists'        => 'A variação de tamanho selecionada não foi encontrada.',
-            'items.*.material.required'     => 'O material de impressão 3D (ex: PLA, PETG, ABS, TPU) é obrigatório.',
-            'items.*.material.enum'         => 'O material selecionado não é um polímero homologado pela MIMOO LAB.',
-            'items.*.quantity.required'     => 'A quantidade de cada item é obrigatória.',
-            'items.*.quantity.min'          => 'A quantidade mínima por peça é de 1 unidade.',
-            'items.*.quantity.max'          => 'A quantidade máxima por item na mesma encomenda é de 50 unidades.',
+            'customer.name.required' => 'O nome completo do comprador é obrigatório.',
+            'customer.email.required' => 'O e-mail para envio do rastreio é obrigatório.',
+            'customer.email.email' => 'Informe um endereço de e-mail válido.',
+            'customer.cpf.required' => 'O CPF é obrigatório para emissão da nota fiscal.',
+            'customer.phone.required' => 'O telefone/WhatsApp é obrigatório.',
+            'shipping.zip_code.required' => 'O CEP de entrega é obrigatório.',
+            'shipping.street.required' => 'A rua/logradouro de entrega é obrigatória.',
+            'shipping.number.required' => 'O número do imóvel é obrigatório.',
+            'shipping.neighborhood.required' => 'O bairro de entrega é obrigatório.',
+            'shipping.city.required' => 'A cidade de entrega é obrigatória.',
+            'shipping.state.required' => 'O estado (UF) é obrigatório.',
+            'shipping_service.required' => 'Escolha uma opção de frete para continuar.',
+            'shipping_service.string' => 'A opção de frete informada é inválida.',
+            'shipping_service.max' => 'A opção de frete informada é inválida.',
+            'shipping_cost_cents.integer' => 'O valor do frete deve ser um valor inteiro em centavos.',
+            'shipping_cost_cents.min' => 'O frete não pode ser negativo.',
+            'items.required' => 'A sacola de encomendas não pode estar vazia.',
+            'items.min' => 'Adicione pelo menos um item à sacola para finalizar a compra.',
+            'items.*.product_id.required' => 'O identificador do produto é obrigatório.',
+            'items.*.product_id.uuid' => 'O identificador do produto deve ser um UUID válido.',
+            'items.*.product_id.exists' => 'Um dos produtos informados não existe no catálogo.',
+            'items.*.color_id.required' => 'A cor do filamento é obrigatória para cada peça.',
+            'items.*.color_id.uuid' => 'O identificador da cor deve ser um UUID válido.',
+            'items.*.color_id.exists' => 'A cor selecionada não foi encontrada no catálogo.',
+            'items.*.size_id.uuid' => 'O identificador do tamanho deve ser um UUID válido.',
+            'items.*.size_id.exists' => 'A variação de tamanho selecionada não foi encontrada.',
+            'items.*.material.required' => 'O material de impressão 3D (ex: PLA, PETG, ABS, TPU) é obrigatório.',
+            'items.*.material.enum' => 'O material selecionado não é um polímero homologado pela MIMOO LAB.',
+            'items.*.quantity.required' => 'A quantidade de cada item é obrigatória.',
+            'items.*.quantity.min' => 'A quantidade mínima por peça é de 1 unidade.',
+            'items.*.quantity.max' => 'A quantidade máxima por item na mesma encomenda é de 50 unidades.',
             'payment.payment_method.required' => 'Selecione uma forma de pagamento válida (pix ou credit_card).',
-            'payment.payment_method.in'       => 'Forma de pagamento inválida.',
+            'payment.payment_method.in' => 'Forma de pagamento inválida.',
         ];
     }
 
@@ -156,18 +156,18 @@ class CheckoutRequest extends FormRequest
      */
     protected function passedValidation(): void
     {
-        $sanitizedCpf   = preg_replace('/\D/', '', (string) $this->input('customer.cpf'));
-        $sanitizedZip   = preg_replace('/\D/', '', (string) $this->input('shipping.zip_code'));
+        $sanitizedCpf = preg_replace('/\D/', '', (string) $this->input('customer.cpf'));
+        $sanitizedZip = preg_replace('/\D/', '', (string) $this->input('shipping.zip_code'));
         $sanitizedPhone = preg_replace('/\D/', '', (string) $this->input('customer.phone'));
 
         $this->merge([
             'customer' => array_merge($this->input('customer', []), [
-                'cpf'   => $sanitizedCpf,
+                'cpf' => $sanitizedCpf,
                 'phone' => $sanitizedPhone,
             ]),
             'shipping' => array_merge($this->input('shipping', []), [
                 'zip_code' => $sanitizedZip,
-                'state'    => strtoupper((string) $this->input('shipping.state')),
+                'state' => strtoupper((string) $this->input('shipping.state')),
             ]),
         ]);
     }

@@ -33,11 +33,11 @@ class Product extends Model
     protected function casts(): array
     {
         return [
-            'base_price_cents'           => 'integer',
-            'weight_grams'               => 'integer',
+            'base_price_cents' => 'integer',
+            'weight_grams' => 'integer',
             'estimated_print_time_hours' => 'decimal:2',
-            'allowed_materials'          => 'array',
-            'is_active'                  => 'boolean',
+            'allowed_materials' => 'array',
+            'is_active' => 'boolean',
         ];
     }
 

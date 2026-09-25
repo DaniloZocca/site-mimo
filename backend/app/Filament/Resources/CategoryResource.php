@@ -19,9 +19,13 @@ class CategoryResource extends Resource
     protected static ?string $model = Category::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
+
     protected static ?string $navigationGroup = 'Catálogo 3D';
+
     protected static ?string $modelLabel = 'Categoria';
+
     protected static ?string $pluralModelLabel = 'Categorias';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -99,9 +103,9 @@ class CategoryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListCategories::route('/'),
+            'index' => Pages\ListCategories::route('/'),
             'create' => Pages\CreateCategory::route('/create'),
-            'edit'   => Pages\EditCategory::route('/{record}/edit'),
+            'edit' => Pages\EditCategory::route('/{record}/edit'),
         ];
     }
 }

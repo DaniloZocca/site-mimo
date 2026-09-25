@@ -27,17 +27,17 @@ final class ShippingOptionDTO
     public function toArray(): array
     {
         return [
-            'service_code'                 => $this->serviceCode,
-            'service_name'                 => $this->serviceName,
-            'carrier_name'                 => $this->carrierName,
-            'price_in_cents'               => $this->priceInCents,
-            'price'                        => $this->price,
-            'price_formatted'              => 'R$ ' . number_format($this->price, 2, ',', '.'),
-            'carrier_delivery_days'        => $this->carrierDeliveryDays,
+            'service_code' => $this->serviceCode,
+            'service_name' => $this->serviceName,
+            'carrier_name' => $this->carrierName,
+            'price_in_cents' => $this->priceInCents,
+            'price' => $this->price,
+            'price_formatted' => 'R$ '.number_format($this->price, 2, ',', '.'),
+            'carrier_delivery_days' => $this->carrierDeliveryDays,
             'manufacturing_lead_time_days' => $this->manufacturingLeadTimeDays,
-            'total_estimated_days'         => $this->totalEstimatedDays,
-            'icon_url'                     => $this->iconUrl,
-            'metadata'                     => $this->metadata,
+            'total_estimated_days' => $this->totalEstimatedDays,
+            'icon_url' => $this->iconUrl,
+            'metadata' => $this->metadata,
         ];
     }
 }
