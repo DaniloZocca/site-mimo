@@ -23,7 +23,7 @@ Na dúvida entre dois tamanhos, escolha o menor — exceto se tocar pagamento, q
 ## Regras invioláveis (motivo entre parênteses)
 1. Zero-trust pricing: preço de peças E frete são recalculados no servidor (`OrderCreationService` / `ShippingCalculationService`). Valores monetários do request são só exibição (o payload é controlado pelo usuário).
 2. Dinheiro sempre em centavos inteiros (`*_cents`), nunca float — nem no JS. Conversão para reais só na borda do Mercado Pago (`transaction_amount`).
-3. Desconto PIX de 10% incide só no subtotal das peças, nunca no frete. Backend é a fonte da verdade; `src/utils/pricing.js` espelha só para exibição — mudou um, atualize o outro (skill `pricing-sync`). Atenção: hoje o back faz `subtotal − round(subtotal × 0,10)` e o front `Math.round(subtotal × 0,9)`; diferem em 1 centavo quando o desconto termina em ,5.
+3. Desconto PIX de 10% incide só no subtotal das peças, nunca no frete. Backend é a fonte da verdade; `src/utils/pricing.js` espelha só para exibição — mudou um, atualize o outro (skill `pricing-sync`). Os dois fazem `subtotal − round(subtotal × 0,10)` (no front só com inteiros: `Math.floor((subtotal × 10 + 50) / 100)`). Não há frete grátis: o frete exibido e cobrado é sempre o da cotação; se um dia houver, a regra nasce no backend.
 4. Pedido é commitado ANTES de chamar o Mercado Pago. Nenhuma chamada HTTP externa dentro de `DB::transaction`.
 5. Status de pedido só muda via `ProductionWorkflowService::transitionTo()` (mapa `ALLOWED_TRANSITIONS`), gravando `ProductionLog`.
 6. Pagamento só é aceito após `MercadoPagoService::getPayment()` confirmar `approved` + valor igual a `total_cents` + `external_reference`. Webhook: assinatura válida (fail-closed), evento idempotente, resposta 200 rápida.

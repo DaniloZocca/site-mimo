@@ -113,9 +113,8 @@ export const calculateProductPricing = ({
   // 2. Total cheio no cartão (multiplicado pela quantidade)
   const totalCartaoCents = unitTotalCents * safeQuantity;
 
-  // 3. Total com desconto no PIX (arredondamento matemático em centavos)
-  const discountMultiplier = (100 - safeDiscountPercent) / 100;
-  const totalPixCents = Math.round(totalCartaoCents * discountMultiplier);
+  // 3. Total com desconto no PIX: mesmo cálculo do backend, só com inteiros (desconto arredondado meio para cima)
+  const totalPixCents = totalCartaoCents - Math.floor((totalCartaoCents * safeDiscountPercent + 50) / 100);
 
   // 4. Economia real proporcionada pelo PIX
   const savingsCents = Math.max(0, totalCartaoCents - totalPixCents);
@@ -172,14 +171,20 @@ export const calculateCartTotals = (
   const safeShipping = normalizeToCents(shippingCents, true);
 
   const subtotalCartaoCents = cartItems.reduce((acc, item) => {
+    const qty = parseInt(item.quantity, 10) || 1;
+    // Itens do CartContext já trazem o unitário (base + tamanho) em centavos
+    if (Number.isInteger(item.unitTotalCents)) {
+      return acc + (item.unitTotalCents * qty);
+    }
     const baseCents = item.product?.base_price_cents ?? normalizeToCents(item.product?.price, false);
     const sizeModifierCents = item.selectedSize?.price_modifier_cents ?? normalizeToCents(item.selectedSize?.addPrice, false);
-    const qty = parseInt(item.quantity, 10) || 1;
     return acc + ((baseCents + sizeModifierCents) * qty);
   }, 0);
 
-  const discountMultiplier = (100 - pixDiscountPercent) / 100;
-  const subtotalPixCents = Math.round(subtotalCartaoCents * discountMultiplier);
+  // Mesmo cálculo do backend (OrderCreationService): desconto = round(subtotal × pct / 100), só nas peças.
+  // Só inteiros: floor((x + 50) / 100) arredonda meio para cima sem float.
+  const pixDiscountCents = Math.floor((subtotalCartaoCents * pixDiscountPercent + 50) / 100);
+  const subtotalPixCents = subtotalCartaoCents - pixDiscountCents;
 
   const grandTotalCartaoCents = subtotalCartaoCents + safeShipping;
   const grandTotalPixCents = subtotalPixCents + safeShipping;
@@ -194,7 +199,7 @@ export const calculateCartTotals = (
     savingsCents,
 
     subtotalFormatted: formatMoney(subtotalCartaoCents),
-    shippingFormatted: safeShipping > 0 ? formatMoney(safeShipping) : 'Grátis',
+    shippingFormatted: formatMoney(safeShipping),
     grandTotalCartaoFormatted: formatMoney(grandTotalCartaoCents),
     grandTotalPixFormatted: formatMoney(grandTotalPixCents),
     savingsFormatted: formatMoney(savingsCents),
