@@ -32,8 +32,9 @@ Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado
 | 24 | Cancelamento pelo webhook (`rejected`/`cancelled`/`refunded`/`charged_back`) não confere o id do pagamento em `order_payments`: um pagamento recusado de outra tentativa com a mesma `external_reference` cancela o pedido cujo pagamento legítimo ainda está pendente (cancelamento também sem update condicional) | P2 | — (sem teste de caracterização ainda) | — (sem gêmeo ainda) | `app/Http/Controllers/Api/MercadoPagoWebhookController.php:249-253` |
 | 26 | `OrderConfirmedMail` usa `subtotal_cents` e `total_amount_cents`, que não existem em `orders`: o e-mail mostraria "Subtotal" e "Total Pago" como R$ 0,00 (hoje o construtor já quebra pelo bug #13) | P3 | — (sem teste ainda) | — (sem gêmeo ainda) | `app/Mail/OrderConfirmedMail.php:40-41` |
 | 27 | CartDrawer e CheckoutModal ainda formatam valores de item a partir de reais em float (`unitTotalCents / 100`, `toFixed`) e o `CartContext` gera `unitTotalCents` fracionado quando o preço vem em reais (`price * 100` sem arredondar) | P3 | — (sem Vitest no front) | — | `src/components/cart/CartDrawer.jsx` (itens); `src/context/CartContext.jsx:69-75` |
+| 28 | Newsletter do Footer mostra confirmação de inscrição mas não grava nem envia nada (o `handleNewsletter` só limpa o campo e exibe o toast) | P3 | — (sem Vitest no front) | — | `src/components/Footer.jsx:10-16` |
 
-Em aberto: 18 bugs, 19 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
+Em aberto: 19 bugs, 19 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
 
 ## Corrigidos
 
