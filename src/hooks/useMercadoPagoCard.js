@@ -97,9 +97,12 @@ export const useMercadoPagoCard = () => {
         }
 
         if (!response.ok) {
-          const friendlyMessage = getFriendlyCardErrorMessage(
-            result.status_detail || result.payment?.status_detail || result.message
-          );
+          // 422 de validação (ex.: cor ou tamanho indisponível) já vem com texto para o cliente
+          const friendlyMessage = response.status === 422 && result.message
+            ? result.message
+            : getFriendlyCardErrorMessage(
+              result.status_detail || result.payment?.status_detail || result.message
+            );
           setError(friendlyMessage);
           throw new Error(friendlyMessage);
         }
