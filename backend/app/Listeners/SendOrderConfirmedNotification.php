@@ -6,13 +6,13 @@ namespace App\Listeners;
 
 use App\Events\OrderPaidEvent;
 use App\Mail\OrderConfirmedMail;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
-class SendOrderConfirmedNotification implements ShouldQueue
+class SendOrderConfirmedNotification implements ShouldQueueAfterCommit
 {
     use InteractsWithQueue;
 
@@ -29,9 +29,7 @@ class SendOrderConfirmedNotification implements ShouldQueue
     public function handle(OrderPaidEvent $event): void
     {
         $order = $event->order;
-        $order->loadMissing(['customer', 'orderItems']);
-
-        $customerEmail = $order->customer?->email;
+        $customerEmail = $order->customer_email;
 
         if (! $customerEmail) {
             Log::warning('Tentativa de envio de e-mail de confirmação abortada: e-mail do cliente não encontrado.', [
@@ -42,12 +40,12 @@ class SendOrderConfirmedNotification implements ShouldQueue
             return;
         }
 
-        Mail::to($customerEmail)->send(new OrderConfirmedMail($order));
+        // Envia aqui (o listener já roda na fila): tries/backoff/failed() deste listener cobrem o SMTP.
+        Mail::to($customerEmail)->sendNow(new OrderConfirmedMail($order));
 
         Log::info('E-mail de confirmação de encomenda enviado com sucesso.', [
             'order_id' => $order->id,
             'order_number' => $order->order_number,
-            'recipient' => $customerEmail,
         ]);
     }
 
@@ -59,8 +57,7 @@ class SendOrderConfirmedNotification implements ShouldQueue
         Log::error('FALHA CRÍTICA: E-mail de confirmação de encomenda não pôde ser entregue após múltiplas tentativas.', [
             'order_id' => $event->order->id,
             'order_number' => $event->order->order_number,
-            'error_message' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
+            'exception' => $exception::class,
         ]);
     }
 }

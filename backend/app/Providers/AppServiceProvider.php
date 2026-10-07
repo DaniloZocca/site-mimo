@@ -4,14 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Events\OrderPaidEvent;
-use App\Events\OrderPrintingStartedEvent;
-use App\Events\OrderShippedEvent;
-use App\Listeners\SendOrderConfirmedNotification;
-use App\Listeners\SendOrderPrintingNotification;
-use App\Listeners\SendOrderShippedNotification;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\URL;
@@ -63,9 +56,7 @@ class AppServiceProvider extends ServiceProvider
             }
         }
 
-        // 2. Mapeamento de Eventos e Listeners Transacionais Assíncronos
-        Event::listen(OrderPaidEvent::class, SendOrderConfirmedNotification::class);
-        Event::listen(OrderPrintingStartedEvent::class, SendOrderPrintingNotification::class);
-        Event::listen(OrderShippedEvent::class, SendOrderShippedNotification::class);
+        // 2. Listeners de app/Listeners são registrados pela descoberta automática do Laravel 11
+        // (não repetir com Event::listen aqui: cada listener rodaria duas vezes).
     }
 }

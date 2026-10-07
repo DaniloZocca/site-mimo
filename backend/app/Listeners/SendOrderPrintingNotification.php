@@ -6,13 +6,13 @@ namespace App\Listeners;
 
 use App\Events\OrderPrintingStartedEvent;
 use App\Mail\OrderPrintingStartedMail;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
-class SendOrderPrintingNotification implements ShouldQueue
+class SendOrderPrintingNotification implements ShouldQueueAfterCommit
 {
     use InteractsWithQueue;
 
@@ -29,9 +29,7 @@ class SendOrderPrintingNotification implements ShouldQueue
     public function handle(OrderPrintingStartedEvent $event): void
     {
         $order = $event->order;
-        $order->loadMissing(['customer', 'orderItems']);
-
-        $customerEmail = $order->customer?->email;
+        $customerEmail = $order->customer_email;
 
         if (! $customerEmail) {
             Log::warning('Tentativa de envio de e-mail de impressão abortada: e-mail do cliente não encontrado.', [
@@ -42,12 +40,12 @@ class SendOrderPrintingNotification implements ShouldQueue
             return;
         }
 
-        Mail::to($customerEmail)->send(new OrderPrintingStartedMail($order));
+        // Envia aqui (o listener já roda na fila): tries/backoff/failed() deste listener cobrem o SMTP.
+        Mail::to($customerEmail)->sendNow(new OrderPrintingStartedMail($order));
 
         Log::info('E-mail de início de extrusão 3D enviado com sucesso.', [
             'order_id' => $order->id,
             'order_number' => $order->order_number,
-            'recipient' => $customerEmail,
         ]);
     }
 
@@ -56,7 +54,7 @@ class SendOrderPrintingNotification implements ShouldQueue
         Log::error('FALHA: E-mail de início de impressão 3D não pôde ser entregue.', [
             'order_id' => $event->order->id,
             'order_number' => $event->order->order_number,
-            'error_message' => $exception->getMessage(),
+            'exception' => $exception::class,
         ]);
     }
 }
