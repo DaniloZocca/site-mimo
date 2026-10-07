@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { PRODUCTS, MOCK_ORDERS, FILAMENT_COLORS } from '../data/mockProducts';
 import { useCart } from './CartContext';
+import { API_BASE } from '../config/api';
 
 const ShopContext = createContext();
 
@@ -10,7 +11,7 @@ export const ShopProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
 
   const fetchProducts = () => {
-    fetch('http://localhost:8000/api/products')
+    fetch(`${API_BASE}/products`)
       .then((res) => {
         if (!res.ok) throw new Error('API offline');
         return res.json();

@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { cleanNonDigits } from '../utils/validators';
-
-const API_BASE = 'http://localhost:8000/api';
+import { API_BASE } from '../config/api';
 
 // Cache em memória local volátil para evitar chamadas de rede repetidas na mesma sessão
 const memoryCache = new Map();
