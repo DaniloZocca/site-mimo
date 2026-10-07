@@ -20,7 +20,7 @@ class OrderTrackingController extends Controller
     {
         $token = $request->input('tracking_token');
         $orderNumber = $request->input('order_number');
-        $cpfPrefix = (string) $request->input('cpf_prefix', '');
+        $cpf = (string) $request->input('cpf_prefix', '');
         $email = (string) $request->input('email', '');
 
         // Registros internos (revisão de pagamento etc.) nunca são carregados na resposta pública
@@ -37,7 +37,8 @@ class OrderTrackingController extends Controller
             $order = $query->where('order_number', $sanitizedOrderNumber)->first();
 
             if ($order) {
-                $isCpfValid = ! empty($cpfPrefix) && str_starts_with(preg_replace('/\D/', '', $order->customer_cpf), $cpfPrefix);
+                // CPF completo (11 dígitos, garantido pelo TrackOrderRequest), comparado em tempo constante
+                $isCpfValid = strlen($cpf) === 11 && hash_equals((string) preg_replace('/\D/', '', (string) $order->customer_cpf), $cpf);
                 $isEmailValid = ! empty($email) && strtolower(trim($order->customer_email)) === strtolower(trim($email));
 
                 if (! $isCpfValid && ! $isEmailValid) {

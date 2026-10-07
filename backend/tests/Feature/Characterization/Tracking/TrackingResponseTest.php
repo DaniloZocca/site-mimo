@@ -156,7 +156,11 @@ class TrackingResponseTest extends CharacterizationTestCase
 
         $timeline = $this->trackByToken($order)->json('timeline');
 
-        $this->assertSame(['a', 'b', 'c'], array_column($timeline, 'description'));
+        $this->assertSame([
+            'Pedido recebido! Agora é só aguardar a confirmação do pagamento.',
+            'Pagamento confirmado! Sua peça entrou na fila de impressão 3D.',
+            'Sua peça está sendo impressa, camada por camada.',
+        ], array_column($timeline, 'description'));
         $this->assertSame(['pending_payment', 'in_queue', 'printing'], array_column($timeline, 'status'));
         $this->assertSame(['23/09/2026 09:00', '23/09/2026 10:15', '23/09/2026 11:00'], array_column($timeline, 'timestamp'));
         $this->assertSame('2026-09-23T09:00:00-03:00', $timeline[0]['iso_date']);
@@ -169,40 +173,71 @@ class TrackingResponseTest extends CharacterizationTestCase
 
         $this->trackByToken($order)
             ->assertJsonPath('timeline.0.label', 'Refunded')
-            ->assertJsonPath('timeline.0.color', 'gray');
+            ->assertJsonPath('timeline.0.color', 'gray')
+            ->assertJsonPath('timeline.0.description', 'Atualização do seu pedido.');
     }
 
-    public function test_prefixo_de_autor_e_removido_das_notas(): void
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function publicDescriptions(): array
+    {
+        return [
+            'pending_payment' => ['pending_payment', 'Pedido recebido! Agora é só aguardar a confirmação do pagamento.'],
+            'in_queue' => ['in_queue', 'Pagamento confirmado! Sua peça entrou na fila de impressão 3D.'],
+            'printing' => ['printing', 'Sua peça está sendo impressa, camada por camada.'],
+            'finishing_and_packaging' => ['finishing_and_packaging', 'Peça em acabamento e conferência, e depois embalada com carinho.'],
+            'shipped' => ['shipped', 'Pacote enviado! Acompanhe pelo código de rastreio da transportadora.'],
+            'delivered' => ['delivered', 'Pedido entregue. Esperamos que você ame!'],
+            'cancelled' => ['cancelled', 'Pedido cancelado. Se tiver alguma dúvida, fale com a gente.'],
+        ];
+    }
+
+    #[DataProvider('publicDescriptions')]
+    public function test_descricao_da_timeline_e_o_texto_publico_do_status(string $status, string $description): void
     {
         $order = Order::factory()->create();
-        ProductionLog::factory()->create(['order_id' => $order->id, 'notes' => '[João Operador] Extrusão iniciada.']);
+        ProductionLog::factory()->create(['order_id' => $order->id, 'new_status' => $status, 'notes' => 'Nota interna qualquer do sistema.']);
 
-        $this->trackByToken($order)->assertJsonPath('timeline.0.description', 'Extrusão iniciada.');
+        $response = $this->trackByToken($order)->assertJsonPath('timeline.0.description', $description);
+
+        $this->assertStringNotContainsString('Nota interna', $response->getContent());
     }
 
-    public function test_timeline_expoe_id_de_pagamento_do_gateway(): void
+    public function test_nota_com_nome_de_operador_nao_aparece(): void
     {
-        // BUG CONHECIDO: notas internas (ID de pagamento, erro do gateway) aparecem na timeline pública — ver teste gêmeo em KnownBugs
+        $order = Order::factory()->create();
+        ProductionLog::factory()->create(['order_id' => $order->id, 'new_status' => 'printing', 'notes' => '[João Operador] Extrusão iniciada.']);
+
+        $response = $this->trackByToken($order)->assertJsonPath('timeline.0.description', 'Sua peça está sendo impressa, camada por camada.');
+
+        $this->assertStringNotContainsString('João', $response->getContent());
+        $this->assertStringNotContainsString('Extrusão iniciada', $response->getContent());
+    }
+
+    public function test_timeline_publica_nao_expoe_id_de_pagamento(): void
+    {
         ['payload' => $payload] = $this->simpleCheckout('credit_card');
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(987654321, 'approved'));
         $token = $this->postJson('/api/checkout', $payload)->assertStatus(201)->json('tracking_token');
+        // Nota no formato gravado pelo webhook, criada direto para não depender do fluxo de checkout
+        $order = Order::where('tracking_token', $token)->firstOrFail();
+        ProductionLog::factory()->create(['order_id' => $order->id, 'new_status' => 'in_queue', 'notes' => 'Pagamento aprovado via Webhook Mercado Pago (Payment ID: 987654321)']);
 
-        $descriptions = array_column($this->postJson('/api/orders/track', ['tracking_token' => $token])->json('timeline'), 'description');
+        $body = $this->postJson('/api/orders/track', ['tracking_token' => $token])->assertOk()->getContent();
 
-        $this->assertContains('Pagamento autorizado instantaneamente via cartão (ID: 987654321)', $descriptions);
-        $this->assertContains('Pedido persistido com snapshots e valores auditados pelo backend.', $descriptions);
+        $this->assertStringNotContainsString('987654321', $body);
     }
 
-    public function test_timeline_expoe_mensagem_de_erro_do_gateway(): void
+    public function test_timeline_publica_nao_expoe_erro_do_gateway(): void
     {
-        // BUG CONHECIDO: notas internas (ID de pagamento, erro do gateway) aparecem na timeline pública — ver teste gêmeo em KnownBugs
-        ['payload' => $payload] = $this->simpleCheckout('credit_card');
-        $this->mpHttp->pushException(new \RuntimeException('cURL error 28: Operation timed out'));
-        $orderNumber = $this->postJson('/api/checkout', $payload)->json('order_number');
-        $token = Order::where('order_number', $orderNumber)->value('tracking_token');
+        $order = Order::factory()->create();
+        // Nota de erro do gateway criada direto no teste (não depende do fluxo de falha do checkout)
+        ProductionLog::factory()->create(['order_id' => $order->id, 'new_status' => 'cancelled', 'notes' => 'Cobrança não concluída no gateway: cURL error 28: Operation timed out']);
 
-        $descriptions = array_column($this->postJson('/api/orders/track', ['tracking_token' => $token])->json('timeline'), 'description');
+        $body = $this->trackByToken($order)->getContent();
 
-        $this->assertContains('Cobrança não concluída no gateway: Falha na autorização do cartão de crédito: cURL error 28: Operation timed out', $descriptions);
+        $this->assertStringNotContainsString('cURL', $body);
+        $this->assertStringNotContainsString('gateway', $body);
     }
 }
