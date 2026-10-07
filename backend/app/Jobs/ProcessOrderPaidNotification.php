@@ -28,7 +28,6 @@ class ProcessOrderPaidNotification implements ShouldQueue
     {
         Log::info("Processando notificações para a encomenda paga #{$this->order->order_number}", [
             'order_id' => $this->order->id,
-            'customer_email' => $this->order->customer_email,
             'total' => $this->order->total_in_cents,
         ]);
 

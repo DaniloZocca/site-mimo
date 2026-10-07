@@ -20,7 +20,7 @@ class OrderShippedMail extends Mailable implements ShouldQueue
     public function __construct(
         public Order $order
     ) {
-        $this->order->loadMissing(['orderItems', 'customer']);
+        $this->order->loadMissing('items');
     }
 
     public function envelope(): Envelope

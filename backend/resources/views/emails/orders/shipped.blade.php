@@ -17,7 +17,7 @@
       </h1>
       
       <p style="margin: 0; font-size: 13px; color: #52525B; line-height: 1.6; max-width: 480px;">
-        Olá, {{ explode(' ', trim($order->customer->name ?? 'Cliente'))[0] }}! A impressão, acabamento e embalagem da encomenda <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong> foram concluídos com sucesso. Seu pacote já foi entregue aos Correios/transportadora.
+        Olá, {{ explode(' ', trim($order->customer_name ?: 'Cliente'))[0] }}! A impressão, acabamento e embalagem da encomenda <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong> foram concluídos com sucesso. Seu pacote já foi entregue aos Correios/transportadora.
       </p>
     </td>
   </tr>

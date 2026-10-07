@@ -13,7 +13,7 @@
       @include('emails.components.badge', ['type' => 'emerald', 'text' => 'Pagamento Confirmado'])
       
       <h1 style="margin: 14px 0 8px 0; font-size: 22px; font-weight: 800; color: #18181B; line-height: 1.3;">
-        Oba, {{ explode(' ', trim($order->customer->name ?? 'Cliente'))[0] }}! 🎉<br/>
+        Oba, {{ explode(' ', trim($order->customer_name ?: 'Cliente'))[0] }}! 🎉<br/>
         Sua encomenda foi confirmada!
       </h1>
       
@@ -65,10 +65,10 @@
   <tr>
     <td style="padding: 16px 0 8px 0; border-top: 2px solid #F4F4F5;">
       <h3 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #71717A;">
-        Itens da sua Encomenda ({{ $order->orderItems->count() }})
+        Itens da sua Encomenda ({{ $order->items->count() }})
       </h3>
 
-      @foreach($order->orderItems as $item)
+      @foreach($order->items as $item)
         @include('emails.components.item-row', ['item' => $item])
       @endforeach
     </td>
@@ -82,6 +82,12 @@
           <td style="font-size: 12px; color: #71717A; padding: 4px 0;">Subtotal dos Produtos:</td>
           <td align="right" style="font-size: 12px; color: #18181B; font-weight: 600; padding: 4px 0;">{{ $subtotalFormatted }}</td>
         </tr>
+        @if($discountFormatted)
+        <tr>
+          <td style="font-size: 12px; color: #71717A; padding: 4px 0;">Desconto PIX (10%):</td>
+          <td align="right" style="font-size: 12px; color: #10B981; font-weight: 700; padding: 4px 0;">{{ $discountFormatted }}</td>
+        </tr>
+        @endif
         <tr>
           <td style="font-size: 12px; color: #71717A; padding: 4px 0;">Frete de Envio:</td>
           <td align="right" style="font-size: 12px; color: #10B981; font-weight: 700; padding: 4px 0;">{{ $shippingFormatted }}</td>

@@ -19,7 +19,7 @@ class SendOrderPaidNotification implements ShouldQueue
 
     public function handle(OrderPaidEvent $event): void
     {
-        Log::info("📧 [Notificação Assíncrona] Disparando e-mail de confirmação de pagamento para {$event->order->customer_email}", [
+        Log::info('📧 [Notificação Assíncrona] Disparando e-mail de confirmação de pagamento', [
             'order_number' => $event->order->order_number,
             'payment_id' => $event->paymentId,
             'total_cents' => $event->order->total_cents,
