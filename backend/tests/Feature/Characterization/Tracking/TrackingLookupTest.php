@@ -119,7 +119,7 @@ class TrackingLookupTest extends CharacterizationTestCase
 
     public function test_order_number_e_normalizado_para_maiusculas_sem_espacos(): void
     {
-        $this->track(['order_number' => '  mimoo-abc12345 ', 'cpf_prefix' => '529'])->assertOk();
+        $this->track(['order_number' => '  mimoo-abc12345 ', 'cpf_prefix' => '52998224725'])->assertOk();
     }
 
     public function test_email_confere_sem_diferenciar_maiusculas(): void

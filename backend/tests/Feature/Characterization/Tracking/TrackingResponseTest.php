@@ -219,7 +219,7 @@ class TrackingResponseTest extends CharacterizationTestCase
     {
         ['payload' => $payload] = $this->simpleCheckout('credit_card');
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(987654321, 'approved'));
-        $token = $this->postJson('/api/checkout', $payload)->json('tracking_token');
+        $token = $this->postJson('/api/checkout', $payload)->assertStatus(201)->json('tracking_token');
         // Nota no formato gravado pelo webhook, criada direto para não depender do fluxo de checkout
         $order = Order::where('tracking_token', $token)->firstOrFail();
         ProductionLog::factory()->create(['order_id' => $order->id, 'new_status' => 'in_queue', 'notes' => 'Pagamento aprovado via Webhook Mercado Pago (Payment ID: 987654321)']);

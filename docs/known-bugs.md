@@ -7,7 +7,7 @@ e dos gêmeos que afirmam o comportamento correto (`backend/tests/Feature/KnownB
 "known-bugs" passa a passar. Nesse momento, apague o teste characterization antigo e mova o gêmeo para
 `Characterization/` (trocando o grupo para `characterization`).
 
-- Rodar: `php artisan test --group=known-bugs` (deve falhar; 12 testes hoje).
+- Rodar: `php artisan test --group=known-bugs` (deve falhar; 8 testes hoje).
 - O grupo `known-bugs` está excluído da suíte padrão no `phpunit.xml`.
 
 Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado, dados expostos ou fluxo quebrado; **P2** = inconsistência sem dano imediato.; **P3** = exibição/texto incorreto sem efeito no valor cobrado.
