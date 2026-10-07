@@ -21,12 +21,12 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:3000',
-        '*',
-    ],
+    // Sem '*': só as origens listadas podem chamar a API. Em produção, defina
+    // CORS_ALLOWED_ORIGINS com o domínio do frontend publicado (separe vários por vírgula).
+    'allowed_origins' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000'))
+    ))),
 
     'allowed_origins_patterns' => [],
 
