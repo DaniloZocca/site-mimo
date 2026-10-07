@@ -21,7 +21,7 @@ use Tests\Feature\Characterization\Support\FakeMercadoPagoHttpClient;
 /**
  * Validações do CheckoutRequest (FormRequest) e do OrderCreationService (catálogo).
  * Mensagens exatas só onde o projeto define mensagem própria; para regras com mensagem
- * padrão do Laravel, afirma-se apenas a chave do erro (o projeto não tem lang/pt_BR).
+ * padrão do Laravel, afirma-se apenas a chave do erro (as mensagens padrão vêm de lang/pt_BR).
  */
 #[Group('characterization')]
 class CheckoutValidationTest extends CharacterizationTestCase
@@ -114,11 +114,11 @@ class CheckoutValidationTest extends CharacterizationTestCase
 
     public function test_material_fora_do_enum_retorna_422_do_form_request(): void
     {
-        // PERGUNTA: a mensagem própria 'items.*.material.enum' nunca é usada; o objeto Rule\Enum
-        // devolve o texto padrão em inglês (o projeto não tem lang/pt_BR).
+        // A mensagem própria 'items.*.material.enum' nunca é usada: o objeto Rule\Enum devolve a
+        // mensagem padrão 'validation.enum', que vem de lang/pt_BR (M-20).
         $this->postItem(['material' => 'resina'])
             ->assertStatus(422)
-            ->tap(fn ($r) => $this->assertFirstError($r, 'items.0.material', 'The selected items.0.material is invalid.'));
+            ->tap(fn ($r) => $this->assertFirstError($r, 'items.0.material', 'O valor escolhido em material é inválido.'));
 
         $this->assertNothingPersisted();
     }
@@ -128,7 +128,7 @@ class CheckoutValidationTest extends CharacterizationTestCase
         // Comportamento aceito pelo time: o enum só aceita minúsculas.
         $this->postItem(['material' => 'PLA'])
             ->assertStatus(422)
-            ->tap(fn ($r) => $this->assertFirstError($r, 'items.0.material', 'The selected items.0.material is invalid.'));
+            ->tap(fn ($r) => $this->assertFirstError($r, 'items.0.material', 'O valor escolhido em material é inválido.'));
     }
 
     public function test_modificador_negativo_maior_que_o_preco_gera_unitario_negativo(): void
