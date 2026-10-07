@@ -56,6 +56,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Endereço da loja (frontend)
+    |--------------------------------------------------------------------------
+    |
+    | Domínio onde o cliente abre a loja React (sem barra no final). Os links
+    | enviados ao cliente, como o botão "Acompanhar" dos e-mails de pedido,
+    | apontam para cá, não para o APP_URL da API. Em produção use https://.
+    |
+    */
+
+    'frontend_url' => rtrim((string) env('FRONTEND_URL', 'http://localhost:5173'), '/'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

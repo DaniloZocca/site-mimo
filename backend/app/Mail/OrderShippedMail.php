@@ -40,7 +40,7 @@ class OrderShippedMail extends Mailable implements ShouldQueue
             view: 'emails.orders.shipped',
             with: [
                 'order' => $this->order,
-                'trackingUrl' => rtrim(config('app.url', 'http://localhost:5173'), '/')."/?token={$this->order->tracking_token}",
+                'trackingUrl' => rtrim((string) config('app.frontend_url'), '/')."/?token={$this->order->tracking_token}",
                 'correiosUrl' => $correiosUrl,
             ],
         );

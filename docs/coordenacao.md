@@ -96,7 +96,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-24 | Migrar checkout, webhook e painel para o `ProductionWorkflowService` (dívida da regra 5) | C | checkout, pedidos, painel | M-16, M-17 | a fazer | — |
 | M-25 | CSP sem `unsafe-eval`/`unsafe-inline` onde o Filament permitir (B1) | B | rotas | M-15 | a fazer | — |
 | M-26 | Área de cliente: `AuthModal` mock e usuário fixo "Fernanda" (B3) | C | front | decisão pendente | bloqueado | — |
-| M-27 | Botão "Acompanhar" dos e-mails de pedido (`confirmed`, `printing`, `shipped`) monta `$trackingUrl` com `APP_URL` e abre o endereço da API, não o da loja: usar o domínio do front (config nova) e fazer a loja abrir o rastreio a partir do link (sem router hoje). Achado no M-04 (#18) | B | pedidos, config, front | M-04 | a fazer | — |
+| M-27 | Botão "Acompanhar" dos e-mails de pedido (`confirmed`, `printing`, `shipped`) monta `$trackingUrl` com `APP_URL` e abre o endereço da API, não o da loja: usar o domínio do front (config nova) e fazer a loja abrir o rastreio a partir do link (sem router hoje). Achado no M-04 (#18) | B | pedidos, config, front | M-04 | concluído (produção precisa de `FRONTEND_URL`, ver "Antes do deploy") | #21 |
 
 ## Decisões pendentes
 
@@ -126,4 +126,6 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 - E-mails ao cliente (M-04): `.env` de produção com `MAIL_MAILER` e os dados do SMTP, e um `php artisan queue:work`
   rodando sempre (a fila é `database`; sem worker os e-mails ficam parados na tabela `jobs`). Se usar
   `php artisan event:cache`, rodar de novo a cada deploy. Hoje só o PIX (webhook) manda e-mail: cartão espera o
-  M-08 e as ações do painel esperam o M-10. O botão "Acompanhar" dos e-mails usa `APP_URL` (domínio da API).
+  M-08 e as ações do painel esperam o M-10. O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
+- `.env` de produção com `FRONTEND_URL` = endereço da loja publicada, em `https://` e sem barra no final (M-27; ex.:
+  `FRONTEND_URL=https://www.dominio.com.br`). Sem ela, o botão "Acompanhar" dos e-mails aponta para `http://localhost:5173`.
