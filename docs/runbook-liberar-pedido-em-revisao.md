@@ -7,7 +7,9 @@
 
 Um pedido `pending_payment` aparece com o badge **Pagamento em revisão** no Filament
 (filtro "Pagamento em revisão"). Isso acontece quando o `PaymentApprovalValidator` recebeu um pagamento
-`approved`, mas com alguma divergência (valor, moeda, `external_reference`, id do pagamento ou `live_mode`).
+`approved`, mas com alguma divergência (valor, moeda, `external_reference`, id do pagamento ou `live_mode`)
+ou para um pedido cuja cobrança falhou no checkout (`checkout_gateway_error`, M-08). Nesse último caso, confira
+também se o cliente não pagou de novo em outro pedido (mesmo nome e itens, logo depois): se pagou, é estorno.
 Nesse caso a produção não é liberada, e desde o bug #14 **nenhuma ação do painel tira um pedido de
 `pending_payment`**. A liberação é feita por um dev, com este procedimento, depois da conferência humana.
 

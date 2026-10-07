@@ -180,20 +180,22 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
         $this->assertSame(['checkout->pending_payment', 'pending_payment->in_queue'], $pairs);
         $this->assertTrue($order->productionLogs()->where('notes', 'Pagamento autorizado instantaneamente via cartão (ID: 777)')->exists());
 
-        Event::assertDispatched(OrderPaid::class, fn (OrderPaid $e): bool => $e->order->is($order));
+        Event::assertDispatched(OrderPaidEvent::class, fn (OrderPaidEvent $e): bool => $e->order->is($order) && $e->paymentId === '777');
+        Event::assertNotDispatched(OrderPaid::class);
         Queue::assertPushed(ProcessOrderPaidNotification::class, 1);
     }
 
-    public function test_cartao_aprovado_dispara_order_paid_sem_listener_e_nao_order_paid_event(): void
+    /**
+     * Ex-gêmeo de KnownBugs (bug #20, corrigido no M-08).
+     */
+    public function test_cartao_aprovado_dispara_order_paid_event_com_listener_de_confirmacao(): void
     {
-        // BUG CONHECIDO: aprovação por cartão dispara OrderPaid (sem listener) em vez de OrderPaidEvent — ver teste gêmeo em KnownBugs
         ['payload' => $payload] = $this->simpleCheckout('credit_card');
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(777, 'approved'));
 
         $this->postJson('/api/checkout', $payload)->assertStatus(201);
 
-        Event::assertDispatched(OrderPaid::class);
-        Event::assertNotDispatched(OrderPaidEvent::class);
+        Event::assertDispatched(OrderPaidEvent::class);
     }
 
     public function test_cartao_envia_token_parcelas_e_bandeira_ao_mercado_pago(): void
@@ -220,22 +222,55 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
         ], $this->mpHttp->lastPayload());
     }
 
-    public function test_cartao_rejeitado_responde_201_e_pedido_fica_pendente(): void
+    /**
+     * Ex-gêmeo de KnownBugs (bug #9, corrigido no M-08).
+     */
+    public function test_cartao_rejeitado_responde_422_com_mensagem_amigavel(): void
     {
-        // BUG CONHECIDO: cartão rejected devolve 201 e o pedido fica pending_payment para sempre — ver teste gêmeo em KnownBugs
         ['payload' => $payload] = $this->simpleCheckout('credit_card');
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(778, 'rejected', statusDetail: 'cc_rejected_insufficient_amount'));
 
-        $this->postJson('/api/checkout', $payload)
-            ->assertStatus(201)
-            ->assertJsonPath('message', 'Pedido gerado com sucesso!')
-            ->assertJsonPath('status', 'pending_payment')
-            ->assertJsonPath('payment.status', 'rejected')
-            ->assertJsonPath('payment.status_detail', 'cc_rejected_insufficient_amount');
+        $response = $this->postJson('/api/checkout', $payload);
+
+        $response->assertStatus(422)->assertJsonStructure(['message']);
+        $this->assertStringNotContainsString('cc_rejected', (string) $response->json('message'));
+    }
+
+    public function test_cartao_rejeitado_responde_422_formato_exato_e_pedido_fica_pendente_ate_o_webhook(): void
+    {
+        ['payload' => $payload] = $this->simpleCheckout('credit_card');
+        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(778, 'rejected', statusDetail: 'cc_rejected_insufficient_amount'));
+
+        $response = $this->postJson('/api/checkout', $payload);
 
         $order = Order::sole();
+        $response->assertStatus(422)->assertExactJson([
+            'code' => 'card_rejected',
+            'message' => 'Saldo insuficiente no cartão de crédito.',
+            'order_number' => $order->order_number,
+        ]);
+
+        // Decisão do Zocca (M-08): a recusa não muda o status; o webhook `rejected` cancela o pedido.
         $this->assertSame(OrderStatus::PENDING_PAYMENT, $order->status);
         $this->assertSame(1, $order->productionLogs()->count());
+        Event::assertNotDispatched(OrderPaidEvent::class);
+
+        $payment = $order->payments()->sole();
+        $this->assertSame('778', $payment->external_id);
+        $this->assertSame('rejected', $payment->status);
+        $this->assertSame('cc_rejected_insufficient_amount', $payment->status_detail);
+        $this->assertSame(422, $payment->http_status);
+    }
+
+    public function test_cartao_rejeitado_com_motivo_desconhecido_usa_mensagem_generica(): void
+    {
+        ['payload' => $payload] = $this->simpleCheckout('credit_card');
+        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(779, 'rejected', statusDetail: 'cc_rejected_other_reason'));
+
+        $this->postJson('/api/checkout', $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'card_rejected')
+            ->assertJsonPath('message', 'O pagamento com cartão não pôde ser autorizado. Verifique os dados ou utilize o PIX com aprovação imediata.');
     }
 
     public function test_payload_consolidado_do_frontend_tambem_e_aceito(): void

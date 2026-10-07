@@ -77,7 +77,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-05 | Config de produção: tirar `'*'` do CORS (A4), `SESSION_SECURE_COOKIE` no `.env.example` (M3), checagem que falha com `APP_DEBUG=true` em produção (C3) | B | config (+ `app/Console/Commands/`, sem zona) | — | concluído (o `.env.example` é bloqueado para o Claude: o Zocca acrescenta `SESSION_SECURE_COOKIE` e `CORS_ALLOWED_ORIGINS` à mão; em produção o cookie já é Secure por padrão) | #14 |
 | M-06 | SDK do Mercado Pago em `SERVER` fora do ambiente local (M2) | C | checkout | — | a fazer | — |
 | M-07 | Front: trocar `localhost:8000` fixo por `import.meta.env.VITE_API_URL` em `ShopContext`, `CheckoutModal`, `useMercadoPagoCard`, `useShipping`, `trackingService` (B2) | B | front | M-02 | concluído (também `usePaymentStatus`, que usava `/api` relativo; base em `src/config/api.js`) | #15 |
-| M-08 | Erro do gateway mantém pedido pendente com 502 genérico (#8); cartão recusado responde 422 amigável (#9); cartão aprovado dispara `OrderPaidEvent` (#20); mensagens no `CheckoutModal` | C | checkout, front | M-03, M-04 | a fazer | — |
+| M-08 | Erro do gateway mantém pedido pendente com 502 genérico (#8); cartão recusado responde 422 amigável (#9); cartão aprovado dispara `OrderPaidEvent` (#20); mensagens no `CheckoutModal` | C | checkout, front | M-03, M-04 | concluído (recusa fica `pending_payment` até o webhook cancelar; aprovação depois de falha do gateway vai para revisão) | #22 |
 | M-09 | Privacidade do rastreio: CPF completo em vez de prefixo (#11), timeline sem notas internas (#12), só POST (#17) | C | rastreio, rotas | — | concluído (o texto do formulário da loja fica no M-28) | #23 |
 | M-10 | Painel: ações de cancelar e de marcar como entregue; ações de produção disparam os eventos com listener (#21) | C | painel, pedidos | M-04 | a fazer | — |
 | M-11 | `/api/colors` e `/api/sizes` filtram por `is_active`, coluna que não existe (500 no Postgres) | B | rotas | M-09 | a fazer | — |
@@ -111,6 +111,7 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 | Cancelar pedido já pago no painel: estorno automático pelo Mercado Pago ou manual? | M-10 cancela só pedido não pago; pago fica para estorno manual. | M-10 |
 | Validade do PIX (`date_of_expiration`): qual prazo? | Prazo padrão do Mercado Pago. | M-17 ou tarefa nova |
 | Frete grátis como política futura (valor mínimo, regiões)? | Sem frete grátis (M-02). | — |
+| Pedido `pending_payment` sem pagamento (falha do gateway sem cobrança, recusa sem webhook) não expira: não há job que cancele pendentes antigos. Prazo e regra? | Fica pendente até o webhook ou o admin resolver. | tarefa nova (achado no M-08) |
 | E-mail de confirmação promete "~4 horas de extrusão" (o campo `estimated_total_print_time_hours` não existe; sempre cai no 4). Manter, tirar ou calcular? | Texto atual mantido (M-04 não mudou o texto). | tarefa nova |
 
 ## Antes do deploy
@@ -126,7 +127,7 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   `VITE_API_URL=https://api.dominio.com.br npm run build`). Sem ela, o site publicado chama `http://localhost:8000`.
 - E-mails ao cliente (M-04): `.env` de produção com `MAIL_MAILER` e os dados do SMTP, e um `php artisan queue:work`
   rodando sempre (a fila é `database`; sem worker os e-mails ficam parados na tabela `jobs`). Se usar
-  `php artisan event:cache`, rodar de novo a cada deploy. Hoje só o PIX (webhook) manda e-mail: cartão espera o
-  M-08 e as ações do painel esperam o M-10. O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
+  `php artisan event:cache`, rodar de novo a cada deploy. PIX (webhook) e cartão aprovado (M-08) mandam o e-mail de
+  confirmação; as ações do painel esperam o M-10. O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
 - `.env` de produção com `FRONTEND_URL` = endereço da loja publicada, em `https://` e sem barra no final (M-27; ex.:
   `FRONTEND_URL=https://www.dominio.com.br`). Sem ela, o botão "Acompanhar" dos e-mails aponta para `http://localhost:5173`.

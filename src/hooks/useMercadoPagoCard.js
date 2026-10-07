@@ -96,8 +96,8 @@ export const useMercadoPagoCard = () => {
         }
 
         if (!response.ok) {
-          // 422 de validação (ex.: cor ou tamanho indisponível) já vem com texto para o cliente
-          const friendlyMessage = response.status === 422 && result.message
+          // 422 (validação ou cartão recusado) e 502 (falha do gateway) já vêm com texto para o cliente
+          const friendlyMessage = (response.status === 422 || response.status === 502) && result.message
             ? result.message
             : getFriendlyCardErrorMessage(
               result.status_detail || result.payment?.status_detail || result.message

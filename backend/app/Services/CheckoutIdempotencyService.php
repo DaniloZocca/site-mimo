@@ -26,6 +26,14 @@ class CheckoutIdempotencyService
     /** Cartão aprovado com divergência (PaymentApprovalValidator): pedido em revisão, sem nova cobrança. */
     public const PAYMENT_UNDER_REVIEW = 'payment_under_review';
 
+    /** order_payments.status de uma chamada ao gateway que falhou (timeout, erro da API): resposta 502. */
+    public const PAYMENT_STATUS_ERROR = 'error';
+
+    public const PAYMENT_GATEWAY_ERROR = 'payment_gateway_error';
+
+    /** Cartão recusado pelo gateway: resposta 422. */
+    public const CARD_REJECTED = 'card_rejected';
+
     public const PAYMENT_UNDER_REVIEW_MESSAGE = 'Recebemos seu pagamento, mas ele precisa de uma conferência manual antes de irmos para a produção. Não pague de novo: entraremos em contato pelo e-mail do pedido.';
 
     /**
@@ -123,6 +131,7 @@ class CheckoutIdempotencyService
 
         if ($payment->http_status !== 201) {
             return response()->json([
+                'code' => $payment->status === self::PAYMENT_STATUS_ERROR ? self::PAYMENT_GATEWAY_ERROR : self::CARD_REJECTED,
                 'message' => (string) $payment->failure_message,
                 'order_number' => $order->order_number,
             ], $payment->http_status);
