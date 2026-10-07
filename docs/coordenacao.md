@@ -89,7 +89,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-17 | Webhook: cancelamento confere o payment id em `order_payments` e usa update condicional (#24); `OrderPaidEvent` só após o commit | C | checkout | M-08 | a fazer | — |
 | M-18 | Desconto PIX igual no front e no back (diferença de 1 centavo; skill `pricing-sync`) | C | checkout, front | M-08 | a fazer | — |
 | M-19 | Sanitização de CPF/telefone/CEP do `CheckoutRequest` chegar ao DTO | C | checkout | M-17 | a fazer | — |
-| M-20 | Mensagens de validação em pt-BR (`lang/pt_BR`) | B | config | M-05 | a fazer | — |
+| M-20 | Mensagens de validação em pt-BR (`lang/pt_BR`) | B | config | M-05 | em andamento | — |
 | M-21 | Catálogo: trocar o polling de 3 s do `ShopContext` por algo mais leve, sem mudar a tela | B | front | M-07 | a fazer | — |
 | M-22 | CI no GitHub Actions com Postgres (suíte, `pint --test`, lint, build); `oxlint` como devDependency (hoje `npm run lint` falha com "oxlint: not found") e lint sem varrer `backend/public/` | D | stack | M-01 a M-03 mergeados | a fazer | — |
 | M-23 | `composer audit` e `npm audit` e correção do que aparecer | D | stack | M-22 | a fazer | — |
