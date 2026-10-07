@@ -79,7 +79,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-07 | Front: trocar `localhost:8000` fixo por `import.meta.env.VITE_API_URL` em `ShopContext`, `CheckoutModal`, `useMercadoPagoCard`, `useShipping`, `trackingService` (B2) | B | front | M-02 | concluído (também `usePaymentStatus`, que usava `/api` relativo; base em `src/config/api.js`) | #15 |
 | M-08 | Erro do gateway mantém pedido pendente com 502 genérico (#8); cartão recusado responde 422 amigável (#9); cartão aprovado dispara `OrderPaidEvent` (#20); mensagens no `CheckoutModal` | C | checkout, front | M-03, M-04 | concluído (recusa fica `pending_payment` até o webhook cancelar; aprovação depois de falha do gateway vai para revisão) | #22 |
 | M-09 | Privacidade do rastreio: CPF completo em vez de prefixo (#11), timeline sem notas internas (#12), só POST (#17) | C | rastreio, rotas | — | concluído (o texto do formulário da loja fica no M-28) | #23 |
-| M-10 | Painel: ações de cancelar e de marcar como entregue; ações de produção disparam os eventos com listener (#21) | C | painel, pedidos | M-04 | a fazer | — |
+| M-10 | Painel: ações de cancelar e de marcar como entregue; ações de produção disparam os eventos com listener (#21) | C | painel, pedidos | M-04 | concluído (cancelar só pedido não pago e fora de "Pagamento em revisão", com motivo; entregar só expedido; iniciar impressão e expedir mandam e-mail) | #24 |
 | M-11 | `/api/colors` e `/api/sizes` filtram por `is_active`, coluna que não existe (500 no Postgres) | B | rotas | M-09 | concluído (listam todas as cores/tamanhos por nome, sem migration; a cor traz `in_stock`) | #26 |
 | M-12 | Simplificar a tela de materiais e cores no painel | B | painel | M-10 | a fazer | — |
 | M-13 | Compra rápida do card do catálogo escolhe cor compatível com o material (hoje pode cair no 422 do M-03) | B | front | M-03 | concluído (sem cor compatível em nenhum material, o botão abre os detalhes do produto) | #16 |
@@ -112,6 +112,8 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 | Validade do PIX (`date_of_expiration`): qual prazo? | Prazo padrão do Mercado Pago. | M-17 ou tarefa nova |
 | Frete grátis como política futura (valor mínimo, regiões)? | Sem frete grátis (M-02). | — |
 | Pedido `pending_payment` sem pagamento (falha do gateway sem cobrança, recusa sem webhook) não expira: não há job que cancele pendentes antigos. Prazo e regra? | Fica pendente até o webhook ou o admin resolver. | tarefa nova (achado no M-08) |
+| Pedido em "Pagamento em revisão" que o Zocca decide estornar: o "Cancelar Pedido" fica escondido nele, então ele segue pendente no painel. Mostrar o cancelar ali, com aviso "estorne no Mercado Pago antes"? | Cancelar escondido em pedido em revisão. | M-10 |
+| E-mail ao cliente quando o pedido é cancelado ou entregue? Hoje não existe. | Sem e-mail. | tarefa nova |
 | E-mail de confirmação promete "~4 horas de extrusão" (o campo `estimated_total_print_time_hours` não existe; sempre cai no 4). Manter, tirar ou calcular? | Texto atual mantido (M-04 não mudou o texto). | tarefa nova |
 
 ## Antes do deploy
@@ -128,6 +130,6 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 - E-mails ao cliente (M-04): `.env` de produção com `MAIL_MAILER` e os dados do SMTP, e um `php artisan queue:work`
   rodando sempre (a fila é `database`; sem worker os e-mails ficam parados na tabela `jobs`). Se usar
   `php artisan event:cache`, rodar de novo a cada deploy. PIX (webhook) e cartão aprovado (M-08) mandam o e-mail de
-  confirmação; as ações do painel esperam o M-10. O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
+  confirmação; "Iniciar Impressão" e "Expedir Pedido" do painel mandam os e-mails de impressão e de envio (M-10). O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
 - `.env` de produção com `FRONTEND_URL` = endereço da loja publicada, em `https://` e sem barra no final (M-27; ex.:
   `FRONTEND_URL=https://www.dominio.com.br`). Sem ela, o botão "Acompanhar" dos e-mails aponta para `http://localhost:5173`.

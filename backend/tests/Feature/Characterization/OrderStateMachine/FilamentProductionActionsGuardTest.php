@@ -102,7 +102,7 @@ class FilamentProductionActionsGuardTest extends CharacterizationTestCase
 
         $this->assertSame(OrderStatus::PRINTING, $order->fresh()->status);
         $this->assertStatusChangeLog($order, 'in_queue', 'printing', 'Impressão 3D iniciada na fazenda de manufatura.');
-        Event::assertDispatched(OrderPrintStarted::class, fn (OrderPrintStarted $e): bool => $e->order->is($order));
+        Event::assertDispatched(OrderPrintingStartedEvent::class, fn (OrderPrintingStartedEvent $e): bool => $e->order->is($order));
     }
 
     public function test_acabamento_muda_status_e_grava_log_sem_evento(): void
@@ -144,7 +144,10 @@ class FilamentProductionActionsGuardTest extends CharacterizationTestCase
             'shipped',
             'Pacote despachado via transportadora com código de rastreio: BR123456789BR'
         );
-        Event::assertDispatched(OrderShipped::class, fn (OrderShipped $e): bool => $e->order->is($order));
+        Event::assertDispatched(
+            OrderShippedEvent::class,
+            fn (OrderShippedEvent $e): bool => $e->order->is($order) && $e->carrierTrackingCode === 'BR123456789BR'
+        );
     }
 
     public function test_pedido_em_pagamento_em_revisao_nao_tem_acao_de_producao_e_chamada_forcada_nao_muda_nada(): void
@@ -195,7 +198,7 @@ class FilamentProductionActionsGuardTest extends CharacterizationTestCase
 
         $this->assertSame(OrderStatus::CANCELLED, $order->fresh()->status);
         $this->assertSame(0, $order->productionLogs()->count());
-        Event::assertNotDispatched(OrderPrintStarted::class);
+        Event::assertNotDispatched(OrderPrintingStartedEvent::class);
     }
 
     public function test_corrida_entre_leitura_e_gravacao_nao_sobrescreve_pedido_cancelado(): void
@@ -209,7 +212,7 @@ class FilamentProductionActionsGuardTest extends CharacterizationTestCase
 
         $this->assertSame(OrderStatus::CANCELLED, $order->fresh()->status);
         $this->assertSame(0, $order->productionLogs()->count());
-        Event::assertNotDispatched(OrderPrintStarted::class);
+        Event::assertNotDispatched(OrderPrintingStartedEvent::class);
         $component->assertNotified(self::STATUS_CHANGED_MESSAGE);
     }
 
@@ -227,7 +230,7 @@ class FilamentProductionActionsGuardTest extends CharacterizationTestCase
         $this->assertSame(OrderStatus::CANCELLED, $fresh->status);
         $this->assertNull($fresh->carrier_tracking_code);
         $this->assertSame(0, $order->productionLogs()->count());
-        Event::assertNotDispatched(OrderShipped::class);
+        Event::assertNotDispatched(OrderShippedEvent::class);
         $component->assertNotified(self::STATUS_CHANGED_MESSAGE);
     }
 
