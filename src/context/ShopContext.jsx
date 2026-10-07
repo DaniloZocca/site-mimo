@@ -10,30 +10,57 @@ export const ShopProvider = ({ children }) => {
   const cartCtx = useCart();
   const [products, setProducts] = useState([]);
 
-  const fetchProducts = () => {
-    fetch(`${API_BASE}/products`)
-      .then((res) => {
-        if (!res.ok) throw new Error('API offline');
-        return res.json();
-      })
-      .then((resData) => {
-        const list = Array.isArray(resData) 
-          ? resData 
-          : (Array.isArray(resData?.data) ? resData.data : []);
-        setProducts(list);
-      })
-      .catch((err) => {
-        console.warn('Backend API offline:', err);
-      });
-  };
-
+  // Catálogo: busca ao abrir, a cada 60 s só com a aba visível e ao voltar para a aba
+  // (no máximo uma vez a cada 15 s), sem requisições sobrepostas.
   useEffect(() => {
+    const REFRESH_INTERVAL_MS = 60000;
+    const MIN_REFETCH_GAP_MS = 15000;
+    let controller = null;
+    let lastFetchAt = 0;
+
+    const fetchProducts = () => {
+      if (controller) return;
+      controller = new AbortController();
+      lastFetchAt = Date.now();
+      fetch(`${API_BASE}/products`, { signal: controller.signal })
+        .then((res) => {
+          if (!res.ok) throw new Error('API offline');
+          return res.json();
+        })
+        .then((resData) => {
+          const list = Array.isArray(resData) 
+            ? resData 
+            : (Array.isArray(resData?.data) ? resData.data : []);
+          setProducts(list);
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') console.warn('Backend API offline:', err);
+        })
+        .finally(() => {
+          controller = null;
+        });
+    };
+
+    const refetchIfStale = () => {
+      if (document.visibilityState === 'hidden') return;
+      if (Date.now() - lastFetchAt < MIN_REFETCH_GAP_MS) return;
+      fetchProducts();
+    };
+
+    const onInterval = () => {
+      if (document.visibilityState === 'hidden') return;
+      fetchProducts();
+    };
+
     fetchProducts();
-    const interval = setInterval(fetchProducts, 3000);
-    window.addEventListener('focus', fetchProducts);
+    const interval = setInterval(onInterval, REFRESH_INTERVAL_MS);
+    window.addEventListener('focus', refetchIfStale);
+    document.addEventListener('visibilitychange', refetchIfStale);
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', fetchProducts);
+      window.removeEventListener('focus', refetchIfStale);
+      document.removeEventListener('visibilitychange', refetchIfStale);
+      if (controller) controller.abort();
     };
   }, []);
 

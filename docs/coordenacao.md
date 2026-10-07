@@ -90,12 +90,13 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-18 | Desconto PIX igual no front e no back (diferença de 1 centavo; skill `pricing-sync`) | C | checkout, front | M-08 | a fazer | — |
 | M-19 | Sanitização de CPF/telefone/CEP do `CheckoutRequest` chegar ao DTO | C | checkout | M-17 | a fazer | — |
 | M-20 | Mensagens de validação em pt-BR (`lang/pt_BR`) | B | config | M-05 | a fazer | — |
-| M-21 | Catálogo: trocar o polling de 3 s do `ShopContext` por algo mais leve, sem mudar a tela | B | front | M-07 | a fazer | — |
+| M-21 | Catálogo: trocar o polling de 3 s do `ShopContext` por algo mais leve, sem mudar a tela | B | front | M-07 | em andamento | — |
 | M-22 | CI no GitHub Actions com Postgres (suíte, `pint --test`, lint, build); `oxlint` como devDependency (hoje `npm run lint` falha com "oxlint: not found") e lint sem varrer `backend/public/` | D | stack | M-01 a M-03 mergeados | a fazer | — |
 | M-23 | `composer audit` e `npm audit` e correção do que aparecer | D | stack | M-22 | a fazer | — |
 | M-24 | Migrar checkout, webhook e painel para o `ProductionWorkflowService` (dívida da regra 5) | C | checkout, pedidos, painel | M-16, M-17 | a fazer | — |
 | M-25 | CSP sem `unsafe-eval`/`unsafe-inline` onde o Filament permitir (B1) | B | rotas | M-15 | a fazer | — |
 | M-26 | Área de cliente: `AuthModal` mock e usuário fixo "Fernanda" (B3) | C | front | decisão pendente | bloqueado | — |
+| M-27 | Botão "Acompanhar" dos e-mails de pedido (`confirmed`, `printing`, `shipped`) monta `$trackingUrl` com `APP_URL` e abre o endereço da API, não o da loja: usar o domínio do front (config nova) e fazer a loja abrir o rastreio a partir do link (sem router hoje). Achado no M-04 (#18) | B | pedidos, config, front | M-04 | a fazer | — |
 
 ## Decisões pendentes
 
