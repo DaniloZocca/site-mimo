@@ -11,6 +11,11 @@ use Symfony\Component\HttpFoundation\Response;
 class SecurityHeadersMiddleware
 {
     /**
+     * Rotas do painel Filament (path definido em AdminPanelProvider).
+     */
+    private const PANEL_PATHS = ['admin', 'admin/*'];
+
+    /**
      * Injeta cabeçalhos HTTP defensivos (SecOps / Hardening).
      */
     public function handle(Request $request, Closure $next): Response
@@ -33,10 +38,17 @@ class SecurityHeadersMiddleware
         // 5. HSTS (HTTP Strict Transport Security): Força conexões HTTPS por 1 ano
         $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 
-        // 6. CSP (Content Security Policy): Suporte total a FilePond Canvas (blob: e data:), Web Workers e Mercado Pago
+        // 6. CSP (Content Security Policy): Suporte total a FilePond Canvas (blob: e data:), Web Workers e Mercado Pago.
+        // 'unsafe-inline' e 'unsafe-eval' só no painel: o Filament 3 tem <script> inline sem nonce
+        // (layout/base, assets, sidebar) e o Alpine padrão avalia expressões com new Function().
+        // API, /up e demais rotas ficam sem eles.
+        $scriptSrc = $request->is(self::PANEL_PATHS)
+            ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com"
+            : "script-src 'self' https://sdk.mercadopago.com";
+
         $cspPolicy = implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com",
+            $scriptSrc,
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com data:",
             "img-src 'self' data: blob: https:",
