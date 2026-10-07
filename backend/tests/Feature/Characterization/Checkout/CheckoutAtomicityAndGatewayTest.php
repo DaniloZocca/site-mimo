@@ -66,46 +66,68 @@ class CheckoutAtomicityAndGatewayTest extends CharacterizationTestCase
         $this->assertCount(0, $this->mpHttp->requests);
     }
 
-    public function test_timeout_do_gateway_no_cartao_cancela_o_pedido_e_repete_a_mensagem(): void
+    /**
+     * Ex-gêmeo de KnownBugs (bug #8, corrigido no M-08).
+     */
+    public function test_falha_do_gateway_mantem_pedido_pendente_e_responde_502_generico(): void
     {
-        // BUG CONHECIDO: falha do gateway após o commit cancela o pedido e vaza a mensagem — ver teste gêmeo em KnownBugs
+        ['payload' => $payload] = $this->simpleCheckout('credit_card');
+        $this->mpHttp->pushException(new RuntimeException('cURL error 28: Operation timed out after 30001 milliseconds'));
+
+        $response = $this->postJson('/api/checkout', $payload);
+
+        $response->assertStatus(502);
+        $this->assertStringNotContainsString('cURL', (string) $response->json('message'));
+        $this->assertStringNotContainsString('Falha na autorização', (string) $response->json('message'));
+        $this->assertSame(OrderStatus::PENDING_PAYMENT, Order::sole()->status);
+    }
+
+    public function test_timeout_do_gateway_no_cartao_responde_502_com_mensagem_amigavel_e_sem_log_de_status(): void
+    {
         ['payload' => $payload] = $this->simpleCheckout('credit_card');
         $this->mpHttp->pushException(new RuntimeException('cURL error 28: Operation timed out after 30001 milliseconds'));
 
         $response = $this->postJson('/api/checkout', $payload);
 
         $order = Order::sole();
-        $response->assertStatus(422)->assertExactJson([
-            'message' => 'Não foi possível processar a cobrança. Falha na autorização do cartão de crédito: cURL error 28: Operation timed out after 30001 milliseconds',
+        $response->assertStatus(502)->assertExactJson([
+            'code' => 'payment_gateway_error',
+            'message' => "Não conseguimos confirmar seu pagamento agora 😕 Seu pedido #{$order->order_number} ficou guardado. "
+                .'Se a cobrança aparecer no seu cartão, ele é confirmado sozinho e você recebe um e-mail. '
+                .'Para não pagar duas vezes, confira em "Rastrear pedido" antes de tentar de novo.',
             'order_number' => $order->order_number,
         ]);
 
-        $this->assertSame(OrderStatus::CANCELLED, $order->status);
-        $pairs = $order->productionLogs()->get()->map(fn ($l): string => "{$l->previous_status}->{$l->new_status}")->sort()->values()->all();
-        $this->assertSame(['checkout->pending_payment', 'pending_payment->cancelled'], $pairs);
-        $this->assertTrue($order->productionLogs()->where('notes', 'like', 'Cobrança não concluída no gateway: Falha na autorização do cartão de crédito: cURL error 28%')->exists());
+        $this->assertSame(OrderStatus::PENDING_PAYMENT, $order->status);
+        $pairs = $order->productionLogs()->get()->map(fn ($l): string => "{$l->previous_status}->{$l->new_status}")->all();
+        $this->assertSame(['checkout->pending_payment'], $pairs);
+
+        $payment = $order->payments()->sole();
+        $this->assertSame('error', $payment->status);
+        $this->assertSame(502, $payment->http_status);
+        $this->assertSame('pending_payment', $payment->order_status);
     }
 
-    public function test_erro_500_da_api_no_pix_cancela_o_pedido(): void
+    public function test_erro_500_da_api_no_pix_responde_502_e_pedido_fica_pendente(): void
     {
-        // BUG CONHECIDO: falha do gateway após o commit cancela o pedido e vaza a mensagem — ver teste gêmeo em KnownBugs
         ['payload' => $payload] = $this->simpleCheckout('pix');
         $this->mpHttp->pushApiError(500);
 
         $this->postJson('/api/checkout', $payload)
-            ->assertStatus(422)
-            ->assertJsonPath('message', 'Não foi possível processar a cobrança. Falha ao comunicar com o gateway PIX: Api error. Check response for details');
+            ->assertStatus(502)
+            ->assertJsonPath('code', 'payment_gateway_error')
+            ->assertJsonPath('message', 'Não conseguimos gerar o seu PIX agora 😕 Nenhuma cobrança foi feita. Tente de novo em alguns instantes.');
 
-        $this->assertSame(OrderStatus::CANCELLED, Order::sole()->status);
+        $this->assertSame(OrderStatus::PENDING_PAYMENT, Order::sole()->status);
     }
 
-    public function test_pedido_cancelado_por_falha_do_gateway_continua_rastreavel(): void
+    public function test_pedido_com_falha_do_gateway_continua_rastreavel(): void
     {
         ['payload' => $payload] = $this->simpleCheckout('credit_card');
         $this->mpHttp->pushException(new RuntimeException('timeout'));
 
         $orderNumber = $this->postJson('/api/checkout', $payload)->json('order_number');
 
-        $this->assertSame(OrderStatus::CANCELLED, Order::where('order_number', $orderNumber)->sole()->status);
+        $this->assertSame(OrderStatus::PENDING_PAYMENT, Order::where('order_number', $orderNumber)->sole()->status);
     }
 }

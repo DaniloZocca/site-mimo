@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\DTOs\CheckoutOrderDTO;
 use App\DTOs\GatewayPayment;
 use App\Enums\OrderStatus;
-use App\Events\OrderPaid;
+use App\Events\OrderPaidEvent;
 use App\Exceptions\ShippingPriceChangedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
@@ -26,6 +26,20 @@ use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
+    /** @var array<string, string> status_detail do Mercado Pago → mensagem ao cliente */
+    private const CARD_REJECTION_MESSAGES = [
+        'cc_rejected_insufficient_amount' => 'Saldo insuficiente no cartão de crédito.',
+        'cc_rejected_bad_filled_security_code' => 'Código de segurança (CVV) incorreto.',
+        'cc_rejected_bad_filled_date' => 'Data de validade do cartão incorreta.',
+        'cc_rejected_bad_filled_other' => 'Dados do cartão incorretos. Verifique e tente novamente.',
+        'cc_rejected_call_for_authorize' => 'Pagamento não autorizado pelo banco emissor. Entre em contato com a operadora do seu cartão.',
+        'cc_rejected_card_disabled' => 'O cartão informado está desabilitado ou bloqueado.',
+        'cc_rejected_duplicated_payment' => 'Pagamento duplicado identificado para esta encomenda.',
+        'cc_rejected_high_risk' => 'Transação recusada por políticas de segurança do banco emissor.',
+        'cc_rejected_max_attempts' => 'Limite de tentativas excedido no cartão. Tente novamente mais tarde ou use o PIX.',
+        'cc_rejected_blacklist' => 'Não foi possível processar o pagamento com este cartão.',
+    ];
+
     public function __construct(
         private readonly OrderCreationService $orderCreationService,
         private readonly MercadoPagoService $mercadoPagoService,
@@ -96,27 +110,18 @@ class CheckoutController extends Controller
                 $paymentResult = $this->mercadoPagoService->createCardPayment($order, $orderDTO);
             }
         } catch (Exception $e) {
-            // 5. Tratamento de Falha no Gateway e Atualização de Auditoria
+            // 5. Falha no gateway: o pedido segue pending_payment. Num timeout a cobrança pode ter sido criada
+            // no Mercado Pago, e o webhook precisa encontrar o pedido aberto para aprová-lo. O detalhe técnico
+            // fica só no log do servidor; o cliente recebe 502 com mensagem amigável.
             Log::error("Falha ao processar pagamento do pedido #{$order->order_number}: ".$e->getMessage());
-
-            $previousStatus = $order->status->value;
-            $order->status = OrderStatus::CANCELLED;
-            $order->save();
-
-            $order->productionLogs()->create([
-                'previous_status' => $previousStatus,
-                'new_status' => OrderStatus::CANCELLED->value,
-                'notes' => 'Cobrança não concluída no gateway: '.$e->getMessage(),
-                'created_at' => now(),
-            ]);
 
             // Resposta persistida: um reenvio com a mesma chave recebe exatamente esta resposta
             $payment = $order->payments()->create([
                 'provider' => 'mercadopago',
                 'method' => $orderDTO->paymentMethod,
-                'status' => 'error',
-                'failure_message' => 'Não foi possível processar a cobrança. '.$e->getMessage(),
-                'http_status' => 422,
+                'status' => CheckoutIdempotencyService::PAYMENT_STATUS_ERROR,
+                'failure_message' => $this->gatewayErrorMessage($order, $orderDTO->paymentMethod),
+                'http_status' => 502,
                 'order_status' => $order->status->value,
             ]);
 
@@ -130,6 +135,10 @@ class CheckoutController extends Controller
             $underReview = ! $this->releaseApprovedCardPayment($order, GatewayPayment::fromMercadoPago($paymentResult));
         }
 
+        // Cartão recusado: 422 com mensagem amigável. O pedido segue pending_payment e o webhook
+        // `rejected` o cancela; uma nova tentativa do cliente usa outra Idempotency-Key (novo pedido).
+        $rejected = $paymentResult['status'] === 'rejected';
+
         // 5. Persiste o resultado do gateway e a resposta dada (base do replay idempotente)
         $payment = $order->payments()->create([
             'provider' => 'mercadopago',
@@ -140,12 +149,44 @@ class CheckoutController extends Controller
             'qr_code' => $paymentResult['qr_code'] ?? null,
             'qr_code_base64' => $paymentResult['qr_code_base64'] ?? null,
             'ticket_url' => $paymentResult['ticket_url'] ?? null,
-            'failure_message' => $underReview ? CheckoutIdempotencyService::PAYMENT_UNDER_REVIEW_MESSAGE : null,
-            'http_status' => $underReview ? 202 : 201,
+            'failure_message' => match (true) {
+                $underReview => CheckoutIdempotencyService::PAYMENT_UNDER_REVIEW_MESSAGE,
+                $rejected => self::cardRejectionMessage($paymentResult['status_detail'] ?? null),
+                default => null,
+            },
+            'http_status' => match (true) {
+                $underReview => 202,
+                $rejected => 422,
+                default => 201,
+            },
             'order_status' => $order->status->value,
         ]);
 
         return $this->idempotency->checkoutResponse($order, $payment);
+    }
+
+    /**
+     * Mensagem ao cliente quando a chamada ao gateway falha (timeout, erro da API), sem detalhe técnico.
+     */
+    private function gatewayErrorMessage(Order $order, string $paymentMethod): string
+    {
+        if ($paymentMethod === 'pix') {
+            return 'Não conseguimos gerar o seu PIX agora 😕 Nenhuma cobrança foi feita. Tente de novo em alguns instantes.';
+        }
+
+        return "Não conseguimos confirmar seu pagamento agora 😕 Seu pedido #{$order->order_number} ficou guardado. "
+            .'Se a cobrança aparecer no seu cartão, ele é confirmado sozinho e você recebe um e-mail. '
+            .'Para não pagar duas vezes, confira em "Rastrear pedido" antes de tentar de novo.';
+    }
+
+    /**
+     * Texto amigável da recusa do cartão (mesmos textos de CARD_ERROR_MESSAGES em src/services/mercadoPago.js).
+     * O status_detail técnico (cc_rejected_*) nunca vai para a mensagem.
+     */
+    private static function cardRejectionMessage(?string $statusDetail): string
+    {
+        return self::CARD_REJECTION_MESSAGES[(string) $statusDetail]
+            ?? 'O pagamento com cartão não pôde ser autorizado. Verifique os dados ou utilize o PIX com aprovação imediata.';
     }
 
     /**
@@ -201,7 +242,7 @@ class CheckoutController extends Controller
             'reference' => $payment->id,
         ]);
 
-        event(new OrderPaid($order));
+        event(new OrderPaidEvent($order, $payment->id));
         ProcessOrderPaidNotification::dispatch($order);
 
         return true;
