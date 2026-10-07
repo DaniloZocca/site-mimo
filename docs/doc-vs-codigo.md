@@ -38,7 +38,7 @@ Divergências encontradas ao escrever os testes de caracterização. Nada foi co
 | Doc diz | Código faz | Evidência |
 |---|---|---|
 | CPF, e-mail e telefone nunca vão para logs ou respostas (regra 8) | Listeners e job de notificação não logam mais o e-mail (M-04). Ainda: a mensagem técnica do gateway vai para a resposta do checkout e para a timeline pública; o `catch` do webhook loga `getMessage()` + trace de qualquer exceção (com fila `sync`, um erro do SMTP pode conter o endereço). | `CheckoutController.php:118`; `MercadoPagoWebhookController.php:276` |
-| Rastreio por `order_number` + CPF | O parâmetro é `cpf_prefix` (prefixo, sem tamanho mínimo), ou `email`. | `TrackOrderRequest.php:28` |
+| Rastreio por `order_number` + CPF | ✅ Resolvido no M-09: o parâmetro ainda se chama `cpf_prefix` (nome usado pelo front), mas exige o CPF completo (11 dígitos, comparação exata); alternativa: `email` exato. Rota só `POST`. | `TrackOrderRequest.php`; `OrderTrackingController.php` |
 | `CheckoutRequest` sanitiza CPF/telefone/CEP | A sanitização em `passedValidation()` não chega ao DTO (que lê `validated()`); os valores são gravados com máscara. | `CheckoutRequest.php:161-177`; `CheckoutOrderDTO.php:31` |
 
 ## Testes e ferramentas

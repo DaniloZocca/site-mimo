@@ -12,8 +12,8 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 
 /**
- * POST|GET /api/orders/track — formas de localizar o pedido.
- * O parâmetro real do CPF é `cpf_prefix` (prefixo, não o CPF completo).
+ * POST /api/orders/track — formas de localizar o pedido.
+ * O parâmetro do CPF se chama `cpf_prefix` (nome mantido pelo front), mas precisa do CPF completo (11 dígitos).
  */
 #[Group('characterization')]
 class TrackingLookupTest extends CharacterizationTestCase
@@ -43,8 +43,6 @@ class TrackingLookupTest extends CharacterizationTestCase
         return [
             'CPF completo sem máscara' => ['52998224725'],
             'CPF completo com máscara' => ['529.982.247-25'],
-            'prefixo de 3 dígitos' => ['529'],
-            'prefixo com máscara' => ['529.98'],
         ];
     }
 
@@ -56,24 +54,67 @@ class TrackingLookupTest extends CharacterizationTestCase
             ->assertJsonPath('order_number', 'MIMOO-ABC12345');
     }
 
-    public function test_prefixo_de_um_digito_e_aceito(): void
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function incompleteCpfs(): array
     {
-        // BUG CONHECIDO: prefixo de CPF de 1 dígito basta para acessar o pedido — ver teste gêmeo em KnownBugs
-        $this->track(['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '5'])
-            ->assertOk()
-            ->assertJsonPath('tracking_token', $this->order->tracking_token);
+        return [
+            'prefixo de 1 dígito' => ['5'],
+            'prefixo de 3 dígitos' => ['529'],
+            'prefixo com máscara' => ['529.98'],
+            '10 dígitos' => ['5299822472'],
+            '12 dígitos' => ['529982247250'],
+        ];
+    }
+
+    #[DataProvider('incompleteCpfs')]
+    public function test_cpf_incompleto_retorna_422_sem_dados_do_pedido(string $cpf): void
+    {
+        $response = $this->track(['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => $cpf])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.cpf_prefix.0', 'Informe o CPF completo (11 números) ou o e-mail da compra.');
+
+        $this->assertStringNotContainsString($this->order->tracking_token, $response->getContent());
+    }
+
+    public function test_prefixo_de_um_digito_nao_localiza_o_pedido(): void
+    {
+        $response = $this->track(['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '5']);
+
+        $this->assertContains($response->getStatusCode(), [404, 422]);
+        $this->assertStringNotContainsString($this->order->tracking_token, $response->getContent());
+    }
+
+    public function test_cpf_incompleto_tem_a_mesma_resposta_para_pedido_inexistente(): void
+    {
+        $existing = $this->track(['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '529']);
+        $missing = $this->track(['order_number' => 'MIMOO-ZZZ99999', 'cpf_prefix' => '529']);
+
+        $this->assertSame([422, $existing->getContent()], [$missing->getStatusCode(), $missing->getContent()]);
+    }
+
+    public function test_cpf_completo_errado_retorna_404_generico_sem_token(): void
+    {
+        $response = $this->track(['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '11144477735'])
+            ->assertNotFound()
+            ->assertExactJson(['message' => 'Nenhuma encomenda localizada com a combinação de dados informada.']);
+
+        $this->assertStringNotContainsString($this->order->tracking_token, $response->getContent());
     }
 
     public function test_cpf_gravado_com_mascara_tambem_e_encontrado(): void
     {
         $this->order->update(['customer_cpf' => '529.982.247-25']);
 
-        $this->track(['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '52998'])->assertOk();
+        $this->track(['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '52998224725'])->assertOk();
     }
 
-    public function test_cpf_prefix_so_com_pontuacao_vira_vazio_e_nao_encontra(): void
+    public function test_cpf_prefix_so_com_pontuacao_retorna_422(): void
     {
-        $this->track(['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '...-'])->assertNotFound();
+        $this->track(['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '...-'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['cpf_prefix']);
     }
 
     public function test_order_number_e_normalizado_para_maiusculas_sem_espacos(): void
@@ -109,12 +150,10 @@ class TrackingLookupTest extends CharacterizationTestCase
             ->assertExactJson(['message' => 'Nenhuma encomenda localizada com a combinação de dados informada.']);
     }
 
-    public function test_get_com_cpf_na_query_string_funciona(): void
+    public function test_rastreio_so_aceita_post(): void
     {
-        // BUG CONHECIDO: rastreio aceita GET, expondo o prefixo do CPF na URL e nos logs — ver teste gêmeo em KnownBugs
-        $this->getJson('/api/orders/track?order_number=MIMOO-ABC12345&cpf_prefix=52998224725')
-            ->assertOk()
-            ->assertJsonPath('order_number', 'MIMOO-ABC12345');
+        // CPF nunca vai na URL (histórico do navegador, logs de proxy e do servidor)
+        $this->getJson('/api/orders/track?order_number=MIMOO-ABC12345&cpf_prefix=52998224725')->assertStatus(405);
     }
 
     public function test_sem_identificador_retorna_422(): void
@@ -128,7 +167,7 @@ class TrackingLookupTest extends CharacterizationTestCase
     {
         $this->track(['order_number' => 'MIMOO-ABC12345'])
             ->assertStatus(422)
-            ->assertJsonPath('errors.auth_factor.0', 'Para consultar pelo número da encomenda, informe os primeiros dígitos do CPF ou o e-mail de compra para validação de segurança.');
+            ->assertJsonPath('errors.auth_factor.0', 'Informe o CPF completo (11 números) ou o e-mail da compra.');
     }
 
     public function test_token_que_nao_e_uuid_retorna_422(): void

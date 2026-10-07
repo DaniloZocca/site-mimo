@@ -53,7 +53,7 @@ Route::middleware(['throttle:10,1'])->group(function (): void {
 // 3. Rastreamento Público de Encomendas (Anti-IDOR / LGPD / Throttle: 10,1)
 // =========================================================================
 Route::middleware(['throttle:10,1'])->group(function (): void {
-    Route::match(['GET', 'POST'], '/orders/track', OrderTrackingController::class);
+    Route::post('/orders/track', OrderTrackingController::class);
 });
 
 // =========================================================================
