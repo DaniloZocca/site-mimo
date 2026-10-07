@@ -84,7 +84,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-12 | Simplificar a tela de materiais e cores no painel | B | painel | M-10 | a fazer | — |
 | M-13 | Compra rápida do card do catálogo escolhe cor compatível com o material (hoje pode cair no 422 do M-03) | B | front | M-03 | concluído (sem cor compatível em nenhum material, o botão abre os detalhes do produto) | #16 |
 | M-14 | Higiene: limpeza de hooks do `ProductDetailModal` (13 erros `rules-of-hooks` do oxlint hoje; sem mudança visual) | B | front | M-03 | concluído (oxlint sem erros em `src/`; o conteúdo do modal remonta a cada produto aberto, como já acontecia na prática) | #17 |
-| M-15 | Rate limit separado para checkout, rastreio e frete (#18) | B | rotas | M-11 | a fazer | — |
+| M-15 | Rate limit separado para checkout, rastreio e frete (#18) | B | rotas | M-11 | concluído (contador próprio por grupo de rotas; limites 10/10/30 por minuto mantidos) | #27 |
 | M-16 | `transitionTo()` valida contra o status do banco (#15); `dispatchOrder()` só grava o código após validar (#22) | C | pedidos | M-04, M-10 | a fazer | — |
 | M-17 | Webhook: cancelamento confere o payment id em `order_payments` e usa update condicional (#24); `OrderPaidEvent` só após o commit | C | checkout | M-08 | a fazer | — |
 | M-18 | Desconto PIX igual no front e no back (diferença de 1 centavo; skill `pricing-sync`) | C | checkout, front | M-08 | a fazer | — |

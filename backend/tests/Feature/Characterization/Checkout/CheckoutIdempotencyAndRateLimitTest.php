@@ -61,16 +61,46 @@ class CheckoutIdempotencyAndRateLimitTest extends CharacterizationTestCase
         $this->postJson('/api/checkout', [])->assertStatus(422);
     }
 
-    public function test_contador_e_compartilhado_com_rastreio_e_frete_por_ip(): void
+    /**
+     * Bug #18 corrigido (era gêmeo em KnownBugs): cada grupo de rotas tem o próprio contador por IP.
+     */
+    public function test_rate_limit_do_checkout_e_independente_do_rastreio(): void
     {
-        // BUG CONHECIDO: checkout, rastreio e frete dividem o mesmo contador de rate limit por IP — ver teste gêmeo em KnownBugs
-        for ($i = 1; $i <= 5; $i++) {
-            $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-XXXXXXXX', 'email' => 'a@b.com'])->assertStatus(404);
+        for ($i = 1; $i <= 10; $i++) {
+            $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-XXXXXXXX', 'email' => 'a@b.com']);
         }
-        for ($i = 1; $i <= 5; $i++) {
+
+        $this->postJson('/api/checkout', [])->assertStatus(422);
+    }
+
+    public function test_rate_limit_do_checkout_e_independente_do_frete(): void
+    {
+        for ($i = 1; $i <= 30; $i++) {
             $this->postJson('/api/shipping/calculate', []);
         }
 
+        $this->postJson('/api/checkout', [])->assertStatus(422);
+    }
+
+    public function test_checkout_esgotado_nao_bloqueia_rastreio_nem_frete(): void
+    {
+        for ($i = 1; $i <= 11; $i++) {
+            $this->postJson('/api/checkout', []);
+        }
         $this->postJson('/api/checkout', [])->assertStatus(429);
+
+        $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-XXXXXXXX', 'email' => 'a@b.com'])->assertStatus(404);
+        $this->postJson('/api/shipping/calculate', [])->assertStatus(422);
+    }
+
+    public function test_frete_continua_limitado_a_30_por_minuto(): void
+    {
+        for ($i = 1; $i <= 30; $i++) {
+            $this->postJson('/api/shipping/calculate', [])->assertStatus(422);
+        }
+
+        $this->postJson('/api/shipping/calculate', [])
+            ->assertStatus(429)
+            ->assertHeader('X-RateLimit-Limit', '30');
     }
 }

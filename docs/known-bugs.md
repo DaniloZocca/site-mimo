@@ -7,7 +7,7 @@ e dos gêmeos que afirmam o comportamento correto (`backend/tests/Feature/KnownB
 "known-bugs" passa a passar. Nesse momento, apague o teste characterization antigo e mova o gêmeo para
 `Characterization/` (trocando o grupo para `characterization`).
 
-- Rodar: `php artisan test --group=known-bugs` (deve falhar; 5 testes hoje).
+- Rodar: `php artisan test --group=known-bugs` (deve falhar; 4 testes hoje).
 - O grupo `known-bugs` está excluído da suíte padrão no `phpunit.xml`.
 
 Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado, dados expostos ou fluxo quebrado; **P2** = inconsistência sem dano imediato.; **P3** = exibição/texto incorreto sem efeito no valor cobrado.
@@ -15,14 +15,13 @@ Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado
 | # | Bug | Sev. | Teste characterization (comportamento atual) | Teste known-bugs (comportamento esperado) | Causa provável (arquivo:linha) |
 |---|-----|------|----------------------------------------------|-------------------------------------------|--------------------------------|
 | 15 | `transitionTo()` valida contra o status em memória, não o da linha travada: pode sobrescrever um pedido já cancelado | P1 | `OrderStateMachine/TransitionSideEffectsTest::test_objeto_desatualizado_sobrescreve_pedido_ja_cancelado` | `OrderStateMachineKnownBugsTest::test_transicao_valida_contra_o_status_real_do_banco` | `app/Services/ProductionWorkflowService.php:58` e `:76` |
-| 18 | Checkout, rastreio e frete dividem o mesmo contador de rate limit por IP | P2 | `CheckoutIdempotencyAndRateLimitTest::test_contador_e_compartilhado_com_rastreio_e_frete_por_ip` | `CheckoutKnownBugsTest::test_rate_limit_do_checkout_e_independente_do_rastreio` | `routes/api.php:47`, `:54`, `:61` (`throttle:N,1` sem nome usa a mesma assinatura domínio+IP) |
 | 21 | Ações do admin disparam `OrderPrintStarted`/`OrderShipped`, que não têm listener | P2 | `FilamentOrderActionsTest::test_iniciar_impressao_da_fila_dispara_order_print_started_sem_listener`, `::test_expedir_grava_codigo_log_e_order_shipped_sem_listener` | `OrderStateMachineKnownBugsTest::test_admin_iniciar_impressao_dispara_evento_com_listener`, `::test_admin_expedir_dispara_evento_com_listener` | `app/Filament/Resources/OrderResource.php:221` e `:287` |
 | 22 | `dispatchOrder()` grava o código de rastreio antes de validar a transição | P2 | `TransitionSideEffectsTest::test_dispatch_order_invalido_grava_o_codigo_mesmo_assim` | `OrderStateMachineKnownBugsTest::test_dispatch_order_invalido_nao_grava_o_codigo` | `app/Services/ProductionWorkflowService.php:132` |
 | 24 | Cancelamento pelo webhook (`rejected`/`cancelled`/`refunded`/`charged_back`) não confere o id do pagamento em `order_payments`: um pagamento recusado de outra tentativa com a mesma `external_reference` cancela o pedido cujo pagamento legítimo ainda está pendente (cancelamento também sem update condicional) | P2 | — (sem teste de caracterização ainda) | — (sem gêmeo ainda) | `app/Http/Controllers/Api/MercadoPagoWebhookController.php:249-253` |
 | 27 | CartDrawer e CheckoutModal ainda formatam valores de item a partir de reais em float (`unitTotalCents / 100`, `toFixed`) e o `CartContext` gera `unitTotalCents` fracionado quando o preço vem em reais (`price * 100` sem arredondar) | P3 | — (sem Vitest no front) | — | `src/components/cart/CartDrawer.jsx` (itens); `src/context/CartContext.jsx:69-75` |
 | 28 | Newsletter do Footer mostra confirmação de inscrição mas não grava nem envia nada (o `handleNewsletter` só limpa o campo e exibe o toast) | P3 | — (sem Vitest no front) | — | `src/components/Footer.jsx:10-16` |
 
-Em aberto: 7 bugs, 5 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
+Em aberto: 6 bugs, 4 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
 
 ## Corrigidos
 
@@ -49,3 +48,4 @@ Em aberto: 7 bugs, 5 testes em `known-bugs` (alguns bugs têm mais de um gêmeo)
 | 11 | Rastreio aceitava prefixo de CPF de 1 dígito (e devolvia o `tracking_token`) | P1 | corrigido — M-09: com `order_number`, o `cpf_prefix` precisa ter os 11 dígitos (senão 422 "Informe o CPF completo…", igual para qualquer pedido); comparação exata em tempo constante (`hash_equals`); CPF errado continua no 404 genérico | `Tracking/TrackingLookupTest::test_prefixo_de_um_digito_nao_localiza_o_pedido`, `::test_cpf_incompleto_retorna_422_sem_dados_do_pedido`, `::test_cpf_completo_errado_retorna_404_generico_sem_token` |
 | 12 | Timeline pública expunha notas internas (ID de pagamento, erro do gateway) | P1 | corrigido — M-09: `OrderTrackingResource` usa um texto público fixo por status como `description`; `notes` nunca sai no rastreio (continua no painel) | `Tracking/TrackingResponseTest::test_timeline_publica_nao_expoe_id_de_pagamento`, `::test_timeline_publica_nao_expoe_erro_do_gateway`, `::test_descricao_da_timeline_e_o_texto_publico_do_status` |
 | 17 | Rastreio aceitava GET, levando o CPF para a URL e os logs | P2 | corrigido — M-09: rota só `POST`; GET → 405 | `Tracking/TrackingLookupTest::test_rastreio_so_aceita_post` |
+| 18 | Checkout, rastreio e frete dividiam o mesmo contador de rate limit por IP | P2 | corrigido — M-15: cada grupo de rotas usa um prefixo próprio no throttle (`throttle:10,1,checkout`, `throttle:10,1,tracking`, `throttle:30,1,shipping`); limites e resposta 429 iguais | `Checkout/CheckoutIdempotencyAndRateLimitTest::test_rate_limit_do_checkout_e_independente_do_rastreio`, `::test_rate_limit_do_checkout_e_independente_do_frete`, `::test_checkout_esgotado_nao_bloqueia_rastreio_nem_frete` |
