@@ -35,8 +35,7 @@ import { ShippingPriceChangedError, isShippingPriceChanged } from '../../utils/s
 import { postCheckout, CheckoutInProgressError, PAYMENT_UNDER_REVIEW } from '../../utils/checkoutRequest';
 import { useCheckoutAttemptKey } from '../../hooks/useCheckoutAttemptKey';
 import { calculateCartTotals, formatMoney } from '../../utils/pricing';
-
-const API_BASE = 'http://localhost:8000/api';
+import { API_BASE } from '../../config/api';
 
 /**
  * Modal Principal de Finalização de Encomendas 3D (MIMOO LAB)

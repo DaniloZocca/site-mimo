@@ -4,8 +4,7 @@ import { transformToApiPayload } from '../schemas/checkoutSchema';
 import { ShippingPriceChangedError, isShippingPriceChanged } from '../utils/shippingPriceChange';
 import { postCheckout, CheckoutInProgressError, PAYMENT_UNDER_REVIEW } from '../utils/checkoutRequest';
 import { useCheckoutAttemptKey } from './useCheckoutAttemptKey';
-
-const API_BASE = 'http://localhost:8000/api';
+import { API_BASE } from '../config/api';
 
 /**
  * Hook de Orquestração do Pagamento com Cartão de Crédito (PCI-DSS Compliance)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { API_BASE } from '../config/api';
 
-const API_BASE = '/api';
 const BASE_POLLING_INTERVAL_MS = 4000; // 4 segundos base
 const MAX_BACKOFF_INTERVAL_MS = 20000; // Teto de 20s em caso de falhas de rede
 

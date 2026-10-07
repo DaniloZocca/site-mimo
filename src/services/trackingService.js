@@ -1,6 +1,5 @@
 import { cleanNonDigits } from '../utils/validators';
-
-const API_BASE = 'http://localhost:8000/api';
+import { API_BASE } from '../config/api';
 
 export class TrackingApiError extends Error {
   constructor(message, status = 500, isRateLimited = false) {
