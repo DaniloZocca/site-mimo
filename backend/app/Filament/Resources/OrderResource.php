@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Enums\OrderStatus;
-use App\Events\OrderPrintStarted;
-use App\Events\OrderShipped;
+use App\Events\OrderPrintingStartedEvent;
+use App\Events\OrderShippedEvent;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Models\ProductionLog;
 use App\Services\ProductionWorkflowService;
+use Closure;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -227,11 +228,13 @@ class OrderResource extends Resource
                     ->modalDescription('Confirmar que a impressora 3D foi abastecida com o filamento correto e o fatiamento foi disparado?')
                     ->modalSubmitActionLabel('Sim, iniciar extrusão')
                     ->action(function (Order $record): void {
-                        if (! self::applyPanelTransition($record, OrderStatus::IN_QUEUE, OrderStatus::PRINTING, 'Impressão 3D iniciada na fazenda de manufatura.')) {
+                        $notes = 'Impressão 3D iniciada na fazenda de manufatura.';
+                        if (! self::applyPanelTransition($record, OrderStatus::IN_QUEUE, OrderStatus::PRINTING, $notes)) {
                             return;
                         }
 
-                        event(new OrderPrintStarted($record));
+                        // Evento com listener: manda o e-mail "começou a imprimir" pela fila (bug #21)
+                        event(new OrderPrintingStartedEvent($record, $notes));
 
                         Notification::make()
                             ->title('Extrusão 3D Iniciada!')
@@ -285,11 +288,78 @@ class OrderResource extends Resource
                             return;
                         }
 
-                        event(new OrderShipped($record));
+                        // Evento com listener: manda o e-mail de envio com o código de rastreio pela fila (bug #21)
+                        event(new OrderShippedEvent($record, (string) $record->carrier_tracking_code));
 
                         Notification::make()
                             ->title('Encomenda Despachada!')
                             ->body("Código de rastreio {$data['carrier_tracking_code']} registrado para {$record->order_number}.")
+                            ->success()
+                            ->send();
+                    }),
+
+                // AÇÃO 4: Confirmar a entrega ao cliente
+                Tables\Actions\Action::make('markAsDelivered')
+                    ->label('Marcar como Entregue')
+                    ->icon('heroicon-m-check-circle')
+                    ->color('success')
+                    ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::SHIPPED, OrderStatus::DELIVERED))
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirmar entrega da encomenda')
+                    ->modalDescription('Confirmar que o pacote chegou ao cliente? Essa ação não pode ser desfeita pelo painel.')
+                    ->modalSubmitActionLabel('Sim, foi entregue')
+                    ->action(function (Order $record): void {
+                        if (! self::applyPanelTransition($record, OrderStatus::SHIPPED, OrderStatus::DELIVERED, 'Encomenda entregue ao cliente.')) {
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Encomenda Entregue!')
+                            ->body("A encomenda {$record->order_number} foi marcada como entregue.")
+                            ->success()
+                            ->send();
+                    }),
+
+                // AÇÃO 5: Cancelar pedido NÃO pago. Pedido pago (estorno) ou em "Pagamento em revisão" não
+                // tem este botão: ver "Decisões pendentes" em docs/coordenacao.md.
+                Tables\Actions\Action::make('cancelOrder')
+                    ->label('Cancelar Pedido')
+                    ->icon('heroicon-m-x-circle')
+                    ->color('danger')
+                    ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::PENDING_PAYMENT, OrderStatus::CANCELLED)
+                        && ! $record->isInPaymentReview())
+                    ->requiresConfirmation()
+                    ->modalHeading('Cancelar pedido não pago')
+                    ->modalDescription("Use só para pedido que não foi pago. Se o cliente pagar depois (ex.: PIX já gerado), o pagamento aparece em 'Pagamento em revisão' para estorno.")
+                    ->modalSubmitActionLabel('Sim, cancelar pedido')
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Motivo do cancelamento')
+                            ->required()
+                            ->maxLength(500)
+                            ->helperText('Fica só no histórico interno; o cliente vê apenas que o pedido foi cancelado.'),
+                    ])
+                    ->action(function (Order $record, array $data): void {
+                        // Camada 2: o mesmo UPDATE condicional exige que o pedido não tenha entrado em revisão
+                        // (o webhook pode ter registrado um pagamento divergente depois que a tela abriu)
+                        $cancelled = self::applyPanelTransition(
+                            $record,
+                            OrderStatus::PENDING_PAYMENT,
+                            OrderStatus::CANCELLED,
+                            "Pedido cancelado pelo painel. Motivo: {$data['reason']}",
+                            guard: fn (Builder $query): Builder => $query->whereDoesntHave(
+                                'productionLogs',
+                                fn (Builder $logs): Builder => $logs->paymentReview(),
+                            ),
+                        );
+
+                        if (! $cancelled) {
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Pedido Cancelado')
+                            ->body("A encomenda {$record->order_number} foi cancelada.")
                             ->success()
                             ->send();
                     }),
@@ -314,12 +384,14 @@ class OrderResource extends Resource
      * desatualizada), nenhuma linha é afetada: sem log, sem evento, e o operador é avisado.
      *
      * @param  array<string, mixed>  $extra  colunas gravadas junto com o status
+     * @param  (Closure(Builder): Builder)|null  $guard  condição extra no mesmo UPDATE
      */
-    private static function applyPanelTransition(Order $record, OrderStatus $from, OrderStatus $to, string $notes, array $extra = []): bool
+    private static function applyPanelTransition(Order $record, OrderStatus $from, OrderStatus $to, string $notes, array $extra = [], ?Closure $guard = null): bool
     {
-        $applied = DB::transaction(function () use ($record, $from, $to, $notes, $extra): bool {
+        $applied = DB::transaction(function () use ($record, $from, $to, $notes, $extra, $guard): bool {
             $affected = Order::whereKey($record->getKey())
                 ->where('status', $from->value)
+                ->when($guard, fn (Builder $query): Builder => $guard($query))
                 ->update(['status' => $to->value, 'updated_at' => Carbon::now()] + $extra);
 
             if ($affected === 0) {

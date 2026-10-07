@@ -23,7 +23,7 @@ use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 
 /**
  * Ações de status no painel Filament (OrderResource). Elas NÃO passam pelo
- * ProductionWorkflowService: gravam status + ProductionLog direto e disparam eventos próprios.
+ * ProductionWorkflowService (M-24): gravam status + ProductionLog direto e disparam os eventos com listener.
  */
 #[Group('characterization')]
 class FilamentOrderActionsTest extends CharacterizationTestCase
@@ -49,8 +49,8 @@ class FilamentOrderActionsTest extends CharacterizationTestCase
         $actions = array_keys(Livewire::test(ListOrders::class)->instance()->getTable()->getFlatActions());
         sort($actions);
 
-        // Não há ação de cancelar nem de marcar como entregue.
-        $this->assertSame(['edit', 'markAsShipped', 'startPackaging', 'startPrinting', 'view'], $actions);
+        // Cancelar e marcar como entregue entraram no M-10.
+        $this->assertSame(['cancelOrder', 'edit', 'markAsDelivered', 'markAsShipped', 'startPackaging', 'startPrinting', 'view'], $actions);
     }
 
     /**
@@ -59,11 +59,11 @@ class FilamentOrderActionsTest extends CharacterizationTestCase
     public static function visibility(): array
     {
         return [
-            'pending_payment' => ['pending_payment', []],
+            'pending_payment' => ['pending_payment', ['cancelOrder']],
             'in_queue' => ['in_queue', ['startPrinting']],
             'printing' => ['printing', ['startPackaging']],
             'finishing_and_packaging' => ['finishing_and_packaging', ['markAsShipped']],
-            'shipped' => ['shipped', []],
+            'shipped' => ['shipped', ['markAsDelivered']],
             'delivered' => ['delivered', []],
             'cancelled' => ['cancelled', []],
         ];
@@ -78,24 +78,25 @@ class FilamentOrderActionsTest extends CharacterizationTestCase
         $order = Order::factory()->status(OrderStatus::from($status))->create();
         $component = Livewire::test(ListOrders::class);
 
-        foreach (['startPrinting', 'startPackaging', 'markAsShipped'] as $action) {
+        foreach (['startPrinting', 'startPackaging', 'markAsShipped', 'markAsDelivered', 'cancelOrder'] as $action) {
             in_array($action, $visible, true)
                 ? $component->assertTableActionVisible($action, $order)
                 : $component->assertTableActionHidden($action, $order);
         }
     }
 
-    public function test_iniciar_impressao_da_fila_dispara_order_print_started_sem_listener(): void
+    /**
+     * Corrigido #21 (M-10) — antes: gêmeo em KnownBugs/OrderStateMachine/OrderStateMachineKnownBugsTest.
+     */
+    public function test_admin_iniciar_impressao_dispara_evento_com_listener(): void
     {
-        // BUG CONHECIDO: ações do admin disparam eventos sem listener (nenhum e-mail sai) — ver teste gêmeo em KnownBugs
         $order = Order::factory()->status(OrderStatus::IN_QUEUE)->create();
 
         Livewire::test(ListOrders::class)->callTableAction('startPrinting', $order);
 
         $this->assertSame(OrderStatus::PRINTING, $order->fresh()->status);
-        Event::assertDispatched(OrderPrintStarted::class);
-        Event::assertNotDispatched(OrderPrintingStartedEvent::class);
-        Event::assertNotDispatched(OrderStatusUpdatedEvent::class);
+        Event::assertDispatched(OrderPrintingStartedEvent::class);
+        Event::assertNotDispatched(OrderPrintStarted::class);
     }
 
     public function test_acabamento_grava_log_sem_nenhum_evento(): void
@@ -114,9 +115,11 @@ class FilamentOrderActionsTest extends CharacterizationTestCase
         }
     }
 
-    public function test_expedir_grava_codigo_log_e_order_shipped_sem_listener(): void
+    /**
+     * Corrigido #21 (M-10) — antes: gêmeo em KnownBugs/OrderStateMachine/OrderStateMachineKnownBugsTest.
+     */
+    public function test_admin_expedir_dispara_evento_com_listener(): void
     {
-        // BUG CONHECIDO: ações do admin disparam eventos sem listener (nenhum e-mail sai) — ver teste gêmeo em KnownBugs
         $order = Order::factory()->status(OrderStatus::FINISHING_AND_PACKAGING)->create();
 
         Livewire::test(ListOrders::class)
@@ -130,8 +133,8 @@ class FilamentOrderActionsTest extends CharacterizationTestCase
             'Pacote despachado via transportadora com código de rastreio: BR123456789BR',
             $order->productionLogs()->sole()->notes
         );
-        Event::assertDispatched(OrderShipped::class);
-        Event::assertNotDispatched(OrderShippedEvent::class);
+        Event::assertDispatched(OrderShippedEvent::class, fn (OrderShippedEvent $e): bool => $e->carrierTrackingCode === 'BR123456789BR');
+        Event::assertNotDispatched(OrderShipped::class);
     }
 
     public function test_expedir_exige_codigo_de_rastreio(): void
