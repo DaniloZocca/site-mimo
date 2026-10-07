@@ -69,10 +69,10 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 
 | # | Tarefa | Classe | Zonas | Depende de | Status | PR |
 |---|---|---|---|---|---|---|
-| M-00 | Criar este arquivo de coordenação | A | — | — | em merge | este |
-| M-01 | Trocar a senha do admin e tirar e-mail/senha padrão do `AdminUserSeeder` (C4) | B | config | — | em merge (senha local já trocada; servidor publicado precisa trocar à parte) | #11 |
-| M-02 | Tirar a promessa de frete grátis da loja | B | front | — | em merge | #10 |
-| M-03 | Validar cor, tamanho e material do próprio produto no checkout (bugs #5, #6, #19) | C | checkout, front | — | em merge | #12 |
+| M-00 | Criar este arquivo de coordenação | A | — | — | concluído | #13 |
+| M-01 | Trocar a senha do admin e tirar e-mail/senha padrão do `AdminUserSeeder` (C4) | B | config | — | concluído (senha local já trocada; servidor publicado precisa trocar à parte) | #11 |
+| M-02 | Tirar a promessa de frete grátis da loja | B | front | — | concluído | #10 |
+| M-03 | Validar cor, tamanho e material do próprio produto no checkout (bugs #5, #6, #19) | C | checkout, front | — | concluído | #12 |
 | M-04 | E-mails ao cliente: listeners com relações certas (#13), confirmação registrada uma vez só (#23), e-mail fora dos logs dos listeners/job (doc-vs-código) | C | pedidos | — | a fazer | — |
 | M-05 | Config de produção: tirar `'*'` do CORS (A4), `SESSION_SECURE_COOKIE` no `.env.example` (M3), checagem que falha com `APP_DEBUG=true` em produção (C3) | B | config | — | a fazer | — |
 | M-06 | SDK do Mercado Pago em `SERVER` fora do ambiente local (M2) | C | checkout | — | a fazer | — |
