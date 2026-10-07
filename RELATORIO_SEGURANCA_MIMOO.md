@@ -121,8 +121,8 @@ E rode `php artisan config:cache` no deploy. Considere um teste de fumaça no de
 **Onde:** `database/seeders/AdminUserSeeder.php:19-20`
 
 ```php
-$adminEmail = env('ADMIN_EMAIL', 'zoccaverderame@outlook.com');
-$adminPassword = env('ADMIN_PASSWORD', 'N287$yQv-G-x');
+$adminEmail = env('ADMIN_EMAIL', '<e-mail real removido>');
+$adminPassword = env('ADMIN_PASSWORD', '<senha real removida>');
 ```
 
 Apesar do comentário dizer "não armazena senhas em texto puro", o **fallback** grava e-mail e senha reais no código-fonte — que vai para o Git. Quem tiver acesso ao repositório tem a senha do painel admin.
