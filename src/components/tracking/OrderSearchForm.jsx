@@ -86,8 +86,8 @@ export const OrderSearchForm = ({
         return;
       }
 
-      if (!cleanId) {
-        setFormError('Por favor, informe o e-mail cadastrado ou os primeiros dígitos do CPF.');
+      if (!cleanId || (identifierType === 'cpf' && cleanNonDigits(cleanId).length !== 11)) {
+        setFormError('Por favor, informe o CPF completo (11 números) ou o e-mail da compra.');
         return;
       }
 

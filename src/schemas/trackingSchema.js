@@ -28,7 +28,7 @@ export const orderSearchSchema = z
     identifier: z
       .string()
       .trim()
-      .min(3, 'Informe o e-mail cadastrado ou os primeiros dígitos do CPF.')
+      .min(3, 'Informe o CPF completo (11 números) ou o e-mail da compra.')
       .max(150, 'Identificador muito longo.')
       .optional()
       .or(z.literal('')),
@@ -66,10 +66,10 @@ export const compositeKeySearchSchema = z.object({
           return z.string().email().safeParse(val).success;
         }
         const digits = cleanNonDigits(val);
-        return digits.length >= 3;
+        return digits.length === 11;
       },
       {
-        message: 'Informe um e-mail válido ou pelo menos os 3 primeiros dígitos do CPF.',
+        message: 'Informe o CPF completo (11 números) ou o e-mail da compra.',
       }
     ),
 });
