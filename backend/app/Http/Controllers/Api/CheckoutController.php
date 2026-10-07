@@ -111,8 +111,8 @@ class CheckoutController extends Controller
             }
         } catch (Exception $e) {
             // 5. Falha no gateway: o pedido segue pending_payment. Num timeout a cobrança pode ter sido criada
-            // no Mercado Pago, e o webhook precisa encontrar o pedido aberto para aprová-lo. O detalhe técnico
-            // fica só no log do servidor; o cliente recebe 502 com mensagem amigável.
+            // no Mercado Pago; o webhook aprovado leva o pedido para revisão (PaymentApprovalValidator), porque
+            // o cliente pode ter pago de novo em outra tentativa. O detalhe técnico fica só no log do servidor.
             Log::error("Falha ao processar pagamento do pedido #{$order->order_number}: ".$e->getMessage());
 
             // Resposta persistida: um reenvio com a mesma chave recebe exatamente esta resposta
@@ -175,8 +175,8 @@ class CheckoutController extends Controller
         }
 
         return "Não conseguimos confirmar seu pagamento agora 😕 Seu pedido #{$order->order_number} ficou guardado. "
-            .'Se a cobrança aparecer no seu cartão, ele é confirmado sozinho e você recebe um e-mail. '
-            .'Para não pagar duas vezes, confira em "Rastrear pedido" antes de tentar de novo.';
+            .'Se a cobrança aparecer no seu cartão, não pague de novo: vamos conferir e confirmar seu pedido pelo e-mail. '
+            .'Se nada for cobrado, é só tentar de novo.';
     }
 
     /**

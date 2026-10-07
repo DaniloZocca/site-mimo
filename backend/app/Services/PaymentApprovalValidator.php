@@ -34,6 +34,9 @@ class PaymentApprovalValidator
 
     public const LIVE_MODE_MISMATCH = 'live_mode_mismatch';
 
+    /** A criação da cobrança falhou no checkout (ex.: timeout): o cliente pode ter pago de novo em outro pedido. */
+    public const CHECKOUT_GATEWAY_ERROR = 'checkout_gateway_error';
+
     /**
      * Motivos pelos quais o pagamento NÃO libera o pedido. Vazio = liberar.
      *
@@ -55,6 +58,12 @@ class PaymentApprovalValidator
         $knownIds = $order->payments()->whereNotNull('external_id')->pluck('external_id')->map(fn ($id): string => (string) $id);
         if ($knownIds->isNotEmpty() && ! $knownIds->contains($payment->id)) {
             $reasons[] = self::PAYMENT_ID_MISMATCH;
+        }
+
+        // Falha do gateway no checkout (502): a cobrança pode ter passado sem o cliente saber, e ele pode ter
+        // comprado de novo com outra tentativa. Aprovação desse pedido vai para revisão, nunca libera sozinha.
+        if ($order->payments()->where('status', CheckoutIdempotencyService::PAYMENT_STATUS_ERROR)->exists()) {
+            $reasons[] = self::CHECKOUT_GATEWAY_ERROR;
         }
 
         if ($payment->currencyId !== 'BRL') {

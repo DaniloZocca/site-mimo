@@ -7,6 +7,7 @@ namespace Tests\Feature\Characterization\Checkout;
 use App\Enums\OrderStatus;
 use App\Mail\OrderConfirmedMail;
 use App\Models\Order;
+use App\Models\ProductionLog;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -67,9 +68,10 @@ class CheckoutPaymentErrorsTest extends CharacterizationTestCase
         $this->assertCount(1, $this->mpHttp->requests);
     }
 
-    public function test_webhook_aprovado_depois_de_falha_do_gateway_libera_o_pedido(): void
+    public function test_webhook_aprovado_depois_de_falha_do_gateway_vai_para_revisao(): void
     {
-        // Timeout no checkout, mas a cobrança foi criada no Mercado Pago: o webhook encontra o pedido aberto.
+        // Timeout no checkout, mas a cobrança foi criada no Mercado Pago. O cliente pode ter pago de novo em
+        // outra tentativa (outro pedido): a aprovação fica em revisão em vez de liberar a produção sozinha.
         ['payload' => $payload] = $this->simpleCheckout('credit_card');
         $this->mpHttp->pushException(new RuntimeException('cURL error 28: Operation timed out'));
         $this->postJson('/api/checkout', $payload)->assertStatus(502);
@@ -78,7 +80,32 @@ class CheckoutPaymentErrorsTest extends CharacterizationTestCase
         $this->apiReturnsPayment(555, 'approved', $order);
         $this->postSignedWebhook('555')->assertOk();
 
-        $this->assertSame(OrderStatus::IN_QUEUE, $order->fresh()->status);
+        $order->refresh();
+        $this->assertSame(OrderStatus::PENDING_PAYMENT, $order->status);
+        $review = $order->productionLogs()->where('code', ProductionLog::CODE_PAYMENT_REVIEW)->sole();
+        $this->assertTrue((bool) $review->is_internal);
+        $this->assertStringContainsString('checkout_gateway_error', (string) $review->notes);
+        $this->assertMailCount(0);
+    }
+
+    public function test_cobranca_dupla_apos_timeout_nao_libera_os_dois_pedidos_sozinha(): void
+    {
+        // 1ª tentativa: timeout (cobrança criada no MP sem o checkout saber). 2ª tentativa, nova chave: aprovada.
+        ['payload' => $payload] = $this->simpleCheckout('credit_card');
+        $this->mpHttp->pushException(new RuntimeException('cURL error 28: Operation timed out'));
+        $this->checkout($payload, (string) Str::uuid())->assertStatus(502);
+        $first = Order::sole();
+
+        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(777, 'approved'));
+        $this->checkout($payload, (string) Str::uuid())->assertStatus(201);
+        $second = Order::whereKeyNot($first->id)->sole();
+
+        $this->apiReturnsPayment(555, 'approved', $first);
+        $this->postSignedWebhook('555')->assertOk();
+
+        $this->assertSame(OrderStatus::IN_QUEUE, $second->fresh()->status);
+        $this->assertSame(OrderStatus::PENDING_PAYMENT, $first->fresh()->status);
+        $this->assertTrue($first->productionLogs()->where('code', ProductionLog::CODE_PAYMENT_REVIEW)->exists());
         $this->assertMailCount(1);
     }
 

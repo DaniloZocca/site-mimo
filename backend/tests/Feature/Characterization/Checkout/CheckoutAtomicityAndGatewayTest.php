@@ -93,8 +93,8 @@ class CheckoutAtomicityAndGatewayTest extends CharacterizationTestCase
         $response->assertStatus(502)->assertExactJson([
             'code' => 'payment_gateway_error',
             'message' => "Não conseguimos confirmar seu pagamento agora 😕 Seu pedido #{$order->order_number} ficou guardado. "
-                .'Se a cobrança aparecer no seu cartão, ele é confirmado sozinho e você recebe um e-mail. '
-                .'Para não pagar duas vezes, confira em "Rastrear pedido" antes de tentar de novo.',
+                .'Se a cobrança aparecer no seu cartão, não pague de novo: vamos conferir e confirmar seu pedido pelo e-mail. '
+                .'Se nada for cobrado, é só tentar de novo.',
             'order_number' => $order->order_number,
         ]);
 
