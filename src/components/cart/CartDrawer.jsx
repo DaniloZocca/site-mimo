@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useCart } from '../../context/CartContext';
 import { useShop } from '../../context/ShopContext';
 import { ShippingSelector } from './ShippingSelector';
+import { calculateCartTotals, formatMoney } from '../../utils/pricing';
 import { 
   X, 
   Trash2, 
@@ -31,7 +32,6 @@ export const CartDrawer = () => {
     updateQuantity, 
     removeFromCart, 
     subtotalCents, 
-    cartSubtotal,
     totalPrintTimeHours, 
     cartTotalPrintHours,
     totalWeightGrams,
@@ -46,10 +46,6 @@ export const CartDrawer = () => {
     showToast 
   } = useShop();
 
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState(0); // 0 a 0.5 (ex: 0.10 para 10%)
-  const [couponMessage, setCouponMessage] = useState('');
-
   if (!isCartOpen) return null;
 
   const handleProceedToCheckout = () => {
@@ -61,25 +57,9 @@ export const CartDrawer = () => {
     setIsCheckoutOpen(true);
   };
 
-  const handleApplyCoupon = (e) => {
-    e.preventDefault();
-    const code = couponCode.trim().toUpperCase();
-    if (code === 'MIMOO10' || code === 'PRIMEIRACOMPRA') {
-      setAppliedDiscount(0.10);
-      setCouponMessage('Cupom de 10% OFF aplicado com sucesso! 🎉');
-      if (showToast) showToast('🎉 Cupom de 10% OFF ativado!');
-    } else {
-      setAppliedDiscount(0);
-      setCouponMessage('Cupom inválido ou expirado.');
-      if (showToast) showToast('Cupom não encontrado', 'info');
-    }
-  };
-
-  const discountAmount = cartSubtotal * appliedDiscount;
-  const isFreeShipping = cartSubtotal >= 199;
-  const shippingPrice = selectedShipping ? (selectedShipping.price ?? ((selectedShipping.price_in_cents || 0) / 100)) : 0;
-  const shippingCost = isFreeShipping || cart.length === 0 ? 0 : shippingPrice;
-  const finalTotal = Math.max(0, cartSubtotal - discountAmount + shippingCost);
+  // Espelho do cálculo do backend (só exibição): frete = cotação escolhida; desconto PIX só nas peças
+  const shippingCents = selectedShipping?.price_in_cents ?? 0;
+  const totals = calculateCartTotals(cart, 10, shippingCents);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
@@ -146,22 +126,10 @@ export const CartDrawer = () => {
                   </div>
                 </div>
 
-                {/* Free Shipping Progress Bar */}
-                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs font-fredoka space-y-1.5">
-                  <div className="flex justify-between text-slate-700 text-[11px]">
-                    <span className="flex items-center gap-1">
-                      <Truck className="w-3.5 h-3.5 text-mimoo-purple" />
-                      {isFreeShipping 
-                        ? '🎉 Parabéns! Você ganhou Frete Grátis!' 
-                        : `Faltam R$ ${(199 - cartSubtotal).toFixed(2).replace('.', ',')} para Frete Grátis`}
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-mimoo-mint h-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, (cartSubtotal / 199) * 100)}%` }}
-                    />
-                  </div>
+                {/* Aviso de frete */}
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-[11px] font-fredoka text-slate-700 flex items-center gap-1">
+                  <Truck className="w-3.5 h-3.5 text-mimoo-purple" />
+                  <span>Frete calculado pelo CEP logo abaixo</span>
                 </div>
 
                 {/* Items Container */}
@@ -274,30 +242,6 @@ export const CartDrawer = () => {
                   })}
                 </div>
 
-                {/* Cupom de Desconto */}
-                <form onSubmit={handleApplyCoupon} className="space-y-1.5 pt-2">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      placeholder="Código de Cupom (ex: MIMOO10)"
-                      className="flex-1 rounded-xl border-2 border-mimoo-dark bg-slate-50 px-3 py-2 text-xs font-fredoka uppercase focus:outline-none focus:bg-white"
-                    />
-                    <button
-                      type="submit"
-                      className="btn-chunky-white px-3.5 py-2 text-xs font-bold"
-                    >
-                      Aplicar
-                    </button>
-                  </div>
-                  {couponMessage && (
-                    <span className={`text-[10px] font-fredoka block ${appliedDiscount > 0 ? 'text-emerald-600 font-bold' : 'text-rose-500'}`}>
-                      {couponMessage}
-                    </span>
-                  )}
-                </form>
-
                 {/* Seletor de Frete Volumétrico */}
                 <div className="pt-2 border-t border-slate-200">
                   <ShippingSelector
@@ -341,16 +285,9 @@ export const CartDrawer = () => {
                 <div className="flex justify-between text-slate-600">
                   <span>Subtotal das Peças 3D:</span>
                   <span className="font-bold text-slate-800">
-                    R$ {cartSubtotal.toFixed(2).replace('.', ',')}
+                    {formatMoney(totals.subtotalCartaoCents)}
                   </span>
                 </div>
-
-                {appliedDiscount > 0 && (
-                  <div className="flex justify-between text-emerald-600 font-bold">
-                    <span>Desconto Cupom (10%):</span>
-                    <span>- R$ {discountAmount.toFixed(2).replace('.', ',')}</span>
-                  </div>
-                )}
 
                 {/* 2. Frete (SEDEX / PAC) */}
                 <div className="flex justify-between text-slate-600">
@@ -358,22 +295,24 @@ export const CartDrawer = () => {
                     Frete ({selectedShipping?.service_name ? selectedShipping.service_name : 'SEDEX / PAC'}):
                   </span>
                   <span>
-                    {isFreeShipping ? (
-                      <strong className="text-emerald-600">GRÁTIS</strong>
-                    ) : selectedShipping ? (
-                      `R$ ${shippingCost.toFixed(2).replace('.', ',')}`
+                    {selectedShipping ? (
+                      formatMoney(shippingCents)
                     ) : (
                       <span className="text-slate-400 font-nunito text-[11px]">Calcular acima</span>
                     )}
                   </span>
                 </div>
 
-                {/* 3. Total Estimado */}
+                {/* 3. Total Estimado (cartão e PIX) */}
                 <div className="flex justify-between text-base font-bold text-mimoo-dark pt-2 border-t border-slate-200">
-                  <span>Total Estimado:</span>
+                  <span>Total Estimado no Cartão{selectedShipping ? '' : ' (sem frete)'}:</span>
                   <span className="text-mimoo-purple text-lg font-black font-fredoka">
-                    R$ {finalTotal.toFixed(2).replace('.', ',')}
+                    {formatMoney(totals.grandTotalCartaoCents)}
                   </span>
+                </div>
+                <div className="flex justify-between text-emerald-600 font-bold">
+                  <span>No PIX (10% off nas peças){selectedShipping ? '' : ' (sem frete)'}:</span>
+                  <span>{formatMoney(totals.grandTotalPixCents)}</span>
                 </div>
 
                 {/* 4. Prazo Consolidado */}

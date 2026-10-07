@@ -39,9 +39,7 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
                 'trackingUrl' => rtrim(config('app.url', 'http://localhost:5173'), '/')."/?token={$this->order->tracking_token}",
                 'totalAmountFormatted' => 'R$ '.number_format($this->order->total_amount_cents / 100, 2, ',', '.'),
                 'subtotalFormatted' => 'R$ '.number_format($this->order->subtotal_cents / 100, 2, ',', '.'),
-                'shippingFormatted' => $this->order->shipping_cost_cents > 0
-                    ? 'R$ '.number_format($this->order->shipping_cost_cents / 100, 2, ',', '.')
-                    : 'GRÁTIS',
+                'shippingFormatted' => 'R$ '.number_format($this->order->shipping_cost_cents / 100, 2, ',', '.'),
             ],
         );
     }

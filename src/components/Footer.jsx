@@ -10,7 +10,7 @@ export const Footer = () => {
   const handleNewsletter = (e) => {
     e.preventDefault();
     if (emailInput.trim()) {
-      showToast('💌 Cupom MIMOO10 enviado para seu e-mail! Aproveite.');
+      showToast('💌 Obrigado pelo interesse!');
       setEmailInput('');
     }
   };
@@ -161,7 +161,7 @@ export const Footer = () => {
               Clube da Vaquinha Mimoo 🐮
             </h4>
             <p className="font-nunito text-xs text-slate-600">
-              Receba novidades dos novos modelos 3D e ganhe <strong>10% OFF</strong> na sua primeira encomenda!
+              Receba novidades dos novos modelos 3D.
             </p>
 
             <form onSubmit={handleNewsletter} className="flex gap-2">

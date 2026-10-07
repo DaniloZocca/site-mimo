@@ -96,7 +96,8 @@ class OrderCreationService
         $colorIds = array_map(fn ($item) => $item->colorId, $dto->items);
         $sizeIds = array_filter(array_map(fn ($item) => $item->sizeId, $dto->items));
 
-        $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+        // Cores e tamanhos ligados a cada produto (pivôs color_product / product_size) numa consulta só
+        $products = Product::with(['colors', 'sizes'])->whereIn('id', $productIds)->get()->keyBy('id');
         $colors = Color::whereIn('id', $colorIds)->get()->keyBy('id');
         $sizes = ! empty($sizeIds) ? Size::whereIn('id', $sizeIds)->get()->keyBy('id') : collect();
 
@@ -104,7 +105,7 @@ class OrderCreationService
         $itemsToPersist = [];
 
         // 2. Zero-Trust Pricing: Recálculo de preços, validação de catálogo e auditoria de materiais
-        foreach ($dto->items as $item) {
+        foreach ($dto->items as $index => $item) {
             /** @var Product|null $product */
             $product = $products->get($item->productId);
 
@@ -122,11 +123,31 @@ class OrderCreationService
                 ]);
             }
 
+            // A cor precisa estar ligada ao produto no painel (produto sem cores ligadas não é vendável)
+            if (! $product->colors->contains('id', $color->id)) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.color_id" => ["A cor {$color->name} não está disponível para {$product->title}."],
+                ]);
+            }
+
             /** @var Size|null $size */
             $size = $item->sizeId ? $sizes->get($item->sizeId) : null;
             if ($item->sizeId && ! $size) {
                 throw ValidationException::withMessages([
                     'items' => ["A variação de tamanho informada para o produto '{$product->title}' não foi encontrada."],
+                ]);
+            }
+
+            // Produto com tamanhos ligados exige um deles; sem tamanhos ligados vale o "Tamanho Padrão" (modificador 0)
+            if (! $size && $product->sizes->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.size_id" => ["Escolha um tamanho para {$product->title}."],
+                ]);
+            }
+
+            if ($size && ! $product->sizes->contains('id', $size->id)) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.size_id" => ["O tamanho {$size->name} não está disponível para {$product->title}."],
                 ]);
             }
 
@@ -150,6 +171,13 @@ class OrderCreationService
                 $allowedLabels = implode(', ', array_map('strtoupper', $normalizedAllowed));
                 throw ValidationException::withMessages([
                     'items' => ["O material '{$materialEnum->shortLabel()}' não é autorizado para fabricação da peça '{$product->title}'. Materiais permitidos para este modelo: {$allowedLabels}."],
+                ]);
+            }
+
+            // O filamento da cor precisa ser do material escolhido (cor sem material conhecido é recusada)
+            if ($color->material_type !== $materialEnum) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.material" => ["A cor {$color->name} não está disponível em {$materialEnum->shortLabel()} para {$product->title}."],
                 ]);
             }
 

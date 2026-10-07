@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Characterization\Checkout;
 
-use App\Enums\MaterialType;
 use App\Models\Color;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -132,30 +131,6 @@ class CheckoutValidationTest extends CharacterizationTestCase
             ->tap(fn ($r) => $this->assertFirstError($r, 'items.0.material', 'The selected items.0.material is invalid.'));
     }
 
-    public function test_cor_nao_vinculada_ao_produto_e_aceita(): void
-    {
-        // BUG CONHECIDO: cor que não pertence ao produto é aceita — ver teste gêmeo em KnownBugs
-        $foreign = Color::factory()->create();
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
-
-        $this->postItem(['color_id' => $foreign->id])->assertStatus(201);
-
-        $this->assertSame($foreign->id, OrderItem::sole()->color_id);
-    }
-
-    public function test_tamanho_nao_vinculado_ao_produto_e_aceito_com_modificador(): void
-    {
-        // BUG CONHECIDO: tamanho que não pertence ao produto é aceito e o modificador é cobrado — ver teste gêmeo em KnownBugs
-        $foreign = Size::factory()->modifier(-4000)->create();
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'approved'));
-
-        $this->postItem(['size_id' => $foreign->id], 'credit_card')
-            ->assertStatus(201)
-            ->assertJsonPath('total_cents', 1000 + self::SERVER_PAC_CENTS); // 5000 − 4000 + frete do servidor
-
-        $this->assertSame(1000, OrderItem::sole()->unit_price_cents);
-    }
-
     public function test_modificador_negativo_maior_que_o_preco_gera_unitario_negativo(): void
     {
         // PERGUNTA: não há piso para o preço unitário; base 5000 + modificador −6000 = −1000;
@@ -169,15 +144,6 @@ class CheckoutValidationTest extends CharacterizationTestCase
             ->assertJsonPath('total_cents', self::SERVER_PAC_CENTS); // max(0, −1000) + frete: o subtotal é travado em 0, o unitário não
 
         $this->assertSame(-1000, OrderItem::sole()->unit_price_cents);
-    }
-
-    public function test_cor_com_material_type_diferente_do_material_escolhido_e_aceita(): void
-    {
-        // BUG CONHECIDO: filamento PETG aceito para pedido em PLA — ver teste gêmeo em KnownBugs
-        $this->color->update(['material_type' => MaterialType::PETG]);
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
-
-        $this->postItem(['material' => 'pla'])->assertStatus(201);
     }
 
     // ---------------------------------------------------------------- quantidade
