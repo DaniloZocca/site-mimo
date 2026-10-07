@@ -30,36 +30,40 @@ Route::get('/categories', function () {
     );
 });
 
+// colors e sizes não têm coluna is_active: as rotas listam todos os registros
+// (decisão pendente em docs/coordenacao.md; a disponibilidade da cor vem em in_stock).
 Route::get('/colors', function () {
     return response()->json(
-        Color::where('is_active', true)->get()
+        Color::orderBy('name')->get()
     );
 });
 
 Route::get('/sizes', function () {
     return response()->json(
-        Size::where('is_active', true)->get()
+        Size::orderBy('name')->get()
     );
 });
 
 // =========================================================================
 // 2. Checkout & Pagamentos (Rate Limited: 10 req/min)
 // =========================================================================
-Route::middleware(['throttle:10,1'])->group(function (): void {
+// O 3º parâmetro do throttle é o prefixo do contador: cada grupo tem o seu,
+// para que rastreio e frete não consumam o limite do checkout (bug #18).
+Route::middleware(['throttle:10,1,checkout'])->group(function (): void {
     Route::post('/checkout', CheckoutController::class);
 });
 
 // =========================================================================
 // 3. Rastreamento Público de Encomendas (Anti-IDOR / LGPD / Throttle: 10,1)
 // =========================================================================
-Route::middleware(['throttle:10,1'])->group(function (): void {
+Route::middleware(['throttle:10,1,tracking'])->group(function (): void {
     Route::post('/orders/track', OrderTrackingController::class);
 });
 
 // =========================================================================
 // 4. Cotação de Frete Dinâmica & Logística (Throttle: 30,1)
 // =========================================================================
-Route::middleware(['throttle:30,1'])->group(function (): void {
+Route::middleware(['throttle:30,1,shipping'])->group(function (): void {
     Route::post('/shipping/calculate', [ShippingController::class, 'calculate']);
 });
 
