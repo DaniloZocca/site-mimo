@@ -19,13 +19,32 @@ export const ProductCard = ({ product }) => {
 
   const displayColors = (product.colors && product.colors.length > 0) ? product.colors : FILAMENT_COLORS;
 
+  // Compra rápida: primeiro material do produto que tenha cor ligada desse filamento (o checkout recusa as demais)
+  const findQuickAddChoice = () => {
+    const materials = (product.materials && product.materials.length > 0) ? product.materials : [{ id: 'pla', name: 'PLA' }];
+    for (const material of materials) {
+      const color = (product.colors || []).find(
+        (c) => c.material_type?.toLowerCase() === String(material.id).toLowerCase()
+      );
+      if (color) return { material, color };
+    }
+    return null;
+  };
+
   const handleQuickAdd = (e) => {
     e.stopPropagation();
+    const choice = findQuickAddChoice();
+    // Sem cor compatível: abre os detalhes, que mostram as opções (ou "Sem cores disponíveis")
+    if (!choice) {
+      openProductDetail(product);
+      return;
+    }
     addToCart(
       product, 
-      displayColors[0], 
+      choice.color, 
       product.sizeOptions?.[0] || { id: 'p', label: 'Padrão (12cm)', multiplier: 1, addPrice: 0, addTime: 0 }, 
-      1
+      1,
+      choice.material
     );
   };
 
