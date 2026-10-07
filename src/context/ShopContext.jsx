@@ -15,6 +15,7 @@ export const ShopProvider = ({ children }) => {
   useEffect(() => {
     const REFRESH_INTERVAL_MS = 60000;
     const MIN_REFETCH_GAP_MS = 15000;
+    const REQUEST_TIMEOUT_MS = 15000;
     let controller = null;
     let lastFetchAt = 0;
 
@@ -22,6 +23,8 @@ export const ShopProvider = ({ children }) => {
       if (controller) return;
       controller = new AbortController();
       lastFetchAt = Date.now();
+      // Requisição pendurada não pode travar as próximas atualizações.
+      const timeoutId = setTimeout(() => controller?.abort(), REQUEST_TIMEOUT_MS);
       fetch(`${API_BASE}/products`, { signal: controller.signal })
         .then((res) => {
           if (!res.ok) throw new Error('API offline');
@@ -37,6 +40,7 @@ export const ShopProvider = ({ children }) => {
           if (err.name !== 'AbortError') console.warn('Backend API offline:', err);
         })
         .finally(() => {
+          clearTimeout(timeoutId);
           controller = null;
         });
     };
