@@ -49,19 +49,16 @@ class TrackingInternalLogTest extends CharacterizationTestCase
         $this->assertStringNotContainsString('amount_mismatch', $response->getContent());
     }
 
-    public function test_get_por_token_nao_expoe_log_interno(): void
+    public function test_get_por_token_responde_405(): void
     {
-        $response = $this->getJson('/api/orders/track?tracking_token='.$this->order->tracking_token)->assertOk();
-
-        $this->assertCount(1, $response->json('timeline'));
-        $this->assertStringNotContainsString('divergência', $response->getContent());
+        $this->getJson('/api/orders/track?tracking_token='.$this->order->tracking_token)->assertStatus(405);
     }
 
     public function test_post_por_numero_e_cpf_nao_expoe_log_interno(): void
     {
-        $cpfPrefix = substr(preg_replace('/\D/', '', (string) $this->order->customer_cpf), 0, 5);
+        $cpf = preg_replace('/\D/', '', (string) $this->order->customer_cpf);
 
-        $response = $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-INT00001', 'cpf_prefix' => $cpfPrefix])->assertOk();
+        $response = $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-INT00001', 'cpf_prefix' => $cpf])->assertOk();
 
         $this->assertCount(1, $response->json('timeline'));
         $this->assertStringNotContainsString('divergência', $response->getContent());

@@ -43,18 +43,17 @@ class OrderTrackingResource extends JsonResource
             ];
         })->values()->toArray();
 
-        // 4. Linha do tempo pública e cronológica da produção 3D
+        // 4. Linha do tempo pública e cronológica da produção 3D.
+        // A descrição é um texto fixo por status: as notas do log (ID de pagamento, erro do gateway,
+        // nome de operador, texto do painel) são internas e nunca saem nesta resposta.
         $timeline = $this->productionLogs->sortBy('created_at')->map(function (ProductionLog $log): array {
             $statusEnum = OrderStatus::tryFrom($log->new_status);
-
-            // Sanitiza notas internas removendo nomes de operadores
-            $cleanNotes = preg_replace('/^\[.*?\]\s*/', '', (string) $log->notes);
 
             return [
                 'status' => $log->new_status,
                 'label' => $statusEnum?->getLabel() ?? ucfirst($log->new_status),
                 'color' => $statusEnum?->getColor() ?? 'gray',
-                'description' => $cleanNotes,
+                'description' => self::publicDescription($statusEnum),
                 'timestamp' => $log->created_at?->format('d/m/Y H:i'),
                 'iso_date' => $log->created_at?->toIso8601String(),
             ];
@@ -75,5 +74,22 @@ class OrderTrackingResource extends JsonResource
             'items' => $items,
             'timeline' => $timeline,
         ];
+    }
+
+    /**
+     * Texto público de cada etapa da timeline, no tom da loja.
+     */
+    private static function publicDescription(?OrderStatus $status): string
+    {
+        return match ($status) {
+            OrderStatus::PENDING_PAYMENT => 'Pedido recebido! Agora é só aguardar a confirmação do pagamento.',
+            OrderStatus::IN_QUEUE => 'Pagamento confirmado! Sua peça entrou na fila de impressão 3D.',
+            OrderStatus::PRINTING => 'Sua peça está sendo impressa, camada por camada.',
+            OrderStatus::FINISHING_AND_PACKAGING => 'Peça em acabamento e conferência, e depois embalada com carinho.',
+            OrderStatus::SHIPPED => 'Pacote enviado! Acompanhe pelo código de rastreio da transportadora.',
+            OrderStatus::DELIVERED => 'Pedido entregue. Esperamos que você ame!',
+            OrderStatus::CANCELLED => 'Pedido cancelado. Se tiver alguma dúvida, fale com a gente.',
+            null => 'Atualização do seu pedido.',
+        };
     }
 }

@@ -25,8 +25,8 @@ class TrackingEnumerationAndRateLimitTest extends CharacterizationTestCase
 
     public function test_cpf_errado_e_pedido_inexistente_tem_respostas_identicas(): void
     {
-        $wrongCpf = $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '111']);
-        $noSuchOne = $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ZZZ99999', 'cpf_prefix' => '111']);
+        $wrongCpf = $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '11111111111']);
+        $noSuchOne = $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ZZZ99999', 'cpf_prefix' => '11111111111']);
 
         $this->assertSame(404, $wrongCpf->getStatusCode());
         $this->assertSame($wrongCpf->getStatusCode(), $noSuchOne->getStatusCode());
@@ -47,8 +47,8 @@ class TrackingEnumerationAndRateLimitTest extends CharacterizationTestCase
     {
         $this->captureLogs();
 
-        $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '111']);
-        $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ZZZ99999', 'cpf_prefix' => '111']);
+        $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '11111111111']);
+        $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ZZZ99999', 'cpf_prefix' => '11111111111']);
 
         // Só o pedido existente gera o warning "Tentativa de enumeração IDOR bloqueada".
         $warnings = $this->logsAtLevels(['warning'], 'Tentativa de enumeração IDOR bloqueada');
@@ -59,7 +59,7 @@ class TrackingEnumerationAndRateLimitTest extends CharacterizationTestCase
     public function test_decima_primeira_consulta_no_mesmo_minuto_retorna_429(): void
     {
         for ($i = 1; $i <= 10; $i++) {
-            $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ZZZ99999', 'cpf_prefix' => (string) $i])->assertNotFound();
+            $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ZZZ99999', 'cpf_prefix' => sprintf('%011d', $i)])->assertNotFound();
         }
 
         $this->postJson('/api/orders/track', ['order_number' => 'MIMOO-ABC12345', 'cpf_prefix' => '529'])
