@@ -34,6 +34,7 @@ import { clearShippingCache, normalizeShippingOption } from '../../hooks/useShip
 import { ShippingPriceChangedError, isShippingPriceChanged } from '../../utils/shippingPriceChange';
 import { postCheckout, CheckoutInProgressError, PAYMENT_UNDER_REVIEW } from '../../utils/checkoutRequest';
 import { useCheckoutAttemptKey } from '../../hooks/useCheckoutAttemptKey';
+import { calculateCartTotals, formatMoney } from '../../utils/pricing';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -48,7 +49,6 @@ export const CheckoutModal = () => {
     cart, 
     setCart,
     clearCart,
-    cartSubtotal, 
     cartTotalPrintHours, 
     user, 
     showToast,
@@ -179,10 +179,11 @@ export const CheckoutModal = () => {
 
   if (!isCheckoutOpen) return null;
 
-  const isFreeShipping = cartSubtotal >= 199;
-  const shippingCost = isFreeShipping || cart.length === 0 ? 0 : (selectedShipping ? selectedShipping.price : 14.90);
-  const totalAmount = cartSubtotal + shippingCost;
-  const shippingCostCents = isFreeShipping ? 0 : (selectedShipping ? selectedShipping.price_in_cents : 1490);
+  // Espelho do cálculo do backend (só exibição): frete = cotação escolhida; desconto PIX só nas peças
+  const shippingCostCents = selectedShipping?.price_in_cents ?? 0;
+  const totals = calculateCartTotals(cart, 10, shippingCostCents);
+  const isPixSelected = selectedPaymentMethod === 'pix';
+  const totalToPayCents = isPixSelected ? totals.grandTotalPixCents : totals.grandTotalCartaoCents;
 
   // Handlers com máscaras progressivas
   const handleCpfChange = (e) => {
@@ -904,16 +905,26 @@ export const CheckoutModal = () => {
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs font-fredoka">
                   <div className="flex justify-between text-slate-600">
                     <span>Subtotal das Criações ({cart.length} itens):</span>
-                    <span>R$ {cartSubtotal.toFixed(2).replace('.', ',')}</span>
+                    <span>{formatMoney(totals.subtotalCartaoCents)}</span>
                   </div>
+                  {isPixSelected && totals.savingsCents > 0 && (
+                    <div className="flex justify-between text-emerald-600 font-bold">
+                      <span>Desconto PIX (10% nas peças):</span>
+                      <span>- {formatMoney(totals.savingsCents)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-slate-600">
                     <span>Frete:</span>
-                    <span>{isFreeShipping ? <strong className="text-emerald-600">GRÁTIS</strong> : `R$ ${shippingCost.toFixed(2).replace('.', ',')}`}</span>
+                    <span>
+                      {selectedShipping
+                        ? formatMoney(shippingCostCents)
+                        : <span className="text-slate-600 font-nunito text-[11px]">Volte à etapa 2 para calcular</span>}
+                    </span>
                   </div>
                   <div className="flex justify-between text-base font-bold text-mimoo-dark pt-2 border-t border-slate-200">
-                    <span>Total a Pagar:</span>
+                    <span>{selectedShipping ? 'Total a Pagar:' : 'Total sem frete:'}</span>
                     <span className="text-mimoo-purple text-lg">
-                      R$ {totalAmount.toFixed(2).replace('.', ',')}
+                      {formatMoney(totalToPayCents)}
                     </span>
                   </div>
                 </div>
@@ -939,7 +950,7 @@ export const CheckoutModal = () => {
                 {selectedPaymentMethod === 'credit_card' && (
                   <div className="pt-4 border-t border-slate-200">
                     <CreditCardPaymentStep
-                      totalCents={Math.round(totalAmount * 100)}
+                      totalCents={totals.grandTotalCartaoCents}
                       customerData={watch()}
                       onSubmitCard={handleCardSubmit}
                       isSubmitting={isSubmittingCard}

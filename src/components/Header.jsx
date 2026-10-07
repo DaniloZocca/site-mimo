@@ -49,7 +49,7 @@ export const Header = () => {
       <div className="bg-gradient-to-r from-mimoo-purple via-mimoo-pink to-mimoo-purple text-white py-1.5 px-4 text-xs md:text-sm font-fredoka tracking-wide flex items-center justify-between border-b border-mimoo-dark/20 overflow-hidden">
         <div className="flex items-center gap-2 mx-auto animate-pulse-subtle text-center">
           <span className="bg-white/20 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase">✨ Sob Encomenda</span>
-          <span>Peças impressas em 3D em filamento ecológico biodegradável • Frete Grátis acima de R$ 199!</span>
+          <span>Peças impressas em 3D em filamento ecológico biodegradável • Frete calculado pelo CEP no carrinho</span>
         </div>
         <button 
           onClick={() => handleNav('tracking')}
