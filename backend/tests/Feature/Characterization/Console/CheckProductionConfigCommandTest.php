@@ -83,6 +83,16 @@ class CheckProductionConfigCommandTest extends CharacterizationTestCase
             ->assertFailed();
     }
 
+    public function test_cors_so_com_origens_de_desenvolvimento_falha(): void
+    {
+        $this->configureProduction();
+        config()->set('cors.allowed_origins', ['http://localhost:5173', 'http://127.0.0.1:5173']);
+
+        $this->artisan('mimoo:check-production')
+            ->expectsOutputToContain('CORS tem origem sem https://')
+            ->assertFailed();
+    }
+
     public function test_cookie_de_sessao_sem_secure_falha(): void
     {
         $this->configureProduction();

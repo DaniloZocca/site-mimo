@@ -31,6 +31,8 @@ class CheckProductionConfigCommand extends Command
         $origins = (array) config('cors.allowed_origins', []);
         if (in_array('*', $origins, true) || in_array('*', (array) config('cors.allowed_origins_patterns', []), true)) {
             $problems[] = 'CORS aceita qualquer origem (*). Defina CORS_ALLOWED_ORIGINS com o domínio do frontend.';
+        } elseif ($origins === [] || array_filter($origins, fn ($origin) => ! str_starts_with((string) $origin, 'https://')) !== []) {
+            $problems[] = 'CORS tem origem sem https:// (ex.: localhost de desenvolvimento). Defina CORS_ALLOWED_ORIGINS com o domínio do frontend.';
         }
 
         if (config('session.secure') !== true) {
