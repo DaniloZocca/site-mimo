@@ -52,7 +52,7 @@ class CheckoutHardeningTest extends TestCase
         $color = Color::create([
             'name' => 'Lilás Pastel',
             'hex_code' => '#D8B4FE',
-            'material_type' => 'pla',
+            'material_type' => 'petg',
             'in_stock' => true,
         ]);
 
@@ -60,6 +60,9 @@ class CheckoutHardeningTest extends TestCase
             'name' => 'Grande (18cm)',
             'price_modifier_in_cents' => 1500, // + R$ 15,00
         ]);
+
+        $product->colors()->attach($color->id);
+        $product->sizes()->attach($size->id);
 
         $itemDTO = new CheckoutItemDTO(
             productId: $product->id,
@@ -131,6 +134,8 @@ class CheckoutHardeningTest extends TestCase
             'material_type' => 'pla',
             'in_stock' => true,
         ]);
+
+        $product->colors()->attach($color->id);
 
         $itemDTO = new CheckoutItemDTO(
             productId: $product->id,

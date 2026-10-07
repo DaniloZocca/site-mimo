@@ -26,7 +26,7 @@ class OrderSnapshotTest extends CharacterizationTestCase
             'base_price_cents' => 8000,
             'allowed_materials' => ['pla', 'petg'],
         ], 2000);
-        $color->update(['name' => 'Roxo MIMOO']);
+        $color->update(['name' => 'Roxo MIMOO', 'material_type' => MaterialType::PETG]);
         $size->update(['name' => 'Grande (18cm)']);
         $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'approved'));
 

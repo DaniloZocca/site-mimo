@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useShop } from '../context/ShopContext';
-import { FILAMENT_COLORS } from '../data/mockProducts';
 import { calculateProductPricing } from '../utils/pricing';
 import { sanitizeHtml } from '../utils/sanitize';
 import { CategoryBadge } from './ui/CategoryBadge';
@@ -71,34 +70,28 @@ export const ProductDetailModal = () => {
     }
   }, [availableMaterials]);
 
-  // 2. Reactive Colors Filtered by Active Material
+  // 2. Cores ligadas ao produto cujo filamento é do material ativo (o checkout recusa as demais)
   const availableColorsForMaterial = useMemo(() => {
-    const rawColors = (selectedProduct?.colors && selectedProduct.colors.length > 0)
-      ? selectedProduct.colors
-      : FILAMENT_COLORS;
+    const productColors = selectedProduct?.colors || [];
 
-    if (!selectedMaterial) return rawColors;
+    if (!selectedMaterial) return [];
 
-    // Filtra cores compatíveis com o material ativo
-    const filtered = rawColors.filter(
-      (c) => !c.material_type || c.material_type.toLowerCase() === selectedMaterial.id.toLowerCase()
+    return productColors.filter(
+      (c) => c.material_type?.toLowerCase() === selectedMaterial.id.toLowerCase()
     );
-
-    return filtered.length > 0 ? filtered : rawColors;
   }, [selectedProduct?.colors, selectedMaterial]);
 
   // Selected filament color state
-  const [selectedColor, setSelectedColor] = useState(availableColorsForMaterial[0] || FILAMENT_COLORS[0]);
+  const [selectedColor, setSelectedColor] = useState(availableColorsForMaterial[0] || null);
 
-  // Adjust selected color if current one is not available in newly selected material
+  // Ao trocar o material, limpa a cor se ela não existir no material novo
   useEffect(() => {
-    if (availableColorsForMaterial.length > 0) {
-      const exists = availableColorsForMaterial.some((c) => c.id === selectedColor?.id);
-      if (!exists) {
-        setSelectedColor(availableColorsForMaterial[0]);
-      }
+    if (selectedColor && !availableColorsForMaterial.some((c) => c.id === selectedColor.id)) {
+      setSelectedColor(null);
     }
-  }, [availableColorsForMaterial, selectedColor?.id]);
+  }, [availableColorsForMaterial, selectedColor]);
+
+  const noColorsForMaterial = availableColorsForMaterial.length === 0;
 
   // 3. Selected Size State
   const [selectedSize, setSelectedSize] = useState(
@@ -372,7 +365,7 @@ export const ProductDetailModal = () => {
                   <div className="flex items-center justify-between text-xs font-fredoka">
                     <span className="font-bold text-mimoo-dark flex items-center gap-1.5">
                       <span>2. Escolha a Cor do Filamento:</span>
-                      <strong className="text-mimoo-purple font-bold">({selectedColor?.name || 'Cor Padrão'})</strong>
+                      <strong className="text-mimoo-purple font-bold">({selectedColor?.name || 'escolha uma cor'})</strong>
                     </span>
                     <span className="text-slate-400 font-nunito text-[11px]">
                       {availableColorsForMaterial.length} {availableColorsForMaterial.length === 1 ? 'opção' : 'opções'} em {selectedMaterial?.name || 'PLA'}
@@ -470,12 +463,19 @@ export const ProductDetailModal = () => {
                   {/* Chunky Add to Cart Button */}
                   <button
                     onClick={handleAddToCart}
-                    className="flex-1 btn-chunky-purple py-3.5 px-6 text-sm sm:text-base flex items-center justify-center gap-2 shadow-chunky font-fredoka font-bold"
+                    disabled={!selectedColor}
+                    className="flex-1 btn-chunky-purple py-3.5 px-6 text-sm sm:text-base flex items-center justify-center gap-2 shadow-chunky font-fredoka font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ShoppingBag className="w-5 h-5" />
                     <span>Adicionar à Sacola • {pricing.totalCartaoFormatted}</span>
                   </button>
                 </div>
+
+                {!selectedColor && (
+                  <p role="status" className="text-xs font-nunito font-semibold text-mimoo-pink">
+                    {noColorsForMaterial ? 'Sem cores disponíveis neste material' : 'Escolha uma cor para adicionar à sacola'}
+                  </p>
+                )}
 
                 {/* Shipping Simulator */}
                 <div className="pt-3 border-t border-slate-200">

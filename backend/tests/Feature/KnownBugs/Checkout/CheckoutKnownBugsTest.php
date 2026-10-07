@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\KnownBugs\Checkout;
 
-use App\Enums\MaterialType;
 use App\Enums\OrderStatus;
 use App\Events\OrderPaid;
 use App\Events\OrderPaidEvent;
-use App\Models\Color;
 use App\Models\Order;
-use App\Models\Size;
 use Illuminate\Support\Facades\Event;
 use PHPUnit\Framework\Attributes\Group;
 use RuntimeException;
@@ -25,46 +22,6 @@ use Tests\Feature\Characterization\Support\FakeMercadoPagoHttpClient;
 class CheckoutKnownBugsTest extends CharacterizationTestCase
 {
     use BuildsCheckoutPayload;
-
-    /**
-     * P1 — gêmeo de CheckoutValidationTest::test_cor_nao_vinculada_ao_produto_e_aceita
-     */
-    public function test_cor_nao_vinculada_ao_produto_retorna_422(): void
-    {
-        ['product' => $product, 'color' => $color] = $this->catalogItem();
-        $foreign = Color::factory()->create();
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
-
-        $this->postJson('/api/checkout', $this->checkoutPayload([$this->itemPayload($product, $foreign)]))->assertStatus(422);
-
-        $this->assertSame(0, Order::count());
-    }
-
-    /**
-     * P1 — gêmeo de CheckoutValidationTest::test_tamanho_nao_vinculado_ao_produto_e_aceito_com_modificador
-     */
-    public function test_tamanho_nao_vinculado_ao_produto_retorna_422(): void
-    {
-        ['product' => $product, 'color' => $color] = $this->catalogItem();
-        $foreign = Size::factory()->modifier(-4000)->create();
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
-
-        $this->postJson('/api/checkout', $this->checkoutPayload([$this->itemPayload($product, $color, $foreign)]))->assertStatus(422);
-
-        $this->assertSame(0, Order::count());
-    }
-
-    /**
-     * P2 — gêmeo de CheckoutValidationTest::test_cor_com_material_type_diferente_do_material_escolhido_e_aceita
-     */
-    public function test_cor_de_filamento_diferente_do_material_escolhido_retorna_422(): void
-    {
-        ['product' => $product, 'color' => $color] = $this->catalogItem();
-        $color->update(['material_type' => MaterialType::PETG]);
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'pending'));
-
-        $this->postJson('/api/checkout', $this->checkoutPayload([$this->itemPayload($product, $color, null, 1, 'pla')]))->assertStatus(422);
-    }
 
     /**
      * P1 — gêmeo de CheckoutAtomicityAndGatewayTest::test_timeout_do_gateway_no_cartao_cancela_o_pedido_e_repete_a_mensagem
