@@ -30,15 +30,17 @@ Route::get('/categories', function () {
     );
 });
 
+// colors e sizes não têm coluna is_active: as rotas listam todos os registros
+// (decisão pendente em docs/coordenacao.md; a disponibilidade da cor vem em in_stock).
 Route::get('/colors', function () {
     return response()->json(
-        Color::where('is_active', true)->get()
+        Color::orderBy('name')->get()
     );
 });
 
 Route::get('/sizes', function () {
     return response()->json(
-        Size::where('is_active', true)->get()
+        Size::orderBy('name')->get()
     );
 });
 

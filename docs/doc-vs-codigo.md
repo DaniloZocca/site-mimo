@@ -9,7 +9,6 @@ Divergências encontradas ao escrever os testes de caracterização. Nada foi co
 |---|---|---|
 | "Banco: SQLite" (`CLAUDE.md`, Arquitetura) | O `.env` de desenvolvimento usa `DB_CONNECTION=pgsql`; as migrations usam `jsonb`. Produção é Postgres. | `backend/.env` (só a chave foi lida); `database/migrations/2026_02_01_000007_create_orders_table.php:22` |
 | — | Os testes de caracterização rodam em **SQLite em memória**. Comportamentos que dependem do banco podem diferir no Postgres: diferença entre maiúsculas e minúsculas em `=`/`LIKE`, tipos JSON/jsonb, `lockForUpdate()` (no SQLite não trava nada), mensagens de erro de FK. **Rodar a suíte em Postgres no CI antes de confiar nesses pontos.** | `tests/Feature/Characterization/Support/CharacterizationTestCase.php` |
-| `/api/colors` e `/api/sizes` listam cores/tamanhos ativos | Filtram por `is_active`, coluna que **não existe** em `colors` nem em `sizes`. No SQLite o identificador vira texto literal e a rota devolve sempre `[]` (confirmado); no Postgres deve dar erro 500. | `routes/api.php:34` e `:40`; migrations `2026_02_01_000002` e `000003` |
 
 ## Máquina de estados
 
