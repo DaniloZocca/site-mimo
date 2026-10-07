@@ -40,7 +40,8 @@ class SendOrderShippedNotification implements ShouldQueueAfterCommit
             return;
         }
 
-        Mail::to($customerEmail)->send(new OrderShippedMail($order));
+        // Envia aqui (o listener já roda na fila): tries/backoff/failed() deste listener cobrem o SMTP.
+        Mail::to($customerEmail)->sendNow(new OrderShippedMail($order));
 
         Log::info('E-mail de despacho e código dos Correios enviado com sucesso.', [
             'order_id' => $order->id,

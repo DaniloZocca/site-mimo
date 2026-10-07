@@ -40,7 +40,8 @@ class SendOrderConfirmedNotification implements ShouldQueueAfterCommit
             return;
         }
 
-        Mail::to($customerEmail)->send(new OrderConfirmedMail($order));
+        // Envia aqui (o listener já roda na fila): tries/backoff/failed() deste listener cobrem o SMTP.
+        Mail::to($customerEmail)->sendNow(new OrderConfirmedMail($order));
 
         Log::info('E-mail de confirmação de encomenda enviado com sucesso.', [
             'order_id' => $order->id,

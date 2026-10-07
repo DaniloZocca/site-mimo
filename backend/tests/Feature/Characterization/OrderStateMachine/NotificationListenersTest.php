@@ -148,6 +148,20 @@ class NotificationListenersTest extends CharacterizationTestCase
         $this->assertMailTo(OrderShippedMail::class, self::CUSTOMER_EMAIL);
     }
 
+    public function test_listeners_enviam_o_email_na_hora_sem_enfileirar_de_novo(): void
+    {
+        // O próprio listener é o job da fila; se o Mailable fosse enfileirado de novo, uma falha de SMTP
+        // não passaria pelos tries/failed() do listener.
+        $order = Order::factory()->create(['customer_email' => self::CUSTOMER_EMAIL]);
+
+        (new SendOrderConfirmedNotification)->handle(new OrderPaidEvent($order, '123'));
+        (new SendOrderPrintingNotification)->handle(new OrderPrintingStartedEvent($order));
+        (new SendOrderShippedNotification)->handle(new OrderShippedEvent($order, 'BR1'));
+
+        Mail::assertSentCount(3);
+        Mail::assertNothingQueued();
+    }
+
     public function test_listeners_de_email_so_rodam_depois_do_commit(): void
     {
         foreach ([SendOrderConfirmedNotification::class, SendOrderPrintingNotification::class, SendOrderShippedNotification::class] as $listener) {

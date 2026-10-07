@@ -40,7 +40,8 @@ class SendOrderPrintingNotification implements ShouldQueueAfterCommit
             return;
         }
 
-        Mail::to($customerEmail)->send(new OrderPrintingStartedMail($order));
+        // Envia aqui (o listener já roda na fila): tries/backoff/failed() deste listener cobrem o SMTP.
+        Mail::to($customerEmail)->sendNow(new OrderPrintingStartedMail($order));
 
         Log::info('E-mail de início de extrusão 3D enviado com sucesso.', [
             'order_id' => $order->id,
