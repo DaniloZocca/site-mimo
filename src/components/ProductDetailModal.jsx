@@ -43,15 +43,21 @@ const DEFAULT_MATERIALS = [
 ];
 
 export const ProductDetailModal = () => {
+  const { selectedProduct } = useShop();
+
+  if (!selectedProduct) return null;
+
+  // A key remonta o conteúdo a cada produto aberto: o estado (material, cor, tamanho...) começa do zero
+  return <ProductDetailContent key={selectedProduct.id} selectedProduct={selectedProduct} />;
+};
+
+const ProductDetailContent = ({ selectedProduct }) => {
   const { 
-    selectedProduct, 
     closeProductDetail, 
     addToCart, 
     favorites, 
     toggleFavorite 
   } = useShop();
-
-  if (!selectedProduct) return null;
 
   // Materials available for this product
   const availableMaterials = useMemo(() => {
