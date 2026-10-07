@@ -20,7 +20,6 @@ class SendOrderStatusUpdatedNotification implements ShouldQueue
     public function handle(OrderStatusUpdatedEvent $event): void
     {
         Log::info("🔔 [Notificação Assíncrona] Atualização de status da encomenda #{$event->order->order_number} para {$event->newStatus->getLabel()}", [
-            'customer_email' => $event->order->customer_email,
             'previous' => $event->previousStatus->value,
             'new' => $event->newStatus->value,
             'notes' => $event->notes,

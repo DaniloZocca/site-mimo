@@ -20,7 +20,7 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
     public function __construct(
         public Order $order
     ) {
-        $this->order->loadMissing(['orderItems', 'customer']);
+        $this->order->loadMissing('items');
     }
 
     public function envelope(): Envelope
@@ -32,16 +32,29 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
+        // Valores do snapshot gravado no pedido (centavos inteiros); nada é recalculado a partir de Product.
+        $subtotalCents = (int) $this->order->items->sum(fn ($item): int => $item->unit_price_cents * $item->quantity);
+        $shippingCents = (int) $this->order->shipping_cost_cents;
+        $totalCents = (int) $this->order->total_cents;
+        // total = peças − desconto PIX + frete (OrderCreationService)
+        $discountCents = max(0, $subtotalCents + $shippingCents - $totalCents);
+
         return new Content(
             view: 'emails.orders.confirmed',
             with: [
                 'order' => $this->order,
                 'trackingUrl' => rtrim(config('app.url', 'http://localhost:5173'), '/')."/?token={$this->order->tracking_token}",
-                'totalAmountFormatted' => 'R$ '.number_format($this->order->total_amount_cents / 100, 2, ',', '.'),
-                'subtotalFormatted' => 'R$ '.number_format($this->order->subtotal_cents / 100, 2, ',', '.'),
-                'shippingFormatted' => 'R$ '.number_format($this->order->shipping_cost_cents / 100, 2, ',', '.'),
+                'totalAmountFormatted' => $this->formatCents($totalCents),
+                'subtotalFormatted' => $this->formatCents($subtotalCents),
+                'discountFormatted' => $discountCents > 0 ? '− '.$this->formatCents($discountCents) : null,
+                'shippingFormatted' => $this->formatCents($shippingCents),
             ],
         );
+    }
+
+    private function formatCents(int $cents): string
+    {
+        return 'R$ '.number_format(intdiv($cents, 100), 0, ',', '.').','.str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
     }
 
     /**

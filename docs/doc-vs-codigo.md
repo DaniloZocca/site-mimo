@@ -17,7 +17,7 @@ Divergências encontradas ao escrever os testes de caracterização. Nada foi co
 |---|---|---|
 | "Status de pedido só muda via `ProductionWorkflowService::transitionTo()`" (regra 5) e "Webhook, Filament e comandos chamam esse método" (skill `mimoo-order-state-machine`) | **Nenhum código de produção chama o serviço.** Checkout, webhook e Filament alteram `status` direto e gravam o `ProductionLog` por conta própria. Só os testes usam o serviço. | `CheckoutController.php:64-68` e `:106-108`; `MercadoPagoWebhookController.php:176-180` e `:208-211`; `OrderResource.php:207-219`, `:237-249`, `:272-285` |
 | Painel permite conduzir o pedido até o fim | Não há ação de cancelar nem de marcar como entregue no painel. `delivered` é inalcançável em produção. | `FilamentOrderActionsTest::test_acoes_de_linha_existentes_na_tabela` |
-| "E-mails/notificações: listeners `ShouldQueue`, disparados após commit" (`backend/CLAUDE.md`) | O webhook dispara `OrderPaidEvent` **dentro** do `DB::transaction` (sem `afterCommit`). Com fila `sync` o listener roda dentro da transação. | `MercadoPagoWebhookController.php:190` |
+| "E-mails/notificações: listeners `ShouldQueue`, disparados após commit" (`backend/CLAUDE.md`) | O webhook ainda dispara `OrderPaidEvent` **dentro** do `DB::transaction`, mas desde o M-04 os listeners de e-mail são `ShouldQueueAfterCommit` e só rodam depois do commit. Com fila `sync`, um erro no envio não desfaz o pagamento, mas o webhook responde 500 (o Mercado Pago reenvia e cai no caminho idempotente). | `MercadoPagoWebhookController.php:236`; `NotificationListenersTest::test_webhook_com_fila_sync_e_falha_no_envio_nao_desfaz_o_pagamento` |
 
 ## Pagamento e preço
 
@@ -37,7 +37,7 @@ Divergências encontradas ao escrever os testes de caracterização. Nada foi co
 
 | Doc diz | Código faz | Evidência |
 |---|---|---|
-| CPF, e-mail e telefone nunca vão para logs ou respostas (regra 8) | E-mail do cliente vai para log em `ProcessOrderPaidNotification`, `SendOrderPaidNotification` e `SendOrderStatusUpdatedNotification`; a mensagem técnica do gateway vai para a resposta do checkout e para a timeline pública. | `app/Jobs/ProcessOrderPaidNotification.php:30`; `app/Listeners/SendOrderPaidNotification.php:21`; `app/Listeners/SendOrderStatusUpdatedNotification.php:22`; `CheckoutController.php:118` |
+| CPF, e-mail e telefone nunca vão para logs ou respostas (regra 8) | Listeners e job de notificação não logam mais o e-mail (M-04). Ainda: a mensagem técnica do gateway vai para a resposta do checkout e para a timeline pública; o `catch` do webhook loga `getMessage()` + trace de qualquer exceção (com fila `sync`, um erro do SMTP pode conter o endereço). | `CheckoutController.php:118`; `MercadoPagoWebhookController.php:276` |
 | Rastreio por `order_number` + CPF | O parâmetro é `cpf_prefix` (prefixo, sem tamanho mínimo), ou `email`. | `TrackOrderRequest.php:28` |
 | `CheckoutRequest` sanitiza CPF/telefone/CEP | A sanitização em `passedValidation()` não chega ao DTO (que lê `validated()`); os valores são gravados com máscara. | `CheckoutRequest.php:161-177`; `CheckoutOrderDTO.php:31` |
 

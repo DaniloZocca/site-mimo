@@ -17,7 +17,7 @@
       </h1>
       
       <p style="margin: 0; font-size: 13px; color: #52525B; line-height: 1.6; max-width: 480px;">
-        Olá, {{ explode(' ', trim($order->customer->name ?? 'Cliente'))[0] }}! Nossa equipe técnica acabou de carregar o filamento ecológico e a impressora 3D já está fatiando a sua encomenda <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong>.
+        Olá, {{ explode(' ', trim($order->customer_name ?: 'Cliente'))[0] }}! Nossa equipe técnica acabou de carregar o filamento ecológico e a impressora 3D já está fatiando a sua encomenda <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong>.
       </p>
     </td>
   </tr>
@@ -61,10 +61,10 @@
   <tr>
     <td style="padding: 16px 0 8px 0; border-top: 2px solid #F4F4F5;">
       <h3 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #71717A;">
-        Peças Sendo Extrusadas Agora ({{ $order->orderItems->count() }})
+        Peças Sendo Extrusadas Agora ({{ $order->items->count() }})
       </h3>
 
-      @foreach($order->orderItems as $item)
+      @foreach($order->items as $item)
         @include('emails.components.item-row', ['item' => $item])
       @endforeach
     </td>

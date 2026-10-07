@@ -6,13 +6,13 @@ namespace App\Listeners;
 
 use App\Events\OrderShippedEvent;
 use App\Mail\OrderShippedMail;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
-class SendOrderShippedNotification implements ShouldQueue
+class SendOrderShippedNotification implements ShouldQueueAfterCommit
 {
     use InteractsWithQueue;
 
@@ -29,9 +29,7 @@ class SendOrderShippedNotification implements ShouldQueue
     public function handle(OrderShippedEvent $event): void
     {
         $order = $event->order;
-        $order->loadMissing(['customer', 'orderItems']);
-
-        $customerEmail = $order->customer?->email;
+        $customerEmail = $order->customer_email;
 
         if (! $customerEmail) {
             Log::warning('Tentativa de envio de e-mail de despacho abortada: e-mail do cliente não encontrado.', [
@@ -42,12 +40,12 @@ class SendOrderShippedNotification implements ShouldQueue
             return;
         }
 
-        Mail::to($customerEmail)->send(new OrderShippedMail($order));
+        // Envia aqui (o listener já roda na fila): tries/backoff/failed() deste listener cobrem o SMTP.
+        Mail::to($customerEmail)->sendNow(new OrderShippedMail($order));
 
         Log::info('E-mail de despacho e código dos Correios enviado com sucesso.', [
             'order_id' => $order->id,
             'order_number' => $order->order_number,
-            'recipient' => $customerEmail,
             'carrier_tracking_code' => $order->carrier_tracking_code,
         ]);
     }
@@ -57,7 +55,7 @@ class SendOrderShippedNotification implements ShouldQueue
         Log::error('FALHA: E-mail de despacho da encomenda não pôde ser entregue.', [
             'order_id' => $event->order->id,
             'order_number' => $event->order->order_number,
-            'error_message' => $exception->getMessage(),
+            'exception' => $exception::class,
         ]);
     }
 }

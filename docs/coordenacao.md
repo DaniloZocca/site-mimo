@@ -73,7 +73,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-01 | Trocar a senha do admin e tirar e-mail/senha padrão do `AdminUserSeeder` (C4) | B | config | — | concluído (senha local já trocada; servidor publicado precisa trocar à parte) | #11 |
 | M-02 | Tirar a promessa de frete grátis da loja | B | front | — | concluído | #10 |
 | M-03 | Validar cor, tamanho e material do próprio produto no checkout (bugs #5, #6, #19) | C | checkout, front | — | concluído | #12 |
-| M-04 | E-mails ao cliente: listeners com relações certas (#13), confirmação registrada uma vez só (#23), e-mail fora dos logs dos listeners/job (doc-vs-código) | C | pedidos | — | a fazer | — |
+| M-04 | E-mails ao cliente: listeners com relações certas (#13), confirmação registrada uma vez só (#23), e-mail fora dos logs dos listeners/job (doc-vs-código) | C | pedidos | — | concluído (também #26: valores do e-mail de confirmação, com linha "Desconto PIX" só quando há desconto; listeners de e-mail só depois do commit) | #18 |
 | M-05 | Config de produção: tirar `'*'` do CORS (A4), `SESSION_SECURE_COOKIE` no `.env.example` (M3), checagem que falha com `APP_DEBUG=true` em produção (C3) | B | config (+ `app/Console/Commands/`, sem zona) | — | concluído (o `.env.example` é bloqueado para o Claude: o Zocca acrescenta `SESSION_SECURE_COOKIE` e `CORS_ALLOWED_ORIGINS` à mão; em produção o cookie já é Secure por padrão) | #14 |
 | M-06 | SDK do Mercado Pago em `SERVER` fora do ambiente local (M2) | C | checkout | — | a fazer | — |
 | M-07 | Front: trocar `localhost:8000` fixo por `import.meta.env.VITE_API_URL` em `ShopContext`, `CheckoutModal`, `useMercadoPagoCard`, `useShipping`, `trackingService` (B2) | B | front | M-02 | concluído (também `usePaymentStatus`, que usava `/api` relativo; base em `src/config/api.js`) | #15 |
@@ -109,6 +109,7 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 | Cancelar pedido já pago no painel: estorno automático pelo Mercado Pago ou manual? | M-10 cancela só pedido não pago; pago fica para estorno manual. | M-10 |
 | Validade do PIX (`date_of_expiration`): qual prazo? | Prazo padrão do Mercado Pago. | M-17 ou tarefa nova |
 | Frete grátis como política futura (valor mínimo, regiões)? | Sem frete grátis (M-02). | — |
+| E-mail de confirmação promete "~4 horas de extrusão" (o campo `estimated_total_print_time_hours` não existe; sempre cai no 4). Manter, tirar ou calcular? | Texto atual mantido (M-04 não mudou o texto). | tarefa nova |
 
 ## Antes do deploy
 
@@ -121,3 +122,7 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   `php artisan mimoo:check-production`: precisa terminar com "Configuração de produção ok." (código 0).
 - Build do front com `VITE_API_URL` = endereço da API publicada, sem `/api` no final (M-07; ex.:
   `VITE_API_URL=https://api.dominio.com.br npm run build`). Sem ela, o site publicado chama `http://localhost:8000`.
+- E-mails ao cliente (M-04): `.env` de produção com `MAIL_MAILER` e os dados do SMTP, e um `php artisan queue:work`
+  rodando sempre (a fila é `database`; sem worker os e-mails ficam parados na tabela `jobs`). Se usar
+  `php artisan event:cache`, rodar de novo a cada deploy. Hoje só o PIX (webhook) manda e-mail: cartão espera o
+  M-08 e as ações do painel esperam o M-10. O botão "Acompanhar" dos e-mails usa `APP_URL` (domínio da API).
