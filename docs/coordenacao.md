@@ -65,7 +65,7 @@ cada PR mexe só nas linhas da sua tarefa.
 ## Backlog
 
 Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardando plano` (C/D esperando OK) ·
-`em andamento` · `bloqueado`.
+`em andamento` · `bloqueado` · `cancelado`.
 
 | # | Tarefa | Classe | Zonas | Depende de | Status | PR |
 |---|---|---|---|---|---|---|
@@ -87,7 +87,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-15 | Rate limit separado para checkout, rastreio e frete (#18) | B | rotas | M-11 | concluído (contador próprio por grupo de rotas; limites 10/10/30 por minuto mantidos) | #27 |
 | M-16 | `transitionTo()` valida contra o status do banco (#15); `dispatchOrder()` só grava o código após validar (#22) | C | pedidos | M-04, M-10 | a fazer | — |
 | M-17 | Webhook: cancelamento confere o payment id em `order_payments` e usa update condicional (#24); `OrderPaidEvent` só após o commit | C | checkout | M-08 | a fazer | — |
-| M-18 | Desconto PIX igual no front e no back (diferença de 1 centavo; skill `pricing-sync`) | C | checkout, front | M-08 | a fazer | — |
+| M-18 | Desconto PIX igual no front e no back (diferença de 1 centavo; skill `pricing-sync`) | C | checkout, front | M-08 | cancelado (duplicado do PR #10, conferido na `main` em 2026-10-07: o back faz `subtotal − round(subtotal × 0,10)` em `OrderCreationService.php:206-210` e o front usa a mesma conta só com inteiros em `src/utils/pricing.js:117` (`calculateProductPricing`) e `:186` (`calculateCartTotals`); fuzz de 900 mil comparações com 0 diferença; `docs/doc-vs-codigo.md:32` já marca resolvido e `docs/known-bugs.md` não tem a entrada) | #10 |
 | M-19 | Sanitização de CPF/telefone/CEP do `CheckoutRequest` chegar ao DTO | C | checkout | M-17 | a fazer | — |
 | M-20 | Mensagens de validação em pt-BR (`lang/pt_BR`) | B | config | M-05 | concluído (locale padrão `pt_BR` no config; se o `.env` do servidor tiver `APP_LOCALE=en`, trocar para `pt_BR`) | #19 |
 | M-21 | Catálogo: trocar o polling de 3 s do `ShopContext` por algo mais leve, sem mudar a tela | B | front | M-07 | concluído (busca ao abrir, a cada 60 s só com a aba visível e ao voltar para a aba, no mínimo 15 s entre buscas; mudança no painel aparece na loja em até 60 s) | #20 |
@@ -98,6 +98,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-26 | Área de cliente: `AuthModal` mock e usuário fixo "Fernanda" (B3) | C | front | decisão pendente | bloqueado | — |
 | M-27 | Botão "Acompanhar" dos e-mails de pedido (`confirmed`, `printing`, `shipped`) monta `$trackingUrl` com `APP_URL` e abre o endereço da API, não o da loja: usar o domínio do front (config nova) e fazer a loja abrir o rastreio a partir do link (sem router hoje). Achado no M-04 (#18) | B | pedidos, config, front | M-04 | concluído (produção precisa de `FRONTEND_URL`, ver "Antes do deploy") | #21 |
 | M-28 | Texto do formulário de rastreio ainda pede "primeiros dígitos do CPF" (`OrderSearchForm.jsx:90`, `trackingSchema.js`): trocar por "CPF completo" e conferir os 11 dígitos antes de enviar, sem mudança visual. Achado no M-09 | B | front | M-09 | concluído | #25 |
+| M-29 | Preço unitário negativo quando o modificador do tamanho é mais negativo que o preço base: o painel aceita (`SizeResource.php:42`, campo sem mínimo). Ex.: base 5000, tamanho −6000, frete 1490: o checkout mostra PIX R$ 5,90 e cartão R$ 4,90, mas o back trava as peças em 0 com `max(0, …)` e cobra R$ 14,90 (só o frete); `calculateProductPricing` trava em 0 e `calculateCartTotals` não. Caracterizado como PERGUNTA em `CheckoutValidationTest::test_modificador_negativo_maior_que_o_preco_gera_unitario_negativo`. Direção (a decidir no plano): proibir unitário negativo, com validação no painel e/ou 422 no checkout. Só abre com o OK do Zocca. Achado na conferência do M-18 | C | painel, checkout | M-17 | a fazer | — |
 
 ## Decisões pendentes
 
