@@ -140,7 +140,7 @@
                         Política de Privacidade
                       </a>
                       <span style="color: #CBD5E1;">•</span>
-                      <a href="{{ config('app.url') }}" target="_blank" style="color: #7C3AED; text-decoration: none; margin: 0 8px;">
+                      <a href="{{ config('app.frontend_url') }}" target="_blank" style="color: #7C3AED; text-decoration: none; margin: 0 8px;">
                         mimoolab.com.br
                       </a>
                     </p>

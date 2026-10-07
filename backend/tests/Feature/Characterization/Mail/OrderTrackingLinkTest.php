@@ -14,7 +14,8 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 
 /**
- * M-27: o botão "Acompanhar" dos e-mails de pedido abre a loja (FRONTEND_URL), não o endereço da API (APP_URL).
+ * M-27: o botão "Acompanhar" e o link da loja no rodapé dos e-mails de pedido abrem a loja (FRONTEND_URL),
+ * não o endereço da API (APP_URL). Termos/Privacidade do rodapé seguem em APP_URL (páginas ainda não existem).
  */
 #[Group('characterization')]
 class OrderTrackingLinkTest extends CharacterizationTestCase
@@ -22,7 +23,7 @@ class OrderTrackingLinkTest extends CharacterizationTestCase
     public function test_botao_acompanhar_aponta_para_a_loja_com_o_token_do_pedido(): void
     {
         config()->set('app.url', 'https://api.mimoo.exemplo.test');
-        config()->set('app.frontend_url', 'https://mimoo.exemplo.test/');
+        config()->set('app.frontend_url', 'https://mimoo.exemplo.test');
 
         $order = Order::factory()->status(OrderStatus::SHIPPED)->create(['carrier_tracking_code' => 'BR123456789BR']);
         OrderItem::factory()->for($order)->create();
@@ -31,7 +32,10 @@ class OrderTrackingLinkTest extends CharacterizationTestCase
             $html = $mail->render();
 
             $this->assertStringContainsString("href=\"https://mimoo.exemplo.test/?token={$order->tracking_token}\"", $html, $mail::class);
-            $this->assertStringNotContainsString('api.mimoo.exemplo.test', $html, $mail::class);
+            // O link "mimoolab.com.br" do rodapé também leva à loja.
+            $this->assertStringContainsString('href="https://mimoo.exemplo.test"', $html, $mail::class);
+            $this->assertStringNotContainsString('href="https://api.mimoo.exemplo.test"', $html, $mail::class);
+            $this->assertStringNotContainsString('api.mimoo.exemplo.test/?token', $html, $mail::class);
         }
     }
 
