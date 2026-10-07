@@ -97,7 +97,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-25 | CSP sem `unsafe-eval`/`unsafe-inline` onde o Filament permitir (B1) | B | rotas | M-15 | a fazer | — |
 | M-26 | Área de cliente: `AuthModal` mock e usuário fixo "Fernanda" (B3) | C | front | decisão pendente | bloqueado | — |
 | M-27 | Botão "Acompanhar" dos e-mails de pedido (`confirmed`, `printing`, `shipped`) monta `$trackingUrl` com `APP_URL` e abre o endereço da API, não o da loja: usar o domínio do front (config nova) e fazer a loja abrir o rastreio a partir do link (sem router hoje). Achado no M-04 (#18) | B | pedidos, config, front | M-04 | concluído (produção precisa de `FRONTEND_URL`, ver "Antes do deploy") | #21 |
-| M-28 | Texto do formulário de rastreio ainda pede "primeiros dígitos do CPF" (`OrderSearchForm.jsx:90`, `trackingSchema.js`): trocar por "CPF completo" e conferir os 11 dígitos antes de enviar, sem mudança visual. Achado no M-09 | B | front | M-09 | a fazer | — |
+| M-28 | Texto do formulário de rastreio ainda pede "primeiros dígitos do CPF" (`OrderSearchForm.jsx:90`, `trackingSchema.js`): trocar por "CPF completo" e conferir os 11 dígitos antes de enviar, sem mudança visual. Achado no M-09 | B | front | M-09 | em andamento | — |
 
 ## Decisões pendentes
 
