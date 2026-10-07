@@ -246,7 +246,7 @@ class SimulateOrderFlowCommand extends Command
         // RELATÓRIO DE SUCESSO
         // =====================================================================
         $totalDuration = round((microtime(true) - $startTime) * 1000, 2);
-        $trackingUrl = rtrim(config('app.url', 'http://localhost:5173'), '/')."/?token={$order->tracking_token}&success=true";
+        $trackingUrl = rtrim((string) config('app.frontend_url'), '/')."/?token={$order->tracking_token}&success=true";
 
         $this->info('');
         $this->line('🎉 <bg=green;fg=black;options=bold> SUCESSO ABSOLUTO: FLUXO E2E EXECUTADO COM SUCESSO! </>');
