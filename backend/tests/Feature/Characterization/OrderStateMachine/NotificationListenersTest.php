@@ -71,6 +71,8 @@ class NotificationListenersTest extends CharacterizationTestCase
         foreach (app('events')->getRawListeners() as $event => $listeners) {
             if (str_starts_with($event, 'App\\')) {
                 $out[$event] = array_map(fn ($l): string => is_string($l) ? $l : (is_array($l) ? implode('@', $l) : 'closure'), $listeners);
+                // A descoberta automática segue a ordem do sistema de arquivos (varia entre máquinas); o que importa é cada listener aparecer uma vez.
+                sort($out[$event]);
             }
         }
         ksort($out);
