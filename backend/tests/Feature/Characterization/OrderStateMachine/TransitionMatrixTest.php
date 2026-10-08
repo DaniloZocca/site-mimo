@@ -110,8 +110,8 @@ class TransitionMatrixTest extends CharacterizationTestCase
         }
 
         // aceita
-        $this->assertNotSame($order, $result, 'Transição aceita devolve uma NOVA instância (a recebida fica desatualizada).');
-        $this->assertSame($from, $order->status->value);
+        $this->assertSame($order, $result, 'Transição aceita devolve a MESMA instância recebida, já atualizada com o banco.');
+        $this->assertSame($to, $order->status->value);
         $this->assertSame($to, $result->status->value);
         $this->assertSame($to, $order->fresh()->status->value);
 
