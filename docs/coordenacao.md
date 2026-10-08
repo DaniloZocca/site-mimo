@@ -18,9 +18,11 @@ Fontes do backlog: `docs/known-bugs.md` (bugs #N), `RELATORIO_SEGURANCA_MIMOO.md
 - PR que toca `src/`: screenshots antes/depois (375px e 1280px) e revisão do subagente `ui-reviewer`
   ("o visual ficou idêntico ao padrão Kawaii Chunky").
 - Merge (decisão do Zocca em 2026-10-07): o Claude pode mergear quando o PR estiver pronto (CI verde no
-  último commit, sem conflito, comentários resolvidos, saídas coladas). Enquanto não houver CI (não existe
-  `.github/`), "CI verde" = atualizar o PR com a `main` atual e rodar suíte completa, `pint --test`, lint e
-  build nesse estado, colando a saída. Depois do merge, avisar na thread o que entrou e o que fazer antes do deploy.
+  último commit, sem conflito, comentários resolvidos, saídas coladas). "CI verde" = os checks do workflow
+  `CI` (`.github/workflows/ci.yml`) verdes no último commit do PR, atualizado com a `main`.
+  **Suspenso (Zocca, 2026-10-08):** até o Zocca ativar a proteção da `main` com os checks obrigatórios,
+  nenhum merge é do Claude: abrir o PR, deixar pronto e avisar na thread. Depois do merge, avisar na thread
+  o que entrou e o que fazer antes do deploy.
 - O PR da tarefa atualiza a própria linha da tabela abaixo (status e PR) e, se corrigir bug, `docs/known-bugs.md`.
   Conflito nesses dois arquivos se resolve mergeando a `main` e mantendo as duas linhas.
 
@@ -91,7 +93,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-19 | Sanitização de CPF/telefone/CEP do `CheckoutRequest` chegar ao DTO | C | checkout | M-17 | a fazer | — |
 | M-20 | Mensagens de validação em pt-BR (`lang/pt_BR`) | B | config | M-05 | concluído (locale padrão `pt_BR` no config; se o `.env` do servidor tiver `APP_LOCALE=en`, trocar para `pt_BR`) | #19 |
 | M-21 | Catálogo: trocar o polling de 3 s do `ShopContext` por algo mais leve, sem mudar a tela | B | front | M-07 | concluído (busca ao abrir, a cada 60 s só com a aba visível e ao voltar para a aba, no mínimo 15 s entre buscas; mudança no painel aparece na loja em até 60 s) | #20 |
-| M-22 | CI no GitHub Actions com Postgres (suíte, `pint --test`, lint, build); `oxlint` como devDependency (hoje `npm run lint` falha com "oxlint: not found") e lint sem varrer `backend/public/` | D | stack | M-01 a M-03 mergeados | a fazer | — |
+| M-22 | CI no GitHub Actions com Postgres (suíte, `pint --test`, lint, build); `oxlint` como devDependency (hoje `npm run lint` falha com "oxlint: not found") e lint sem varrer `backend/public/` | D | stack | M-01 a M-03 mergeados | concluído (workflow `CI`: backend em PHP 8.2 e 8.3 com Postgres 16, frontend com lint com teto de 75 avisos e build) | #30 |
 | M-23 | `composer audit` e `npm audit` e correção do que aparecer | D | stack | M-22 | a fazer | — |
 | M-24 | Migrar checkout, webhook e painel para o `ProductionWorkflowService` (dívida da regra 5) | C | checkout, pedidos, painel | M-16, M-17 | a fazer | — |
 | M-25 | CSP sem `unsafe-eval`/`unsafe-inline` onde o Filament permitir (B1) | B | rotas | M-15 | concluído (painel Filament mantém `unsafe-inline`/`unsafe-eval`: scripts inline sem nonce e Alpine com `new Function`) | #28 |

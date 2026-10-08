@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Sem indicação da versão de produção no repositório: testa 8.2 e 8.3
+        # até o upgrade do Laravel (composer.json pede ^8.2).
+        php: ['8.2', '8.3']
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mimoo
+          POSTGRES_PASSWORD: mimoo
+          POSTGRES_DB: mimoo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mimoo -d mimoo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Banco descartável do CI: nada aqui é segredo. Sem .env; tudo por variável de ambiente.
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: mimoo_test
+      DB_USERNAME: mimoo
+      DB_PASSWORD: mimoo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_pgsql, pdo_sqlite, sqlite3, intl, zip, gd, bcmath
+          coverage: none
+          tools: composer:v2
+
+      - name: Pasta de cache do Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache do Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-${{ matrix.php }}-
+
+      - name: composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: APP_KEY descartável
+        run: echo "APP_KEY=base64:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - name: Pint (formatação)
+        run: vendor/bin/pint --test
+
+      - name: Migrations no Postgres
+        run: php artisan migrate:fresh --force
+
+      # vendor/bin/phpunit e não `php artisan test`: sem .env o artisan marca os testes como "warning".
+      # O grupo known-bugs (falha de propósito) fica fora pelo phpunit.xml.
+      - name: PHPUnit
+        run: vendor/bin/phpunit
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Lint (oxlint, teto de avisos no package.json)
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
