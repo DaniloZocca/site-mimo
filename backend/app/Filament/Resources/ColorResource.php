@@ -7,11 +7,14 @@ namespace App\Filament\Resources;
 use App\Enums\MaterialType;
 use App\Filament\Resources\ColorResource\Pages;
 use App\Models\Color;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 
 class ColorResource extends Resource
 {
@@ -99,15 +102,46 @@ class ColorResource extends Resource
                     ->trueLabel('Apenas em Estoque')
                     ->falseLabel('Apenas Esgotados'),
             ])
+            ->defaultSort('name')
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->before(fn (Tables\Actions\DeleteAction $action, Color $record) => static::cancelDeleteIfLinked($action, collect([$record]))),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->before(fn (Tables\Actions\DeleteBulkAction $action, Collection $records) => static::cancelDeleteIfLinked($action, $records)),
                 ]),
             ]);
+    }
+
+    /**
+     * Apagar uma cor tira ela de todas as peças (cascade no pivô) e pode deixar peça sem cor,
+     * que o checkout recusa. Cor vinculada não se apaga: o painel sugere "esgotada".
+     *
+     * @param  \Illuminate\Support\Collection<int, Color>  $colors
+     */
+    public static function cancelDeleteIfLinked(Actions\Action|Tables\Actions\Action|Tables\Actions\BulkAction $action, \Illuminate\Support\Collection $colors): void
+    {
+        $linked = Color::query()
+            ->whereKey($colors->map(fn (Color $color): string => $color->getKey())->all())
+            ->has('products')
+            ->orderBy('name')
+            ->pluck('name');
+
+        if ($linked->isEmpty()) {
+            return;
+        }
+
+        Notification::make()
+            ->danger()
+            ->title('Cor em uso no catálogo')
+            ->body('Nada foi apagado. Marcada em peças da loja: '.$linked->join(', ', ' e ').'. Para tirar da venda, desmarque "Em Estoque"; para apagar, desmarque a cor nas peças antes.')
+            ->persistent()
+            ->send();
+
+        $action->cancel();
     }
 
     public static function getPages(): array
