@@ -62,10 +62,14 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Pasta de cache do Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
       - name: Cache do Composer
         uses: actions/cache@v4
         with:
-          path: ~/.composer/cache/files
+          path: ${{ steps.composer-cache.outputs.dir }}
           key: composer-${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
           restore-keys: composer-${{ matrix.php }}-
 
