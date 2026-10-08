@@ -77,12 +77,6 @@ class SizeResource extends Resource
                     ->color('success')
                     ->sortable(),
             ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Status')
-                    ->trueLabel('Apenas Ativos')
-                    ->falseLabel('Apenas Inativos'),
-            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

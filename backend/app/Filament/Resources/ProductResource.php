@@ -6,13 +6,17 @@ namespace App\Filament\Resources;
 
 use App\Enums\MaterialType;
 use App\Filament\Resources\ProductResource\Pages;
+use App\Models\Color;
 use App\Models\Product;
+use Closure;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class ProductResource extends Resource
@@ -145,11 +149,27 @@ class ProductResource extends Resource
 
                                 Forms\Components\CheckboxList::make('colors')
                                     ->label('Cores de Filamento Disponíveis para Impressão')
-                                    ->relationship('colors', 'name')
+                                    ->relationship(
+                                        'colors',
+                                        'name',
+                                        modifyQueryUsing: fn (Builder $query): Builder => $query->orderBy('material_type')->orderBy('name'),
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn (Color $record): string => $record->name.' · '.$record->material_type->shortLabel().($record->in_stock ? '' : ' (esgotada)'))
+                                    ->searchable()
+                                    ->bulkToggleable()
                                     ->columns(3)
                                     ->gridDirection('row')
                                     ->required()
-                                    ->helperText('Marque as cores de bobina que o cliente pode escolher para imprimir esta peça.'),
+                                    ->rules([
+                                        fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                                            $problem = static::colorMaterialProblem((array) $value, (array) $get('allowed_materials'));
+
+                                            if ($problem !== null) {
+                                                $fail($problem);
+                                            }
+                                        },
+                                    ])
+                                    ->helperText('Marque as cores de bobina que o cliente pode escolher. Cada cor mostra o seu material: marque pelo menos uma cor de cada material homologado acima.'),
                             ]),
 
                         // ABA 4: PIPELINE SEGURO DE UPLOAD DE IMAGENS (ANTI-XSS / 30MB / NO SVG / COMPACT GRID)
@@ -198,6 +218,37 @@ class ProductResource extends Resource
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    /**
+     * Cor de material não homologado nunca é vendida (o checkout recusa com 422) e material sem
+     * nenhuma cor marcada não tem o que imprimir. Devolve a mensagem do erro ou null.
+     *
+     * @param  array<int, string>  $colorIds
+     * @param  array<int, string>  $allowedMaterials
+     */
+    public static function colorMaterialProblem(array $colorIds, array $allowedMaterials): ?string
+    {
+        $colors = Color::query()->whereKey($colorIds)->orderBy('name')->get();
+
+        $outside = $colors->reject(fn (Color $color): bool => in_array($color->material_type->value, $allowedMaterials, true));
+        if ($outside->isNotEmpty()) {
+            return 'Estas cores são de um material que a peça não usa: '
+                .$outside->map(fn (Color $color): string => $color->name.' ('.$color->material_type->shortLabel().')')->join(', ', ' e ')
+                .'. Marque o material em "Materiais Homologados" ou desmarque a cor.';
+        }
+
+        $withoutColor = collect($allowedMaterials)
+            ->map(fn (string $value): ?MaterialType => MaterialType::tryFrom($value))
+            ->filter()
+            ->reject(fn (MaterialType $material): bool => $colors->contains(fn (Color $color): bool => $color->material_type === $material));
+        if ($withoutColor->isNotEmpty()) {
+            return 'Falta marcar pelo menos uma cor de: '
+                .$withoutColor->map(fn (MaterialType $material): string => $material->shortLabel())->join(', ', ' e ')
+                .'. Sem cor, o cliente não consegue comprar a peça nesse material.';
+        }
+
+        return null;
     }
 
     public static function table(Table $table): Table
