@@ -14,6 +14,7 @@ use App\Http\Requests\CheckoutRequest;
 use App\Jobs\ProcessOrderPaidNotification;
 use App\Models\Order;
 use App\Models\ProductionLog;
+use App\Services\AfterCommitDispatcher;
 use App\Services\CheckoutIdempotencyService;
 use App\Services\MercadoPagoService;
 use App\Services\OrderCreationService;
@@ -47,6 +48,7 @@ class CheckoutController extends Controller
         private readonly CheckoutIdempotencyService $idempotency,
         private readonly PaymentApprovalValidator $approvalValidator,
         private readonly ProductionWorkflowService $workflow,
+        private readonly AfterCommitDispatcher $afterCommit,
     ) {}
 
     /**
@@ -236,8 +238,9 @@ class CheckoutController extends Controller
             return false;
         }
 
-        event(new OrderPaidEvent($order, $payment->id));
-        ProcessOrderPaidNotification::dispatch($order);
+        // Depois da gravação: falha de aviso/e-mail vai para o log e não muda a resposta (M-32)
+        $this->afterCommit->event($order, new OrderPaidEvent($order, $payment->id));
+        $this->afterCommit->job($order, new ProcessOrderPaidNotification($order));
 
         return true;
     }

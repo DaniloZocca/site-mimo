@@ -19,6 +19,10 @@ use Illuminate\Support\Facades\Log;
 
 class ProductionWorkflowService
 {
+    public function __construct(
+        private readonly AfterCommitDispatcher $afterCommit,
+    ) {}
+
     /**
      * Mapa de Transições Permitidas da Máquina de Estados da Oficina 3D.
      *
@@ -185,12 +189,13 @@ class ProductionWorkflowService
                     'order_id' => $order->id,
                 ]);
 
-                event(new OrderStatusUpdatedEvent($order, $currentStatus, $newStatus, $notes));
+                // Cada aviso isolado: uma falha vai para o log e não muda a resposta nem impede o próximo (M-32)
+                $this->afterCommit->event($order, new OrderStatusUpdatedEvent($order, $currentStatus, $newStatus, $notes));
 
                 if ($newStatus === OrderStatus::PRINTING) {
-                    event(new OrderPrintingStartedEvent($order, $notes));
+                    $this->afterCommit->event($order, new OrderPrintingStartedEvent($order, $notes));
                 } elseif ($newStatus === OrderStatus::SHIPPED) {
-                    event(new OrderShippedEvent($order, $order->carrier_tracking_code ?? ''));
+                    $this->afterCommit->event($order, new OrderShippedEvent($order, $order->carrier_tracking_code ?? ''));
                 }
             });
 

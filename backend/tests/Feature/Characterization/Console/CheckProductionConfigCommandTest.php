@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Characterization\Console;
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 
@@ -113,6 +115,44 @@ class CheckProductionConfigCommandTest extends CharacterizationTestCase
             ->assertFailed();
     }
 
+    public function test_fila_sync_falha(): void
+    {
+        $this->configureProduction();
+        config()->set('queue.default', 'sync');
+
+        $this->artisan('mimoo:check-production')
+            ->expectsOutputToContain('Fila sync: e-mails e avisos rodam dentro da requisição do cliente')
+            ->assertFailed();
+    }
+
+    public function test_fila_database_sem_job_parado_mostra_fila_ok_e_failed_jobs(): void
+    {
+        $this->configureProduction();
+        $this->insertJob(minutesAgo: 2);
+        $this->insertFailedJob();
+        $this->insertFailedJob();
+
+        $this->artisan('mimoo:check-production')
+            ->expectsOutput('Fila: nenhum job parado.')
+            ->expectsOutput('Jobs que falharam (failed_jobs): 2')
+            ->expectsOutput('Configuração de produção ok.')
+            ->assertSuccessful();
+    }
+
+    public function test_job_parado_ha_mais_de_5_minutos_avisa_sem_reprovar(): void
+    {
+        $this->configureProduction();
+        $this->insertJob(minutesAgo: 6);
+        $this->insertJob(minutesAgo: 10);
+        $this->insertJob(minutesAgo: 6, reserved: true);
+
+        $this->artisan('mimoo:check-production')
+            ->expectsOutput('Há 2 job(s) parado(s) há mais de 5 min na fila: o worker pode estar parado.')
+            ->expectsOutput('Jobs que falharam (failed_jobs): 0')
+            ->expectsOutput('Configuração de produção ok.')
+            ->assertSuccessful();
+    }
+
     public function test_cors_padrao_nao_tem_asterisco_e_lista_so_as_origens_de_desenvolvimento(): void
     {
         $this->setEnv('CORS_ALLOWED_ORIGINS', null);
@@ -160,6 +200,35 @@ class CheckProductionConfigCommandTest extends CharacterizationTestCase
         config()->set('cors.allowed_origins', ['https://loja.exemplo.test']);
         config()->set('cors.allowed_origins_patterns', []);
         config()->set('session.secure', true);
+        // M-32: produção usa fila database (o phpunit.xml usa sync); jobs e failed_jobs no banco do teste
+        config()->set('queue.default', 'database');
+        config()->set('queue.connections.database.connection', null);
+        config()->set('queue.failed.database', config('database.default'));
+    }
+
+    private function insertJob(int $minutesAgo, bool $reserved = false): void
+    {
+        $at = now()->subMinutes($minutesAgo)->getTimestamp();
+        DB::table('jobs')->insert([
+            'queue' => 'default',
+            'payload' => '{}',
+            'attempts' => 0,
+            'reserved_at' => $reserved ? $at : null,
+            'available_at' => $at,
+            'created_at' => $at,
+        ]);
+    }
+
+    private function insertFailedJob(): void
+    {
+        DB::table('failed_jobs')->insert([
+            'uuid' => (string) Str::uuid(),
+            'connection' => 'database',
+            'queue' => 'default',
+            'payload' => '{}',
+            'exception' => 'RuntimeException',
+            'failed_at' => now(),
+        ]);
     }
 
     private function loadConfig(string $name): array

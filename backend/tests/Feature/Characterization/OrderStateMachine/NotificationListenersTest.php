@@ -293,14 +293,14 @@ class NotificationListenersTest extends CharacterizationTestCase
     public function test_webhook_com_fila_sync_e_falha_no_envio_nao_desfaz_o_pagamento(): void
     {
         // O listener roda depois do commit: o erro do servidor de e-mail não desfaz a confirmação.
-        // O webhook ainda responde 500 (o erro sobe até o catch do controller); o reenvio do Mercado Pago
-        // cai no caminho idempotente. Em produção a fila é database e o erro fica no job.
+        // M-32: a falha depois do commit vai para o log e o webhook responde 200 (antes: 500).
+        // Em produção a fila é database e o erro fica no job.
         config(['queue.default' => 'sync']);
         Mail::shouldReceive('to')->andThrow(new RuntimeException('servidor de e-mail fora do ar'));
         $order = Order::factory()->create(['total_cents' => 10000]);
         $this->apiReturnsPayment(123, 'approved', $order);
 
-        $this->postSignedWebhook('123')->assertStatus(500);
+        $this->postSignedWebhook('123')->assertOk();
 
         $this->assertSame(OrderStatus::IN_QUEUE, $order->fresh()->status);
         $this->assertNotNull($order->fresh()->paid_at);
