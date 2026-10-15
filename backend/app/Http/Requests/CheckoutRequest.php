@@ -164,7 +164,6 @@ class CheckoutRequest extends FormRequest
             'items.*.size_id.uuid' => 'O identificador do tamanho deve ser um UUID válido.',
             'items.*.size_id.exists' => 'A variação de tamanho selecionada não foi encontrada.',
             'items.*.material.required' => 'O material de impressão 3D (ex: PLA, PETG, ABS, TPU) é obrigatório.',
-            'items.*.material.enum' => 'O material selecionado não é um polímero homologado pela MIMOO LAB.',
             'items.*.quantity.required' => 'A quantidade de cada item é obrigatória.',
             'items.*.quantity.min' => 'A quantidade mínima por peça é de 1 unidade.',
             'items.*.quantity.max' => 'A quantidade máxima por item na mesma encomenda é de 50 unidades.',

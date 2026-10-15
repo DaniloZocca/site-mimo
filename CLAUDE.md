@@ -1,7 +1,7 @@
 # MIMOO LAB 3D Studio — site-mimo
 
 Loja brasileira de colecionáveis impressos em 3D sob encomenda (FDM). Só imprimimos após pagamento confirmado.
-Monorepo: frontend React 19 + Vite (raiz, `src/`) + API Laravel 11 + Filament 3 (`backend/`). UI, mensagens e commits em pt-BR.
+Monorepo: frontend React 19 + Vite (raiz, `src/`) + API Laravel 12 + Filament 3 (`backend/`). UI, mensagens e commits em pt-BR.
 Antes de tarefas de segurança/pagamento, leia `RELATORIO_SEGURANCA_MIMOO.md` (achados abertos C1–B3) e `docs/known-bugs.md` (bugs confirmados por teste, com severidade).
 As regras abaixo descrevem o comportamento-alvo; onde o código ainda diverge, está registrado em `docs/doc-vs-codigo.md`.
 

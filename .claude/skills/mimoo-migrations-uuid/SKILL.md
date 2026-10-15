@@ -4,7 +4,7 @@ description: Como criar migrations, models e colunas no backend da MIMOO (UUID, 
 ---
 # Migrations e models
 - Sempre migration NOVA (`php artisan make:migration`); nunca edite as existentes.
-- PK `$table->uuid('id')->primary()`; model com `HasUuids`. FKs `foreignUuid(...)->constrained()` com `cascadeOnDelete()`/`restrictOnDelete()` explícito.
+- PK `$table->uuid('id')->primary()`; model com `HasVersion4Uuids` (UUID ordenado v4; o `HasUuids` do Laravel 12 gera v7). FKs `foreignUuid(...)->constrained()` com `cascadeOnDelete()`/`restrictOnDelete()` explícito.
 - Dinheiro: `integer('*_cents')` (padrão atual do projeto). Nunca `decimal`/`float` para dinheiro.
 - Índice em toda coluna de busca (order_number, tracking_token, slug, status).
 - Compatível com SQLite e PostgreSQL: sem SQL cru específico de banco; `enum` do banco evitado (use string + enum PHP).
