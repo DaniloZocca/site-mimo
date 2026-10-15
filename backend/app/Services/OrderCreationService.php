@@ -183,6 +183,14 @@ class OrderCreationService
 
             // Recalcula o Preço Unitário: Product::base_price_cents + Size::price_modifier_in_cents
             $unitPriceCents = (int) $product->base_price_cents + (int) ($size?->price_modifier_in_cents ?? 0);
+
+            // Peça sem preço (base + acréscimo abaixo de 1 centavo) não é vendável: não vira desconto nas outras peças
+            if ($unitPriceCents < 1) {
+                throw ValidationException::withMessages($size
+                    ? ["items.{$index}.size_id" => ["O tamanho {$size->name} de {$product->title} está indisponível no momento. Tire do carrinho ou escolha outro tamanho."]]
+                    : ["items.{$index}.product_id" => ["A peça {$product->title} está indisponível no momento. Tire do carrinho para continuar."]]);
+            }
+
             $subtotalPiecesCents += ($unitPriceCents * $item->quantity);
 
             // Monta o snapshot fixo da peça para gravação em order_items

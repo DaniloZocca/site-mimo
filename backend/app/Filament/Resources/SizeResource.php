@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\SizeResource\Pages;
+use App\Models\Product;
 use App\Models\Size;
 use App\Rules\ValidMoneyInput;
 use App\Support\MoneyInput;
+use Closure;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -49,11 +51,43 @@ class SizeResource extends Resource
                             ->default(0)
                             ->formatStateUsing(fn (?int $state): string => MoneyInput::format($state))
                             ->rule(new ValidMoneyInput)
+                            ->rules([
+                                fn (?Size $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                    $problem = static::unpricedProductsProblem($record, MoneyInput::toCents($value));
+
+                                    if ($problem !== null) {
+                                        $fail($problem);
+                                    }
+                                },
+                            ])
                             ->dehydrateStateUsing(fn (mixed $state): ?int => MoneyInput::toCents($state))
                             ->helperText('Valor adicional somado ao preço base da peça (R$ 0,00 se incluso no valor base). Use vírgula ou ponto para os centavos (ex.: 5,50).'),
                     ])
                     ->columns(2),
             ]);
+    }
+
+    /**
+     * Acréscimo que deixaria alguma peça ligada a este tamanho abaixo de 1 centavo (o checkout recusaria a compra).
+     */
+    public static function unpricedProductsProblem(?Size $size, ?int $modifierCents): ?string
+    {
+        if ($size === null || $modifierCents === null) {
+            return null;
+        }
+
+        $unpriced = $size->products()
+            ->where('base_price_cents', '<', 1 - $modifierCents)
+            ->orderBy('title')
+            ->get(['products.id', 'products.title', 'products.base_price_cents']);
+
+        if ($unpriced->isEmpty()) {
+            return null;
+        }
+
+        return 'Com esse valor, estas peças ficariam sem preço: '
+            .$unpriced->map(fn (Product $product): string => $product->title.' (R$ '.MoneyInput::format((int) $product->base_price_cents).')')->join(', ', ' e ')
+            .'. Use um desconto menor ou tire o tamanho dessas peças.';
     }
 
     public static function table(Table $table): Table

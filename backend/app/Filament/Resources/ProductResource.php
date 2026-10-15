@@ -8,6 +8,7 @@ use App\Enums\MaterialType;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Color;
 use App\Models\Product;
+use App\Models\Size;
 use App\Rules\ValidMoneyInput;
 use App\Support\MoneyInput;
 use Closure;
@@ -95,6 +96,15 @@ class ProductResource extends Resource
                                     ->required()
                                     ->formatStateUsing(fn (?int $state): string => MoneyInput::format($state))
                                     ->rule(new ValidMoneyInput)
+                                    ->rules([
+                                        fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                                            $cents = MoneyInput::toCents($value);
+
+                                            if ($cents !== null && $cents < 1) {
+                                                $fail('O preço base precisa ser de pelo menos R$ 0,01.');
+                                            }
+                                        },
+                                    ])
                                     ->dehydrateStateUsing(fn (mixed $state): ?int => MoneyInput::toCents($state))
                                     ->helperText('Valor em Reais (armazenado em centavos para precisão contábil). Use vírgula ou ponto para os centavos (ex.: 5,50).'),
 
@@ -148,6 +158,15 @@ class ProductResource extends Resource
                                     ->preload()
                                     ->searchable()
                                     ->required()
+                                    ->rules([
+                                        fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                                            $problem = static::unpricedSizesProblem((array) $value, MoneyInput::toCents($get('base_price_cents')));
+
+                                            if ($problem !== null) {
+                                                $fail($problem);
+                                            }
+                                        },
+                                    ])
                                     ->helperText('Selecione as variações de tamanho aceitas para este modelo.'),
 
                                 Forms\Components\CheckboxList::make('colors')
@@ -252,6 +271,32 @@ class ProductResource extends Resource
         }
 
         return null;
+    }
+
+    /**
+     * Tamanhos marcados que deixariam a peça abaixo de 1 centavo (preço base + acréscimo): o checkout recusaria a compra.
+     *
+     * @param  array<int, mixed>  $sizeIds
+     */
+    public static function unpricedSizesProblem(array $sizeIds, ?int $basePriceCents): ?string
+    {
+        if ($basePriceCents === null || $sizeIds === []) {
+            return null;
+        }
+
+        $unpriced = Size::query()
+            ->whereKey($sizeIds)
+            ->where('price_modifier_in_cents', '<', 1 - $basePriceCents)
+            ->orderBy('name')
+            ->get();
+
+        if ($unpriced->isEmpty()) {
+            return null;
+        }
+
+        return 'Com o preço base de R$ '.MoneyInput::format($basePriceCents).', estes tamanhos deixariam a peça sem preço: '
+            .$unpriced->map(fn (Size $size): string => $size->name.' (R$ '.MoneyInput::format((int) $size->price_modifier_in_cents).')')->join(', ', ' e ')
+            .'. Aumente o preço base ou desmarque o tamanho.';
     }
 
     public static function table(Table $table): Table
