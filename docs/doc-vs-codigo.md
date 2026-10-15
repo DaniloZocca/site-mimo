@@ -38,7 +38,7 @@ Divergências encontradas ao escrever os testes de caracterização. Nada foi co
 |---|---|---|
 | CPF, e-mail e telefone nunca vão para logs ou respostas (regra 8) | Listeners e job de notificação não logam mais o e-mail (M-04). Ainda: o `catch` do webhook loga `getMessage()` + trace de qualquer exceção (com fila `sync`, um erro do SMTP pode conter o endereço). | `MercadoPagoWebhookController.php:276` |
 | Rastreio por `order_number` + CPF | ✅ Resolvido no M-09: o parâmetro ainda se chama `cpf_prefix` (nome usado pelo front), mas exige o CPF completo (11 dígitos, comparação exata); alternativa: `email` exato. Rota só `POST`. | `TrackOrderRequest.php`; `OrderTrackingController.php` |
-| `CheckoutRequest` sanitiza CPF/telefone/CEP | A sanitização em `passedValidation()` não chega ao DTO (que lê `validated()`); os valores são gravados com máscara. | `CheckoutRequest.php:161-177`; `CheckoutOrderDTO.php:31` |
+| `CheckoutRequest` sanitiza CPF/telefone/CEP | ✅ Resolvido no M-19: a limpeza foi para o `prepareForValidation()`, então as regras validam os dígitos (telefone 10 ou 11, CEP 8) e o `validated()` lido pelo DTO já sai limpo; o pedido grava só dígitos. | `CheckoutRequest.php` (`prepareForValidation`); `Checkout/CheckoutCustomerNormalizationTest` |
 
 ## Testes e ferramentas
 

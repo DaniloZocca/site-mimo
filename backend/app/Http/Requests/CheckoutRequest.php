@@ -63,6 +63,26 @@ class CheckoutRequest extends FormRequest
             $input['payment'] = $payment;
         }
 
+        // 4. Limpa CPF, telefone e CEP antes de validar: as regras conferem só os dígitos e o
+        //    validated() (lido pelo CheckoutOrderDTO) já sai limpo. Valor que não é texto fica como
+        //    veio, para a regra recusar com a mensagem própria.
+        if (isset($input['customer']) && is_array($input['customer'])) {
+            foreach (['cpf', 'phone'] as $field) {
+                if (isset($input['customer'][$field]) && is_string($input['customer'][$field])) {
+                    $input['customer'][$field] = (string) preg_replace('/\D/', '', $input['customer'][$field]);
+                }
+            }
+        }
+
+        if (isset($input['shipping']) && is_array($input['shipping'])) {
+            if (isset($input['shipping']['zip_code']) && is_string($input['shipping']['zip_code'])) {
+                $input['shipping']['zip_code'] = (string) preg_replace('/\D/', '', $input['shipping']['zip_code']);
+            }
+            if (isset($input['shipping']['state']) && is_string($input['shipping']['state'])) {
+                $input['shipping']['state'] = strtoupper($input['shipping']['state']);
+            }
+        }
+
         $this->replace($input);
     }
 
@@ -76,10 +96,10 @@ class CheckoutRequest extends FormRequest
             'customer.name' => ['required', 'string', 'min:3', 'max:150'],
             'customer.email' => ['required', 'email', 'max:150'],
             'customer.cpf' => ['required', 'string', new ValidCpf],
-            'customer.phone' => ['required', 'string', 'min:10', 'max:20'],
+            'customer.phone' => ['required', 'string', 'regex:/^\d{10,11}$/'],
 
             // Endereço de Entrega
-            'shipping.zip_code' => ['required', 'string', 'regex:/^\d{5}\-?\d{3}$/'],
+            'shipping.zip_code' => ['required', 'string', 'regex:/^\d{8}$/'],
             'shipping.street' => ['required', 'string', 'max:150'],
             'shipping.number' => ['required', 'string', 'max:30'],
             'shipping.complement' => ['nullable', 'string', 'max:100'],
@@ -120,7 +140,9 @@ class CheckoutRequest extends FormRequest
             'customer.email.email' => 'Informe um endereço de e-mail válido.',
             'customer.cpf.required' => 'O CPF é obrigatório para emissão da nota fiscal.',
             'customer.phone.required' => 'O telefone/WhatsApp é obrigatório.',
+            'customer.phone.regex' => 'Informe um telefone/celular com DDD válido (10 ou 11 dígitos).',
             'shipping.zip_code.required' => 'O CEP de entrega é obrigatório.',
+            'shipping.zip_code.regex' => 'O CEP deve conter exatamente 8 dígitos numéricos.',
             'shipping.street.required' => 'A rua/logradouro de entrega é obrigatória.',
             'shipping.number.required' => 'O número do imóvel é obrigatório.',
             'shipping.neighborhood.required' => 'O bairro de entrega é obrigatório.',
@@ -149,26 +171,5 @@ class CheckoutRequest extends FormRequest
             'payment.payment_method.required' => 'Selecione uma forma de pagamento válida (pix ou credit_card).',
             'payment.payment_method.in' => 'Forma de pagamento inválida.',
         ];
-    }
-
-    /**
-     * Sanitização e padronização pós-validação.
-     */
-    protected function passedValidation(): void
-    {
-        $sanitizedCpf = preg_replace('/\D/', '', (string) $this->input('customer.cpf'));
-        $sanitizedZip = preg_replace('/\D/', '', (string) $this->input('shipping.zip_code'));
-        $sanitizedPhone = preg_replace('/\D/', '', (string) $this->input('customer.phone'));
-
-        $this->merge([
-            'customer' => array_merge($this->input('customer', []), [
-                'cpf' => $sanitizedCpf,
-                'phone' => $sanitizedPhone,
-            ]),
-            'shipping' => array_merge($this->input('shipping', []), [
-                'zip_code' => $sanitizedZip,
-                'state' => strtoupper((string) $this->input('shipping.state')),
-            ]),
-        ]);
     }
 }
