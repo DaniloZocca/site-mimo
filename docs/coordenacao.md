@@ -96,7 +96,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-20 | Mensagens de validação em pt-BR (`lang/pt_BR`) | B | config | M-05 | concluído (locale padrão `pt_BR` no config; se o `.env` do servidor tiver `APP_LOCALE=en`, trocar para `pt_BR`) | #19 |
 | M-21 | Catálogo: trocar o polling de 3 s do `ShopContext` por algo mais leve, sem mudar a tela | B | front | M-07 | concluído (busca ao abrir, a cada 60 s só com a aba visível e ao voltar para a aba, no mínimo 15 s entre buscas; mudança no painel aparece na loja em até 60 s) | #20 |
 | M-22 | CI no GitHub Actions com Postgres (suíte, `pint --test`, lint, build); `oxlint` como devDependency (hoje `npm run lint` falha com "oxlint: not found") e lint sem varrer `backend/public/` | D | stack | M-01 a M-03 mergeados | concluído (workflow `CI`: backend em PHP 8.2 e 8.3 com Postgres 16, frontend com lint com teto de 75 avisos e build) | #30 |
-| M-23 | `composer audit` e `npm audit` e correção do que aparecer | D | stack | M-22 | a fazer | — |
+| M-23 | `composer audit` e `npm audit` e correção do que aparecer | D | stack | M-22 | em merge (backend: Laravel 11 → 12, que fecha a injeção de CRLF na regra `email`, e patches de `league/commonmark`, `symfony/http-foundation` e `symfony/yaml`; `composer audit` zerado; models com `HasVersion4Uuids` para manter o UUID v4; mensagem de material inválido mantida como era, ver "Decisões pendentes"; o front saiu como M-34) | — |
 | M-24 | Migrar checkout, webhook e painel para o `ProductionWorkflowService` (dívida da regra 5) | C | checkout, pedidos, painel | M-16, M-17 | concluído (novo `transitionFrom()` com origem esperada: tela antiga ou estorno atrasado não cancela pedido pago; toda transição dispara `OrderStatusUpdatedEvent`; notas fora do log do servidor; runbook de revisão usa o serviço) | #38 |
 | M-25 | CSP sem `unsafe-eval`/`unsafe-inline` onde o Filament permitir (B1) | B | rotas | M-15 | concluído (painel Filament mantém `unsafe-inline`/`unsafe-eval`: scripts inline sem nonce e Alpine com `new Function`) | #28 |
 | M-26 | Área de cliente: `AuthModal` mock e usuário fixo "Fernanda" (B3) | C | front | decisão pendente | bloqueado | — |
@@ -105,7 +105,10 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-29 | Preço unitário negativo quando o modificador do tamanho é mais negativo que o preço base: o painel aceita (`SizeResource.php:42`, campo sem mínimo). Ex.: base 5000, tamanho −6000, frete 1490: o checkout mostra PIX R$ 5,90 e cartão R$ 4,90, mas o back trava as peças em 0 com `max(0, …)` e cobra R$ 14,90 (só o frete); `calculateProductPricing` trava em 0 e `calculateCartTotals` não. Caracterizado como PERGUNTA em `CheckoutValidationTest::test_modificador_negativo_maior_que_o_preco_gera_unitario_negativo`. Direção (a decidir no plano): proibir unitário negativo, com validação no painel e/ou 422 no checkout. Só abre com o OK do Zocca. Achado na conferência do M-18 | C | painel, checkout | M-17 | concluído (o checkout recusa com 422 peça abaixo de R$ 0,01, inclusive zero, em `items.N.size_id`/`items.N.product_id`; o painel não salva tamanho nem peça que gere essa combinação; o catálogo omite o tamanho; consulta só leitura em `docs/consultas/m-29-pecas-sem-preco.sql`) | #37 |
 | M-32 | Falha depois da mudança de status (evento, listener, e-mail, job) não muda a resposta: com fila `sync` virava 500 com o pedido já pago. E `mimoo:check-production` confere a fila. Achado no M-24 | C | checkout, pedidos, painel, config | M-24 | em merge (`AfterCommitDispatcher`: falha vai para `Log::error` com `order_number`, evento, listener e classe da exceção, sem a mensagem; `check-production` reprova fila `sync`, avisa job parado há mais de 5 min e mostra `failed_jobs`) | — |
 | M-33 | **P2.** Checagem agendada de fila parada: job disponível há mais de 15 min grava `Log::critical` (sem dados pessoais), para o aviso não depender de alguém rodar o `mimoo:check-production` à mão. Precisa do cron do scheduler (`php artisan schedule:run` a cada minuto) na hospedagem, que o Zocca confirma junto com a hospedagem. Pedido no M-32 | B | config, pedidos | M-32, hospedagem confirmada | bloqueado | — |
-| M-34 | Dependências do front com falha conhecida (parte front do M-23): `npm audit fix` sem `--force` (dompurify 3.4.17, source-map-js 1.2.2, tailwindcss 3.4.19) e Vite 5 → 6.4.4 (esbuild 0.25), sem mudar o visual | B | front | M-22 | em merge (CSS gerado igual, só espaços em `@media`; screenshots idênticas pixel a pixel; sobram 7 avisos da cadeia do Tailwind 3, só de build) | #40 |
+| M-34 | Dependências do front com falha conhecida (parte front do M-23): `npm audit fix` sem `--force` (dompurify 3.4.17, source-map-js 1.2.2, tailwindcss 3.4.19) e Vite 5 → 6.4.4 (esbuild 0.25), sem mudar o visual | B | front | M-22 | concluído (PR #40; CSS gerado igual, só espaços em `@media`; screenshots idênticas pixel a pixel; sobram 7 avisos da cadeia do Tailwind 3, só de build) | #40 |
+| M-35 | Laravel 12 → 13. Exige PHP 8.3 no servidor (hoje o CI testa 8.2 e 8.3). **Prazo: antes de 24/02/2027**, quando o Laravel 12 deixa de receber correção de segurança. Pedido no M-23 | D | stack | M-23 | a fazer | — |
+| M-36 | `composer audit` e `npm audit --omit=dev` no CI (`.github/workflows/ci.yml`), reprovando só avisos altos ou críticos de pacotes que chegam a produção. Pedido no M-23 | B | stack | M-23, M-34 | a fazer | — |
+| M-37 | **Opcional.** Tailwind 3 → 4, para tirar os avisos da cadeia do Tailwind 3 (risco aceito, ver "Riscos aceitos"). Preservação visual obrigatória: screenshots antes/depois e `ui-reviewer` com "visual idêntico". Pedido no M-23 | D | front, stack | M-34 | a fazer | — |
 
 ## Decisões pendentes
 
@@ -124,7 +127,14 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 | E-mail ao cliente quando o pedido é cancelado ou entregue? Hoje não existe. | Sem e-mail. | tarefa nova |
 | Brinde / peça grátis (preço R$ 0,00)? Se um dia existir, será uma regra própria no backend. | M-29 recusa no checkout toda peça abaixo de R$ 0,01, inclusive zero. | tarefa nova |
 | Rastreador de erros (Sentry, Flare etc.): decidido (M-32) que, quando entrar, uma falha depois da mudança de status reporta uma exceção nova só com a classe da original e o `order_number`, nunca a mensagem (pode trazer o e-mail do cliente). | Sem rastreador: só `Log::error` sem a mensagem da exceção. | tarefa nova |
+| Mensagem de material inválido no checkout: no Laravel 12 a mensagem própria "O material selecionado não é um polímero homologado pela MIMOO LAB." passaria a aparecer (no 11 nunca aparecia). Usar essa ou manter a padrão? | M-23 tirou a mensagem própria: segue "O valor escolhido em material é inválido.", como hoje. A loja só envia materiais válidos, então o cliente não vê nenhuma das duas. | M-23 |
 | E-mail de confirmação promete "~4 horas de extrusão" (o campo `estimated_total_print_time_hours` não existe; sempre cai no 4). Manter, tirar ou calcular? | Texto atual mantido (M-04 não mudou o texto). | tarefa nova |
+
+## Riscos aceitos
+
+| Risco | Por que aceito | Revisar em |
+|---|---|---|
+| Avisos do `npm audit` na cadeia do Tailwind 3 (`braces`, `micromatch`, `chokidar`, `fast-glob`, `postcss-nested`, `postcss-selector-parser`). `braces` não tem versão corrigida. | Rodam só no build, lendo o nosso próprio código; nada disso vai para o navegador. Só o Tailwind 4 tira a cadeia, com risco alto de mudar o visual (M-23, decisão do Zocca em 2026-10-15). | M-37 |
 
 ## Antes do deploy
 
@@ -152,6 +162,11 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   confirmação; "Iniciar Impressão" e "Expedir Pedido" do painel mandam os e-mails de impressão e de envio (M-10). O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
 - `.env` de produção com `FRONTEND_URL` = endereço da loja publicada, em `https://` e sem barra no final (M-27; ex.:
   `FRONTEND_URL=https://www.dominio.com.br`). Sem ela, o botão "Acompanhar" dos e-mails aponta para `http://localhost:5173`.
+- Laravel 12 (M-23): o servidor precisa de PHP 8.2 ou mais novo. No deploy, dentro de `backend/`, nesta ordem:
+  `composer install --no-dev --optimize-autoloader`, `php artisan optimize:clear`, `php artisan migrate --force` (o M-23
+  não traz migration; o passo fica para as próximas), `php artisan config:cache`, `php artisan queue:restart` (o worker
+  antigo ainda tem o Laravel 11 carregado) e `php artisan mimoo:check-production`, que precisa terminar com
+  "Configuração de produção ok.".
 - Build do front com Vite 6 (M-34): Node `^18`, `^20` ou `>=22` (o `engines` do Vite 6.4.4); usar Node 22, o mesmo do CI
   (o 18 já não recebe correção). O build roda onde o `npm run build` for executado (não há deploy automático ligado ao
   repositório): conferir `node -v` nessa máquina antes do build e rodar `npm ci` depois do pull.
