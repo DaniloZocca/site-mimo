@@ -131,19 +131,17 @@ class CheckoutValidationTest extends CharacterizationTestCase
             ->tap(fn ($r) => $this->assertFirstError($r, 'items.0.material', 'O valor escolhido em material é inválido.'));
     }
 
-    public function test_modificador_negativo_maior_que_o_preco_gera_unitario_negativo(): void
+    public function test_modificador_negativo_maior_que_o_preco_retorna_422(): void
     {
-        // PERGUNTA: não há piso para o preço unitário; base 5000 + modificador −6000 = −1000;
-        // o total trava as peças em 0 (max(0, ...)), mas o unit_price_cents gravado fica negativo.
+        // M-29 (PERGUNTA respondida): base 5000 + modificador −6000 = −1000; peça abaixo de 1 centavo não é vendável
         $size = Size::factory()->modifier(-6000)->create();
         $this->product->sizes()->attach($size->id);
-        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(1, 'approved'));
 
         $this->postItem(['size_id' => $size->id], 'credit_card')
-            ->assertStatus(201)
-            ->assertJsonPath('total_cents', self::SERVER_PAC_CENTS); // max(0, −1000) + frete: o subtotal é travado em 0, o unitário não
+            ->assertStatus(422)
+            ->tap(fn ($r) => $this->assertFirstError($r, 'items.0.size_id', "O tamanho {$size->name} de Vaso Origami está indisponível no momento. Tire do carrinho ou escolha outro tamanho."));
 
-        $this->assertSame(-1000, OrderItem::sole()->unit_price_cents);
+        $this->assertNothingPersisted();
     }
 
     // ---------------------------------------------------------------- quantidade

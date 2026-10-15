@@ -22,7 +22,6 @@ class SendOrderStatusUpdatedNotification implements ShouldQueue
         Log::info("🔔 [Notificação Assíncrona] Atualização de status da encomenda #{$event->order->order_number} para {$event->newStatus->getLabel()}", [
             'previous' => $event->previousStatus->value,
             'new' => $event->newStatus->value,
-            'notes' => $event->notes,
         ]);
 
         // Disparo de e-mail / WhatsApp notificando que a peça começou a ser impressa ou foi enviada

@@ -81,8 +81,14 @@ class ProductResource extends JsonResource
             ];
         })->values()->toArray();
 
+        // Tamanhos que deixariam a peça abaixo de 1 centavo (base + acréscimo) não são vendáveis: o checkout recusa (M-29)
+        $basePriceCents = (int) $this->base_price_cents;
+        $sellableSizes = $this->sizes->filter(
+            fn (Size $s): bool => $basePriceCents + (int) ($s->price_modifier_in_cents ?? $s->pivot->price_modifier_in_cents ?? 0) >= 1
+        );
+
         // Sizes mapping
-        $sizesList = $this->sizes->map(function (Size $s): array {
+        $sizesList = $sellableSizes->map(function (Size $s): array {
             $modifierCents = (int) ($s->price_modifier_in_cents ?? $s->pivot->price_modifier_in_cents ?? 0);
             $modifierHours = (int) ($s->time_modifier_hours ?? $s->pivot->time_modifier_hours ?? 0);
 
@@ -146,7 +152,7 @@ class ProductResource extends JsonResource
             ])->values()->toArray(),
             'colors' => $colorsList,
             'sizeOptions' => $sizesList,
-            'sizes' => $this->sizes->map(fn (Size $size): array => [
+            'sizes' => $sellableSizes->map(fn (Size $size): array => [
                 'id' => (string) $size->id,
                 'name' => (string) $size->name,
                 'dimensions' => (string) ($size->dimensions ?? 'Sob Medida'),

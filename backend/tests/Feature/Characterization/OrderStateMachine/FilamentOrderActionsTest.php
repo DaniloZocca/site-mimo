@@ -110,7 +110,9 @@ class FilamentOrderActionsTest extends CharacterizationTestCase
             'Peça retirada da mesa de impressão, movida para conferência, acabamento e embalagem.',
             $order->productionLogs()->sole()->notes
         );
-        foreach (self::EVENTS as $event) {
+        // M-24: pelo ProductionWorkflowService dispara só OrderStatusUpdatedEvent (listener só loga), nenhum evento de e-mail
+        Event::assertDispatchedTimes(OrderStatusUpdatedEvent::class, 1);
+        foreach (array_diff(self::EVENTS, [OrderStatusUpdatedEvent::class]) as $event) {
             Event::assertNotDispatched($event);
         }
     }

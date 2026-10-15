@@ -10,8 +10,10 @@ use App\Events\OrderPaidEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\ProductionLog;
+use App\Services\AfterCommitDispatcher;
 use App\Services\MercadoPagoService;
 use App\Services\PaymentApprovalValidator;
+use App\Services\ProductionWorkflowService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,6 +25,8 @@ class MercadoPagoWebhookController extends Controller
     public function __construct(
         private readonly MercadoPagoService $mercadoPagoService,
         private readonly PaymentApprovalValidator $approvalValidator,
+        private readonly ProductionWorkflowService $workflow,
+        private readonly AfterCommitDispatcher $afterCommit,
     ) {}
 
     /**
@@ -203,16 +207,17 @@ class MercadoPagoWebhookController extends Controller
                         ], 200);
                     }
 
-                    $previousStatus = $order->status->value;
-                    $paidAt = now();
+                    // Regra 5: pelo serviço, com origem esperada (false = o pedido já não está pendente)
+                    $updated = $this->workflow->transitionFrom(
+                        $order,
+                        OrderStatus::PENDING_PAYMENT,
+                        OrderStatus::IN_QUEUE,
+                        "Pagamento aprovado via Webhook Mercado Pago (Payment ID: {$dataId})",
+                        extra: ['paid_at' => now()],
+                        log: ['code' => ProductionLog::CODE_PAYMENT_APPROVED, 'reference' => $payment->id],
+                    );
 
-                    // Update condicional: só avança se o pedido ainda estiver pendente (0 linhas = já processado)
-                    $updated = Order::whereKey($order->id)
-                        ->where('status', OrderStatus::PENDING_PAYMENT->value)
-                        ->update(['status' => OrderStatus::IN_QUEUE->value, 'paid_at' => $paidAt]);
-
-                    if ($updated === 0) {
-                        $order->refresh();
+                    if (! $updated) {
                         Log::info("ℹ️ Evento idempotente recebido: Pedido #{$order->order_number} já está em '{$order->status->value}'.");
 
                         return response()->json([
@@ -221,19 +226,9 @@ class MercadoPagoWebhookController extends Controller
                         ], 200);
                     }
 
-                    $order->refresh();
-
-                    $order->productionLogs()->create([
-                        'previous_status' => $previousStatus,
-                        'new_status' => OrderStatus::IN_QUEUE->value,
-                        'notes' => "Pagamento aprovado via Webhook Mercado Pago (Payment ID: {$dataId})",
-                        'created_at' => now(),
-                        'code' => ProductionLog::CODE_PAYMENT_APPROVED,
-                        'reference' => $payment->id,
-                    ]);
-
-                    // Dispara evento de domínio para listeners de e-mail e WebSocket da fazenda
-                    event(new OrderPaidEvent($order, (string) $dataId));
+                    // Dispara evento de domínio para listeners de e-mail e WebSocket da fazenda. Sai depois do commit;
+                    // uma falha vai para o log e o webhook responde 200 mesmo assim (M-32)
+                    $this->afterCommit->event($order, new OrderPaidEvent($order, (string) $dataId));
 
                     $executionTimeMs = round((microtime(true) - $startTime) * 1000, 2);
 
@@ -266,16 +261,16 @@ class MercadoPagoWebhookController extends Controller
                         ], 200);
                     }
 
-                    $previousStatus = $order->status->value;
+                    // Regra 5: pelo serviço, com origem esperada (false = painel ou outra notificação mudou o
+                    // pedido entre a leitura e a gravação)
+                    $updated = $this->workflow->transitionFrom(
+                        $order,
+                        OrderStatus::PENDING_PAYMENT,
+                        OrderStatus::CANCELLED,
+                        "Status de gateway recebido: {$paymentStatus}",
+                    );
 
-                    // Update condicional: só cancela se o pedido ainda estiver pendente (0 linhas = painel ou outra
-                    // notificação mudou o pedido entre a leitura e a gravação)
-                    $updated = Order::whereKey($order->id)
-                        ->where('status', OrderStatus::PENDING_PAYMENT->value)
-                        ->update(['status' => OrderStatus::CANCELLED->value]);
-
-                    if ($updated === 0) {
-                        $order->refresh();
+                    if (! $updated) {
                         Log::info("ℹ️ Evento idempotente recebido: Pedido #{$order->order_number} já está em '{$order->status->value}'.");
 
                         return response()->json([
@@ -283,15 +278,6 @@ class MercadoPagoWebhookController extends Controller
                             'order_status' => $order->status->value,
                         ], 200);
                     }
-
-                    $order->refresh();
-
-                    $order->productionLogs()->create([
-                        'previous_status' => $previousStatus,
-                        'new_status' => OrderStatus::CANCELLED->value,
-                        'notes' => "Status de gateway recebido: {$paymentStatus}",
-                        'created_at' => now(),
-                    ]);
 
                     Log::warning("⚠️ Pedido #{$order->order_number} cancelado via webhook com status: {$paymentStatus}");
                 }

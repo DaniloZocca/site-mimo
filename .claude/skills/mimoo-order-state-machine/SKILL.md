@@ -13,7 +13,7 @@ shipped → delivered
 delivered, cancelled: finais
 
 ## Regras
-- O mapa vive em `ProductionWorkflowService::ALLOWED_TRANSITIONS`; `transitionTo(Order, OrderStatus, notes, author)` é o ÚNICO ponto que muda status. Webhook, Filament e comandos chamam esse método.
+- O mapa vive em `ProductionWorkflowService::ALLOWED_TRANSITIONS`; o serviço é o ÚNICO ponto que muda status. Fluxo de produção (checkout, webhook, Filament, runbook) chama `transitionFrom(order, from, to, notes, extra:, log:, guard:)` com a origem esperada (devolve `false` se o banco não está em `from`). `transitionTo()` não é para fluxo de produção.
 - SQLite ignora `lockForUpdate()`. Use update condicional: `Order::whereKey($id)->where('status', $from)->update([...])`; 0 linhas afetadas = conflito → exceção, sem sobrescrever.
 - Toda transição grava `ProductionLog` (previous_status, new_status, notes, autor) na mesma transação e dispara `OrderStatusUpdatedEvent` depois do commit.
 - Notificações e e-mails são listeners enfileirados.
