@@ -70,13 +70,11 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
         $this->assertSame(5990, $order->total_cents);
         $this->assertSame(self::SERVER_PAC_CENTS, $order->shipping_cost_cents);
         $this->assertNull($order->paid_at);
-        // PERGUNTA: passedValidation() sanitiza CPF/telefone/CEP com merge(), mas o DTO lê
-        // $request->validated(), que não recebe o merge. Resultado: os valores são gravados
-        // exatamente como o cliente digitou (com máscara). Só o UF é normalizado (no DTO).
-        $this->assertSame(self::VALID_CPF, $order->customer_cpf);
-        $this->assertSame('(11) 98888-7777', $order->customer_phone);
+        // M-19: CPF, telefone e CEP são gravados só com dígitos; UF em maiúsculas.
+        $this->assertSame(self::VALID_CPF_DIGITS, $order->customer_cpf);
+        $this->assertSame('11988887777', $order->customer_phone);
         $this->assertSame([
-            'zip_code' => '01001-000',
+            'zip_code' => '01001000',
             'street' => 'Praça da Sé',
             'number' => '100',
             'complement' => 'Apto 12',
@@ -291,7 +289,7 @@ class CheckoutHappyPathTest extends CharacterizationTestCase
             'items' => [$this->itemPayload($product, $color)],
         ])->assertStatus(201)->assertJsonPath('total_cents', 7290);
 
-        $this->assertSame('01001-000', Order::sole()->shipping_address['zip_code']);
+        $this->assertSame('01001000', Order::sole()->shipping_address['zip_code']);
         // service_name ('SEDEX') não é persistido no shipping_address.
         $this->assertArrayNotHasKey('service_name', Order::sole()->shipping_address);
     }
