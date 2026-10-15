@@ -10,6 +10,7 @@ use App\Events\OrderPaidEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\ProductionLog;
+use App\Services\AfterCommitDispatcher;
 use App\Services\MercadoPagoService;
 use App\Services\PaymentApprovalValidator;
 use App\Services\ProductionWorkflowService;
@@ -25,6 +26,7 @@ class MercadoPagoWebhookController extends Controller
         private readonly MercadoPagoService $mercadoPagoService,
         private readonly PaymentApprovalValidator $approvalValidator,
         private readonly ProductionWorkflowService $workflow,
+        private readonly AfterCommitDispatcher $afterCommit,
     ) {}
 
     /**
@@ -224,8 +226,9 @@ class MercadoPagoWebhookController extends Controller
                         ], 200);
                     }
 
-                    // Dispara evento de domínio para listeners de e-mail e WebSocket da fazenda
-                    event(new OrderPaidEvent($order, (string) $dataId));
+                    // Dispara evento de domínio para listeners de e-mail e WebSocket da fazenda. Sai depois do commit;
+                    // uma falha vai para o log e o webhook responde 200 mesmo assim (M-32)
+                    $this->afterCommit->event($order, new OrderPaidEvent($order, (string) $dataId));
 
                     $executionTimeMs = round((microtime(true) - $startTime) * 1000, 2);
 

@@ -97,12 +97,14 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-21 | Catálogo: trocar o polling de 3 s do `ShopContext` por algo mais leve, sem mudar a tela | B | front | M-07 | concluído (busca ao abrir, a cada 60 s só com a aba visível e ao voltar para a aba, no mínimo 15 s entre buscas; mudança no painel aparece na loja em até 60 s) | #20 |
 | M-22 | CI no GitHub Actions com Postgres (suíte, `pint --test`, lint, build); `oxlint` como devDependency (hoje `npm run lint` falha com "oxlint: not found") e lint sem varrer `backend/public/` | D | stack | M-01 a M-03 mergeados | concluído (workflow `CI`: backend em PHP 8.2 e 8.3 com Postgres 16, frontend com lint com teto de 75 avisos e build) | #30 |
 | M-23 | `composer audit` e `npm audit` e correção do que aparecer | D | stack | M-22 | a fazer | — |
-| M-24 | Migrar checkout, webhook e painel para o `ProductionWorkflowService` (dívida da regra 5) | C | checkout, pedidos, painel | M-16, M-17 | em revisão (novo `transitionFrom()` com origem esperada: tela antiga ou estorno atrasado não cancela pedido pago; toda transição dispara `OrderStatusUpdatedEvent`; notas fora do log do servidor; runbook de revisão usa o serviço) | #38 |
+| M-24 | Migrar checkout, webhook e painel para o `ProductionWorkflowService` (dívida da regra 5) | C | checkout, pedidos, painel | M-16, M-17 | concluído (novo `transitionFrom()` com origem esperada: tela antiga ou estorno atrasado não cancela pedido pago; toda transição dispara `OrderStatusUpdatedEvent`; notas fora do log do servidor; runbook de revisão usa o serviço) | #38 |
 | M-25 | CSP sem `unsafe-eval`/`unsafe-inline` onde o Filament permitir (B1) | B | rotas | M-15 | concluído (painel Filament mantém `unsafe-inline`/`unsafe-eval`: scripts inline sem nonce e Alpine com `new Function`) | #28 |
 | M-26 | Área de cliente: `AuthModal` mock e usuário fixo "Fernanda" (B3) | C | front | decisão pendente | bloqueado | — |
 | M-27 | Botão "Acompanhar" dos e-mails de pedido (`confirmed`, `printing`, `shipped`) monta `$trackingUrl` com `APP_URL` e abre o endereço da API, não o da loja: usar o domínio do front (config nova) e fazer a loja abrir o rastreio a partir do link (sem router hoje). Achado no M-04 (#18) | B | pedidos, config, front | M-04 | concluído (produção precisa de `FRONTEND_URL`, ver "Antes do deploy") | #21 |
 | M-28 | Texto do formulário de rastreio ainda pede "primeiros dígitos do CPF" (`OrderSearchForm.jsx:90`, `trackingSchema.js`): trocar por "CPF completo" e conferir os 11 dígitos antes de enviar, sem mudança visual. Achado no M-09 | B | front | M-09 | concluído | #25 |
 | M-29 | Preço unitário negativo quando o modificador do tamanho é mais negativo que o preço base: o painel aceita (`SizeResource.php:42`, campo sem mínimo). Ex.: base 5000, tamanho −6000, frete 1490: o checkout mostra PIX R$ 5,90 e cartão R$ 4,90, mas o back trava as peças em 0 com `max(0, …)` e cobra R$ 14,90 (só o frete); `calculateProductPricing` trava em 0 e `calculateCartTotals` não. Caracterizado como PERGUNTA em `CheckoutValidationTest::test_modificador_negativo_maior_que_o_preco_gera_unitario_negativo`. Direção (a decidir no plano): proibir unitário negativo, com validação no painel e/ou 422 no checkout. Só abre com o OK do Zocca. Achado na conferência do M-18 | C | painel, checkout | M-17 | concluído (o checkout recusa com 422 peça abaixo de R$ 0,01, inclusive zero, em `items.N.size_id`/`items.N.product_id`; o painel não salva tamanho nem peça que gere essa combinação; o catálogo omite o tamanho; consulta só leitura em `docs/consultas/m-29-pecas-sem-preco.sql`) | #37 |
+| M-32 | Falha depois da mudança de status (evento, listener, e-mail, job) não muda a resposta: com fila `sync` virava 500 com o pedido já pago. E `mimoo:check-production` confere a fila. Achado no M-24 | C | checkout, pedidos, painel, config | M-24 | em merge (`AfterCommitDispatcher`: falha vai para `Log::error` com `order_number`, evento, listener e classe da exceção, sem a mensagem; `check-production` reprova fila `sync`, avisa job parado há mais de 5 min e mostra `failed_jobs`) | — |
+| M-33 | **P2.** Checagem agendada de fila parada: job disponível há mais de 15 min grava `Log::critical` (sem dados pessoais), para o aviso não depender de alguém rodar o `mimoo:check-production` à mão. Precisa do cron do scheduler (`php artisan schedule:run` a cada minuto) na hospedagem, que o Zocca confirma junto com a hospedagem. Pedido no M-32 | B | config, pedidos | M-32, hospedagem confirmada | bloqueado | — |
 
 ## Decisões pendentes
 
@@ -120,6 +122,7 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 | Pedido em "Pagamento em revisão" que o Zocca decide estornar: o "Cancelar Pedido" fica escondido nele, então ele segue pendente no painel. Mostrar o cancelar ali, com aviso "estorne no Mercado Pago antes"? | Cancelar escondido em pedido em revisão. | M-10 |
 | E-mail ao cliente quando o pedido é cancelado ou entregue? Hoje não existe. | Sem e-mail. | tarefa nova |
 | Brinde / peça grátis (preço R$ 0,00)? Se um dia existir, será uma regra própria no backend. | M-29 recusa no checkout toda peça abaixo de R$ 0,01, inclusive zero. | tarefa nova |
+| Rastreador de erros (Sentry, Flare etc.): decidido (M-32) que, quando entrar, uma falha depois da mudança de status reporta uma exceção nova só com a classe da original e o `order_number`, nunca a mensagem (pode trazer o e-mail do cliente). | Sem rastreador: só `Log::error` sem a mensagem da exceção. | tarefa nova |
 | E-mail de confirmação promete "~4 horas de extrusão" (o campo `estimated_total_print_time_hours` não existe; sempre cai no 4). Manter, tirar ou calcular? | Texto atual mantido (M-04 não mudou o texto). | tarefa nova |
 
 ## Antes do deploy
@@ -136,7 +139,14 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 - Build do front com `VITE_API_URL` = endereço da API publicada, sem `/api` no final (M-07; ex.:
   `VITE_API_URL=https://api.dominio.com.br npm run build`). Sem ela, o site publicado chama `http://localhost:8000`.
 - E-mails ao cliente (M-04): `.env` de produção com `MAIL_MAILER` e os dados do SMTP, e um `php artisan queue:work`
-  rodando sempre (a fila é `database`; sem worker os e-mails ficam parados na tabela `jobs`). Se usar
+  rodando sempre (a fila é `database`; sem worker os e-mails ficam parados na tabela `jobs`). `QUEUE_CONNECTION=sync`
+  reprova o `mimoo:check-production` (M-32). Até o Zocca confirmar a hospedagem, valem as duas variantes:
+  - **VPS / servidor próprio:** supervisor mantendo `php artisan queue:work --tries=3 --sleep=3` (ex.: arquivo
+    `/etc/supervisor/conf.d/mimoo-worker.conf` com `command=php /caminho/backend/artisan queue:work --tries=3 --sleep=3`,
+    `autostart=true`, `autorestart=true`, `user=<usuário do site>`), e `php artisan queue:restart` a cada deploy;
+  - **hospedagem sem processo permanente:** cron a cada minuto,
+    `* * * * * cd /caminho/backend && php artisan queue:work --stop-when-empty --max-time=55 --tries=3 >> /dev/null 2>&1`.
+  Depois do deploy, o `mimoo:check-production` mostra se há job parado há mais de 5 min e quantos jobs falharam. Se usar
   `php artisan event:cache`, rodar de novo a cada deploy. PIX (webhook) e cartão aprovado (M-08) mandam o e-mail de
   confirmação; "Iniciar Impressão" e "Expedir Pedido" do painel mandam os e-mails de impressão e de envio (M-10). O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
 - `.env` de produção com `FRONTEND_URL` = endereço da loja publicada, em `https://` e sem barra no final (M-27; ex.:
