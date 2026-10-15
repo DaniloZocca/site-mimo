@@ -18,6 +18,7 @@ use App\Services\CheckoutIdempotencyService;
 use App\Services\MercadoPagoService;
 use App\Services\OrderCreationService;
 use App\Services\PaymentApprovalValidator;
+use App\Services\ProductionWorkflowService;
 use Exception;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -45,6 +46,7 @@ class CheckoutController extends Controller
         private readonly MercadoPagoService $mercadoPagoService,
         private readonly CheckoutIdempotencyService $idempotency,
         private readonly PaymentApprovalValidator $approvalValidator,
+        private readonly ProductionWorkflowService $workflow,
     ) {}
 
     /**
@@ -203,16 +205,17 @@ class CheckoutController extends Controller
             return false;
         }
 
-        $previousStatus = $order->status->value;
+        // Regra 5: pelo serviço, com origem esperada (só avança se o pedido ainda estiver pendente)
+        $updated = $this->workflow->transitionFrom(
+            $order,
+            OrderStatus::PENDING_PAYMENT,
+            OrderStatus::IN_QUEUE,
+            "Pagamento autorizado instantaneamente via cartão (ID: {$payment->id})",
+            extra: ['paid_at' => now()],
+            log: ['code' => ProductionLog::CODE_PAYMENT_APPROVED, 'reference' => $payment->id],
+        );
 
-        // Update condicional: só avança se o pedido ainda estiver pendente
-        $updated = Order::whereKey($order->id)
-            ->where('status', OrderStatus::PENDING_PAYMENT->value)
-            ->update(['status' => OrderStatus::IN_QUEUE->value, 'paid_at' => now()]);
-
-        $order->refresh();
-
-        if ($updated === 0) {
+        if (! $updated) {
             // Corrida: o webhook deste mesmo pagamento já liberou o pedido → resposta normal de aprovado
             $alreadyApproved = $order->status === OrderStatus::IN_QUEUE
                 && $order->productionLogs()
@@ -232,15 +235,6 @@ class CheckoutController extends Controller
 
             return false;
         }
-
-        $order->productionLogs()->create([
-            'previous_status' => $previousStatus,
-            'new_status' => OrderStatus::IN_QUEUE->value,
-            'notes' => "Pagamento autorizado instantaneamente via cartão (ID: {$payment->id})",
-            'created_at' => now(),
-            'code' => ProductionLog::CODE_PAYMENT_APPROVED,
-            'reference' => $payment->id,
-        ]);
 
         event(new OrderPaidEvent($order, $payment->id));
         ProcessOrderPaidNotification::dispatch($order);

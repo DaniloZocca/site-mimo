@@ -1,7 +1,8 @@
 # Runbook — liberar manualmente um pedido em "Pagamento em revisão"
 
 > **Provisório.** Vale só até existir a ação "Resolver revisão" no painel (PR de alertas).
-> Depois disso, este procedimento deve ser apagado. O snippet abaixo **não tem teste automatizado**.
+> Depois disso, este procedimento deve ser apagado. A mesma sequência de chamadas do snippet abaixo é coberta por
+> `StatusViaWorkflowServiceTest::test_chamada_do_runbook_de_revisao_libera_com_registro_publico_e_interno`.
 
 ## Quando usar
 
@@ -43,30 +44,26 @@ $operador    = '<OPERADOR>';
 $order = \App\Models\Order::where('order_number', $orderNumber)->firstOrFail();
 
 \Illuminate\Support\Facades\DB::transaction(function () use ($order, $paymentId, $operador) {
-    // Mesmo update condicional do webhook: só avança se o pedido ainda estiver pendente
-    $updated = \App\Models\Order::whereKey($order->id)
-        ->where('status', \App\Enums\OrderStatus::PENDING_PAYMENT->value)
-        ->update([
-            'status'  => \App\Enums\OrderStatus::IN_QUEUE->value,
-            'paid_at' => now(),
-        ]);
+    // Regra 5: pelo serviço, com a origem esperada. Só avança se o pedido ainda estiver pendente; o paid_at
+    // entra no mesmo UPDATE do status.
+    // Registro público (aparece na timeline de rastreio): nota genérica, sem id de pagamento nem
+    // nome do operador (mesmo vazamento do bug #12). O id fica só em `reference`, que o rastreio não expõe.
+    $updated = app(\App\Services\ProductionWorkflowService::class)->transitionFrom(
+        $order,
+        \App\Enums\OrderStatus::PENDING_PAYMENT,
+        \App\Enums\OrderStatus::IN_QUEUE,
+        'Pagamento confirmado. Seu pedido entrou na fila de impressão.',
+        extra: ['paid_at' => now()],
+        log: [
+            'code'      => \App\Models\ProductionLog::CODE_PAYMENT_APPROVED,
+            'reference' => $paymentId,
+        ],
+    );
 
-    if ($updated === 0) {
+    if (! $updated) {
         // O pedido não está mais pendente (já liberado, cancelado ou alterado): nada é gravado
         throw new \RuntimeException('Pedido não está em pending_payment. Nada foi alterado.');
     }
-
-    // Registro público (aparece na timeline de rastreio): nota genérica, sem id de pagamento nem
-    // nome do operador (mesmo vazamento do bug #12). O id fica só em `reference`, que o rastreio não expõe.
-    $order->productionLogs()->create([
-        'previous_status' => \App\Enums\OrderStatus::PENDING_PAYMENT->value,
-        'new_status'      => \App\Enums\OrderStatus::IN_QUEUE->value,
-        'notes'           => 'Pagamento confirmado. Seu pedido entrou na fila de impressão.',
-        'code'            => \App\Models\ProductionLog::CODE_PAYMENT_APPROVED,
-        'reference'       => $paymentId,
-        'is_internal'     => false,
-        'created_at'      => now(),
-    ]);
 
     // Registro interno (fora da timeline pública): pagamento, quem conferiu e quando
     $conferidoEm = now()->format('d/m/Y H:i:s');
@@ -91,7 +88,8 @@ veja o status atual antes de fazer qualquer outra coisa.
 
 - O pedido sai do filtro "Pagamento em revisão", porque o badge só vale para `pending_payment`/`cancelled`, e
   aparece em "Na fila" com o botão **Iniciar Impressão**.
-- **Não é disparado o `OrderPaidEvent`**. Por isso o cliente **não recebe o e-mail de confirmação**, que de todo
+- O serviço dispara o `OrderStatusUpdatedEvent` depois do commit (o listener só escreve uma linha de log pela fila,
+  sem as notas). **Não é disparado o `OrderPaidEvent`**. Por isso o cliente **não recebe o e-mail de confirmação**, que de todo
   modo estaria quebrado pelo bug #13. Isso é aceitável até o PR "Resolver revisão". Se o cliente precisar de
   aviso, faça o contato manual pelo canal de atendimento.
 - A timeline pública de rastreio passa a mostrar só "Pagamento confirmado. Seu pedido entrou na fila de

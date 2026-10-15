@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Enums\OrderStatus;
-use App\Events\OrderPrintingStartedEvent;
-use App\Events\OrderShippedEvent;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
-use App\Models\ProductionLog;
 use App\Services\ProductionWorkflowService;
 use Closure;
 use Filament\Forms;
@@ -20,7 +17,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class OrderResource extends Resource
 {
@@ -233,9 +229,6 @@ class OrderResource extends Resource
                             return;
                         }
 
-                        // Evento com listener: manda o e-mail "começou a imprimir" pela fila (bug #21)
-                        event(new OrderPrintingStartedEvent($record, $notes));
-
                         Notification::make()
                             ->title('Extrusão 3D Iniciada!')
                             ->body("A encomenda {$record->order_number} entrou em processo de impressão.")
@@ -287,9 +280,6 @@ class OrderResource extends Resource
                         if (! $shipped) {
                             return;
                         }
-
-                        // Evento com listener: manda o e-mail de envio com o código de rastreio pela fila (bug #21)
-                        event(new OrderShippedEvent($record, (string) $record->carrier_tracking_code));
 
                         Notification::make()
                             ->title('Encomenda Despachada!')
@@ -379,36 +369,23 @@ class OrderResource extends Resource
     }
 
     /**
-     * Camada 2 (servidor): muda o status com UPDATE condicional (WHERE status = origem), que funciona
-     * igual no Postgres e no SQLite. Se outro operador ou processo mudou o pedido antes (tela
-     * desatualizada), nenhuma linha é afetada: sem log, sem evento, e o operador é avisado.
+     * Camada 2 (servidor): muda o status pelo ProductionWorkflowService (regra 5) com a origem que a tela
+     * mostrava. Se outro operador ou processo mudou o pedido antes (tela desatualizada), nada é gravado:
+     * sem log, sem evento, e o operador é avisado. Os eventos (e-mails) são disparados pelo serviço depois do commit.
      *
      * @param  array<string, mixed>  $extra  colunas gravadas junto com o status
      * @param  (Closure(Builder): Builder)|null  $guard  condição extra no mesmo UPDATE
      */
     private static function applyPanelTransition(Order $record, OrderStatus $from, OrderStatus $to, string $notes, array $extra = [], ?Closure $guard = null): bool
     {
-        $applied = DB::transaction(function () use ($record, $from, $to, $notes, $extra, $guard): bool {
-            $affected = Order::whereKey($record->getKey())
-                ->where('status', $from->value)
-                ->when($guard, fn (Builder $query): Builder => $guard($query))
-                ->update(['status' => $to->value, 'updated_at' => Carbon::now()] + $extra);
-
-            if ($affected === 0) {
-                return false;
-            }
-
-            $record->productionLogs()->create([
-                'previous_status' => $from->value,
-                'new_status' => $to->value,
-                'notes' => $notes,
-                'code' => ProductionLog::CODE_STATUS_CHANGE,
-                'is_internal' => false,
-                'created_at' => Carbon::now(),
-            ]);
-
-            return true;
-        });
+        $applied = app(ProductionWorkflowService::class)->transitionFrom(
+            $record,
+            $from,
+            $to,
+            $notes,
+            extra: $extra,
+            guard: $guard,
+        );
 
         if (! $applied) {
             Notification::make()
@@ -418,8 +395,6 @@ class OrderResource extends Resource
 
             return false;
         }
-
-        $record->refresh();
 
         return true;
     }
