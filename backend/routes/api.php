@@ -79,9 +79,11 @@ Route::post('/webhooks/mercadopago', MercadoPagoWebhookController::class);
 // =========================================================================
 // 6. Conta de cliente (M-26): sessão em cookie httpOnly + CSRF (grupo web)
 // =========================================================================
-// O front manda credentials: 'include' e o cabeçalho X-XSRF-TOKEN (cookie XSRF-TOKEN, que
-// toda resposta deste grupo devolve). Só estas rotas usam sessão; checkout, frete e rastreio não.
+// O front manda credentials: 'include' e o cabeçalho X-XSRF-TOKEN, com o valor do cookie XSRF-TOKEN
+// que GET /api/conta/csrf-cookie (e as demais respostas de sucesso deste grupo) devolve.
+// Só estas rotas usam sessão; checkout, frete e rastreio não.
 Route::prefix('conta')->middleware(['web'])->group(function (): void {
+    Route::get('/csrf-cookie', fn () => response()->noContent())->middleware('throttle:conta');
     Route::post('/register', [AccountController::class, 'register'])->middleware('throttle:conta-register');
     Route::post('/login', [AccountController::class, 'login'])->middleware('throttle:conta-login');
     Route::post('/forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:conta-forgot');
