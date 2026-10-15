@@ -6,6 +6,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SizeResource\Pages;
 use App\Models\Size;
+use App\Rules\ValidMoneyInput;
+use App\Support\MoneyInput;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -45,9 +47,10 @@ class SizeResource extends Resource
                             ->placeholder('0,00')
                             ->required()
                             ->default(0)
-                            ->formatStateUsing(fn (?int $state): string => number_format(($state ?? 0) / 100, 2, ',', '.'))
-                            ->dehydrateStateUsing(fn (?string $state): int => (int) round(((float) str_replace(['.', ','], ['', '.'], (string) $state)) * 100))
-                            ->helperText('Valor adicional somado ao preço base da peça (R$ 0,00 se incluso no valor base)'),
+                            ->formatStateUsing(fn (?int $state): string => MoneyInput::format($state))
+                            ->rule(new ValidMoneyInput)
+                            ->dehydrateStateUsing(fn (mixed $state): ?int => MoneyInput::toCents($state))
+                            ->helperText('Valor adicional somado ao preço base da peça (R$ 0,00 se incluso no valor base). Use vírgula ou ponto para os centavos (ex.: 5,50).'),
                     ])
                     ->columns(2),
             ]);

@@ -8,6 +8,8 @@ use App\Enums\MaterialType;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Color;
 use App\Models\Product;
+use App\Rules\ValidMoneyInput;
+use App\Support\MoneyInput;
 use Closure;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -91,9 +93,10 @@ class ProductResource extends Resource
                                     ->prefix('R$')
                                     ->placeholder('0,00')
                                     ->required()
-                                    ->formatStateUsing(fn (?int $state): string => number_format(($state ?? 0) / 100, 2, ',', '.'))
-                                    ->dehydrateStateUsing(fn (?string $state): int => (int) round(((float) str_replace(['.', ','], ['', '.'], (string) $state)) * 100))
-                                    ->helperText('Valor em Reais (armazenado em centavos para precisão contábil).'),
+                                    ->formatStateUsing(fn (?int $state): string => MoneyInput::format($state))
+                                    ->rule(new ValidMoneyInput)
+                                    ->dehydrateStateUsing(fn (mixed $state): ?int => MoneyInput::toCents($state))
+                                    ->helperText('Valor em Reais (armazenado em centavos para precisão contábil). Use vírgula ou ponto para os centavos (ex.: 5,50).'),
 
                                 Forms\Components\TextInput::make('weight_grams')
                                     ->label('Peso da Peça (Consumo de Filamento)')
