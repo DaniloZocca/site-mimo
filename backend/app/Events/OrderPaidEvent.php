@@ -6,10 +6,14 @@ namespace App\Events;
 
 use App\Models\Order;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class OrderPaidEvent
+/**
+ * Dentro de uma transação (webhook), só é disparado depois do commit; fora dela (cartão no checkout), na hora.
+ */
+class OrderPaidEvent implements ShouldDispatchAfterCommit
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

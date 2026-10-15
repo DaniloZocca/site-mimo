@@ -251,10 +251,40 @@ class MercadoPagoWebhookController extends Controller
 
                 // Casos de Cancelamento / Recusa
                 if (in_array($paymentStatus, ['rejected', 'cancelled', 'refunded', 'charged_back'], true)) {
+                    // Só cancela pelo pagamento do próprio pedido (mesma regra da aprovação): com id gravado no
+                    // checkout, a recusa de outro pagamento com a mesma external_reference é ignorada.
+                    $knownIds = $order->payments()->whereNotNull('external_id')->pluck('external_id')->map(fn ($id): string => (string) $id);
+                    if ($knownIds->isNotEmpty() && ! $knownIds->contains($payment->id)) {
+                        Log::warning("⚠️ Recusa ignorada: pagamento #{$payment->id} não pertence ao pedido #{$order->order_number}.", [
+                            'order_id' => $order->id,
+                            'payment_id' => $payment->id,
+                        ]);
+
+                        return response()->json([
+                            'message' => 'Notificação ignorada: pagamento não pertence a este pedido.',
+                            'payment_status' => $paymentStatus,
+                        ], 200);
+                    }
+
                     $previousStatus = $order->status->value;
 
-                    $order->status = OrderStatus::CANCELLED;
-                    $order->save();
+                    // Update condicional: só cancela se o pedido ainda estiver pendente (0 linhas = painel ou outra
+                    // notificação mudou o pedido entre a leitura e a gravação)
+                    $updated = Order::whereKey($order->id)
+                        ->where('status', OrderStatus::PENDING_PAYMENT->value)
+                        ->update(['status' => OrderStatus::CANCELLED->value]);
+
+                    if ($updated === 0) {
+                        $order->refresh();
+                        Log::info("ℹ️ Evento idempotente recebido: Pedido #{$order->order_number} já está em '{$order->status->value}'.");
+
+                        return response()->json([
+                            'message' => 'Evento idempotente já processado.',
+                            'order_status' => $order->status->value,
+                        ], 200);
+                    }
+
+                    $order->refresh();
 
                     $order->productionLogs()->create([
                         'previous_status' => $previousStatus,
