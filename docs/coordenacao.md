@@ -101,6 +101,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-27 | Botão "Acompanhar" dos e-mails de pedido (`confirmed`, `printing`, `shipped`) monta `$trackingUrl` com `APP_URL` e abre o endereço da API, não o da loja: usar o domínio do front (config nova) e fazer a loja abrir o rastreio a partir do link (sem router hoje). Achado no M-04 (#18) | B | pedidos, config, front | M-04 | concluído (produção precisa de `FRONTEND_URL`, ver "Antes do deploy") | #21 |
 | M-28 | Texto do formulário de rastreio ainda pede "primeiros dígitos do CPF" (`OrderSearchForm.jsx:90`, `trackingSchema.js`): trocar por "CPF completo" e conferir os 11 dígitos antes de enviar, sem mudança visual. Achado no M-09 | B | front | M-09 | concluído | #25 |
 | M-29 | Preço unitário negativo quando o modificador do tamanho é mais negativo que o preço base: o painel aceita (`SizeResource.php:42`, campo sem mínimo). Ex.: base 5000, tamanho −6000, frete 1490: o checkout mostra PIX R$ 5,90 e cartão R$ 4,90, mas o back trava as peças em 0 com `max(0, …)` e cobra R$ 14,90 (só o frete); `calculateProductPricing` trava em 0 e `calculateCartTotals` não. Caracterizado como PERGUNTA em `CheckoutValidationTest::test_modificador_negativo_maior_que_o_preco_gera_unitario_negativo`. Direção (a decidir no plano): proibir unitário negativo, com validação no painel e/ou 422 no checkout. Só abre com o OK do Zocca. Achado na conferência do M-18 | C | painel, checkout | M-17 | a fazer | — |
+| M-34 | Dependências do front com falha conhecida (parte front do M-23): `npm audit fix` sem `--force` (dompurify 3.4.17, source-map-js 1.2.2, tailwindcss 3.4.19) e Vite 5 → 6.4.4 (esbuild 0.25), sem mudar o visual | B | front | M-22 | em merge (CSS gerado igual, só espaços em `@media`; screenshots idênticas pixel a pixel; sobram 7 avisos da cadeia do Tailwind 3, só de build) | — |
 
 ## Decisões pendentes
 
@@ -136,3 +137,6 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   confirmação; "Iniciar Impressão" e "Expedir Pedido" do painel mandam os e-mails de impressão e de envio (M-10). O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
 - `.env` de produção com `FRONTEND_URL` = endereço da loja publicada, em `https://` e sem barra no final (M-27; ex.:
   `FRONTEND_URL=https://www.dominio.com.br`). Sem ela, o botão "Acompanhar" dos e-mails aponta para `http://localhost:5173`.
+- Build do front com Vite 6 (M-34): Node `^18`, `^20` ou `>=22` (o `engines` do Vite 6.4.4); usar Node 22, o mesmo do CI
+  (o 18 já não recebe correção). O build roda onde o `npm run build` for executado (não há deploy automático ligado ao
+  repositório): conferir `node -v` nessa máquina antes do build e rodar `npm ci` depois do pull.
