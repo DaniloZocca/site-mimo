@@ -76,6 +76,11 @@ jobs:
       - name: composer install
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      # Só pacotes que vão para produção (--no-dev, pelo composer.lock) e só aviso alto ou crítico
+      # reprova; baixo e médio aparecem no log como "ignored". Aviso sem severidade também reprova.
+      - name: composer audit (produção, alto/crítico)
+        run: composer audit --no-dev --locked --abandoned=report --ignore-severity=low --ignore-severity=medium
+
       - name: APP_KEY descartável
         run: echo "APP_KEY=base64:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
 
@@ -104,6 +109,10 @@ jobs:
 
       - name: npm ci
         run: npm ci
+
+      # Só dependências de produção (--omit=dev): a cadeia do Tailwind 3 é de build (risco aceito, M-37).
+      - name: npm audit (produção, alto/crítico)
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Lint (oxlint, teto de avisos no package.json)
         run: npm run lint
