@@ -10,8 +10,12 @@ use App\Events\OrderShippedEvent;
 use App\Events\OrderStatusUpdatedEvent;
 use App\Exceptions\InvalidOrderStatusTransitionException;
 use App\Models\Order;
+use App\Models\ProductionLog;
 use App\Services\ProductionWorkflowService;
+use Closure;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 
@@ -108,33 +112,202 @@ class TransitionSideEffectsTest extends CharacterizationTestCase
         }
     }
 
-    public function test_objeto_desatualizado_sobrescreve_pedido_ja_cancelado(): void
+    public function test_transicao_valida_contra_o_status_real_do_banco(): void
     {
-        // BUG CONHECIDO: a validação usa o status em memória, não o da linha travada — ver teste gêmeo em KnownBugs
+        // Bug #15 corrigido (M-16): era OrderStateMachineKnownBugsTest
         $stale = Order::factory()->status(OrderStatus::IN_QUEUE)->create();
         Order::whereKey($stale->id)->first()->forceFill(['status' => OrderStatus::CANCELLED])->save();
 
-        $result = $this->service->transitionTo($stale, OrderStatus::PRINTING, 'operador atrasado');
+        try {
+            app(ProductionWorkflowService::class)->transitionTo($stale, OrderStatus::PRINTING);
+        } catch (InvalidOrderStatusTransitionException) {
+        }
 
-        $this->assertSame(OrderStatus::PRINTING, $result->status);
-        $this->assertSame(OrderStatus::PRINTING, $stale->fresh()->status);
-        $log = $stale->productionLogs()->sole();
-        $this->assertSame('in_queue', $log->previous_status, 'O log registra o status em memória, não o real (cancelled).');
+        $this->assertSame(OrderStatus::CANCELLED, $stale->fresh()->status);
     }
 
-    public function test_dispatch_order_invalido_grava_o_codigo_mesmo_assim(): void
+    public function test_dispatch_order_invalido_nao_grava_o_codigo(): void
     {
-        // BUG CONHECIDO: dispatchOrder salva carrier_tracking_code antes de validar a transição — ver teste gêmeo em KnownBugs
+        // Bug #22 corrigido (M-16): era OrderStateMachineKnownBugsTest
         $order = Order::factory()->status(OrderStatus::IN_QUEUE)->create();
 
         try {
-            $this->service->dispatchOrder($order, 'BR999');
+            app(ProductionWorkflowService::class)->dispatchOrder($order, 'BR999');
+        } catch (InvalidOrderStatusTransitionException) {
+        }
+
+        $this->assertNull($order->fresh()->carrier_tracking_code);
+    }
+
+    public function test_objeto_desatualizado_com_pedido_cancelado_cita_o_status_real_e_atualiza_a_instancia(): void
+    {
+        $stale = Order::factory()->status(OrderStatus::IN_QUEUE)->create();
+        DB::table('orders')->where('id', $stale->id)->update(['status' => OrderStatus::CANCELLED->value]);
+
+        try {
+            $this->service->transitionTo($stale, OrderStatus::PRINTING, 'operador atrasado');
+            $this->fail('Esperava InvalidOrderStatusTransitionException');
+        } catch (InvalidOrderStatusTransitionException $e) {
+            $this->assertStringContainsString("'Cancelado' (cancelled)", $e->getMessage());
+        }
+
+        $this->assertSame(OrderStatus::CANCELLED, $stale->status, 'A instância recebida reflete o status real.');
+        $this->assertSame(0, $stale->productionLogs()->count());
+        Event::assertNotDispatched(OrderStatusUpdatedEvent::class);
+        Event::assertNotDispatched(OrderPrintingStartedEvent::class);
+    }
+
+    public function test_objeto_desatualizado_usa_o_status_real_como_origem(): void
+    {
+        $stale = Order::factory()->status(OrderStatus::IN_QUEUE)->create();
+        DB::table('orders')->where('id', $stale->id)->update(['status' => OrderStatus::PRINTING->value]);
+
+        $result = $this->service->transitionTo($stale, OrderStatus::FINISHING_AND_PACKAGING);
+
+        $this->assertSame($stale, $result);
+        $this->assertSame(OrderStatus::FINISHING_AND_PACKAGING, $stale->status);
+        $this->assertSame('printing', $stale->productionLogs()->sole()->previous_status);
+        Event::assertDispatched(OrderStatusUpdatedEvent::class, fn ($e): bool => $e->previousStatus === OrderStatus::PRINTING);
+    }
+
+    public function test_objeto_desatualizado_pedindo_o_status_que_o_banco_ja_tem_e_no_op(): void
+    {
+        $stale = Order::factory()->status(OrderStatus::IN_QUEUE)->create();
+        DB::table('orders')->where('id', $stale->id)->update(['status' => OrderStatus::PRINTING->value]);
+
+        $result = $this->service->transitionTo($stale, OrderStatus::PRINTING);
+
+        $this->assertSame($stale, $result);
+        $this->assertSame(OrderStatus::PRINTING, $stale->status);
+        $this->assertSame(0, $stale->productionLogs()->count());
+        Event::assertNotDispatched(OrderStatusUpdatedEvent::class);
+        Event::assertNotDispatched(OrderPrintingStartedEvent::class);
+    }
+
+    public function test_pedido_cancelado_entre_a_leitura_e_a_gravacao_nao_e_sobrescrito(): void
+    {
+        $order = Order::factory()->status(OrderStatus::IN_QUEUE)->create();
+        $this->runRightAfterNextRead($order, fn () => DB::table('orders')->where('id', $order->id)->update(['status' => OrderStatus::CANCELLED->value]));
+
+        try {
+            $this->service->transitionTo($order, OrderStatus::PRINTING);
+            $this->fail('Esperava InvalidOrderStatusTransitionException');
+        } catch (InvalidOrderStatusTransitionException $e) {
+            $this->assertStringContainsString("'Cancelado' (cancelled)", $e->getMessage());
+        }
+
+        $this->assertSame(OrderStatus::CANCELLED, $order->status);
+        $this->assertSame(OrderStatus::CANCELLED, $order->fresh()->status);
+        $this->assertSame(0, $order->productionLogs()->count());
+        Event::assertNotDispatched(OrderStatusUpdatedEvent::class);
+        Event::assertNotDispatched(OrderPrintingStartedEvent::class);
+    }
+
+    public function test_dois_processos_com_o_mesmo_destino_geram_uma_transicao_sem_erro(): void
+    {
+        $order = Order::factory()->status(OrderStatus::PENDING_PAYMENT)->create();
+        $other = Order::findOrFail($order->id);
+        // O segundo processo faz a mesma transição entre a leitura e a gravação do primeiro
+        $this->runRightAfterNextRead($order, fn () => app(ProductionWorkflowService::class)->transitionTo($other, OrderStatus::IN_QUEUE));
+
+        $result = $this->service->transitionTo($order, OrderStatus::IN_QUEUE);
+
+        $this->assertSame($order, $result);
+        $this->assertSame(OrderStatus::IN_QUEUE, $order->status);
+        $this->assertSame(OrderStatus::IN_QUEUE, $order->fresh()->status);
+        $this->assertSame(1, $order->productionLogs()->count());
+        Event::assertDispatchedTimes(OrderStatusUpdatedEvent::class, 1);
+    }
+
+    public function test_rollback_da_transacao_externa_nao_dispara_eventos_nem_grava_log(): void
+    {
+        $order = Order::factory()->status(OrderStatus::FINISHING_AND_PACKAGING)->create();
+
+        try {
+            DB::transaction(function () use ($order): void {
+                $this->service->dispatchOrder($order, 'BR123456789BR');
+                throw new \RuntimeException('falha depois da transição');
+            });
+        } catch (\RuntimeException) {
+        }
+
+        $fresh = $order->fresh();
+        $this->assertSame(OrderStatus::FINISHING_AND_PACKAGING, $fresh->status);
+        $this->assertNull($fresh->carrier_tracking_code);
+        $this->assertSame(0, ProductionLog::where('order_id', $order->id)->count());
+        Event::assertNotDispatched(OrderStatusUpdatedEvent::class);
+        Event::assertNotDispatched(OrderShippedEvent::class);
+    }
+
+    public function test_eventos_esperam_o_commit_da_transacao_externa(): void
+    {
+        $order = Order::factory()->status(OrderStatus::IN_QUEUE)->create();
+
+        DB::transaction(function () use ($order): void {
+            $this->service->startPrinting($order);
+            Event::assertNotDispatched(OrderPrintingStartedEvent::class);
+        });
+
+        Event::assertDispatchedTimes(OrderPrintingStartedEvent::class, 1);
+        Event::assertDispatchedTimes(OrderStatusUpdatedEvent::class, 1);
+    }
+
+    public function test_dispatch_order_com_pedido_cancelado_entre_a_leitura_e_a_gravacao_nao_grava_o_codigo(): void
+    {
+        $order = Order::factory()->status(OrderStatus::FINISHING_AND_PACKAGING)->create();
+        $this->runRightAfterNextRead($order, fn () => DB::table('orders')->where('id', $order->id)->update(['status' => OrderStatus::CANCELLED->value]));
+
+        try {
+            $this->service->dispatchOrder($order, 'BR123456789BR');
             $this->fail('Esperava InvalidOrderStatusTransitionException');
         } catch (InvalidOrderStatusTransitionException) {
         }
 
         $fresh = $order->fresh();
-        $this->assertSame(OrderStatus::IN_QUEUE, $fresh->status);
-        $this->assertSame('BR999', $fresh->carrier_tracking_code);
+        $this->assertSame(OrderStatus::CANCELLED, $fresh->status);
+        $this->assertNull($fresh->carrier_tracking_code);
+        $this->assertSame(0, $order->productionLogs()->count());
+        Event::assertNotDispatched(OrderShippedEvent::class);
+    }
+
+    public function test_dispatch_order_em_pedido_ja_expedido_preserva_o_codigo_e_avisa_no_log(): void
+    {
+        $order = Order::factory()->status(OrderStatus::SHIPPED)->create(['carrier_tracking_code' => 'BR111']);
+        Log::spy();
+
+        $result = $this->service->dispatchOrder($order, 'BR222');
+
+        $this->assertSame(OrderStatus::SHIPPED, $result->status);
+        $this->assertSame('BR111', $order->fresh()->carrier_tracking_code);
+        $this->assertSame(0, $order->productionLogs()->count());
+        Event::assertNotDispatched(OrderShippedEvent::class);
+        Log::shouldHaveReceived('warning')->once()->withArgs(
+            fn (string $message): bool => str_contains($message, $order->order_number)
+                && ! str_contains($message, 'BR111')
+                && ! str_contains($message, 'BR222'),
+        );
+    }
+
+    public function test_dispatch_order_em_pedido_ja_expedido_com_o_mesmo_codigo_nao_avisa(): void
+    {
+        $order = Order::factory()->status(OrderStatus::SHIPPED)->create(['carrier_tracking_code' => 'BR111']);
+        Log::spy();
+
+        $this->service->dispatchOrder($order, 'BR111');
+
+        Log::shouldNotHaveReceived('warning');
+        $this->assertSame(0, $order->productionLogs()->count());
+    }
+
+    private function runRightAfterNextRead(Order $order, Closure $callback): void
+    {
+        $armed = true;
+        Order::retrieved(function (Order $retrieved) use (&$armed, $order, $callback): void {
+            if (! $armed || ! $retrieved->is($order)) {
+                return;
+            }
+            $armed = false;
+            $callback();
+        });
     }
 }

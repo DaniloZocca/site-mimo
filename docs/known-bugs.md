@@ -7,24 +7,24 @@ e dos gêmeos que afirmam o comportamento correto (`backend/tests/Feature/KnownB
 "known-bugs" passa a passar. Nesse momento, apague o teste characterization antigo e mova o gêmeo para
 `Characterization/` (trocando o grupo para `characterization`).
 
-- Rodar: `php artisan test --group=known-bugs` (deve falhar; 4 testes hoje).
+- Rodar: `php artisan test --group=known-bugs` (deve falhar; hoje o grupo não tem testes: o M-16 moveu os dois últimos gêmeos).
 - O grupo `known-bugs` está excluído da suíte padrão no `phpunit.xml`.
 
 Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado, dados expostos ou fluxo quebrado; **P2** = inconsistência sem dano imediato.; **P3** = exibição/texto incorreto sem efeito no valor cobrado.
 
 | # | Bug | Sev. | Teste characterization (comportamento atual) | Teste known-bugs (comportamento esperado) | Causa provável (arquivo:linha) |
 |---|-----|------|----------------------------------------------|-------------------------------------------|--------------------------------|
-| 15 | `transitionTo()` valida contra o status em memória, não o da linha travada: pode sobrescrever um pedido já cancelado | P1 | `OrderStateMachine/TransitionSideEffectsTest::test_objeto_desatualizado_sobrescreve_pedido_ja_cancelado` | `OrderStateMachineKnownBugsTest::test_transicao_valida_contra_o_status_real_do_banco` | `app/Services/ProductionWorkflowService.php:58` e `:76` |
-| 22 | `dispatchOrder()` grava o código de rastreio antes de validar a transição | P2 | `TransitionSideEffectsTest::test_dispatch_order_invalido_grava_o_codigo_mesmo_assim` | `OrderStateMachineKnownBugsTest::test_dispatch_order_invalido_nao_grava_o_codigo` | `app/Services/ProductionWorkflowService.php:132` |
 | 27 | CartDrawer e CheckoutModal ainda formatam valores de item a partir de reais em float (`unitTotalCents / 100`, `toFixed`) e o `CartContext` gera `unitTotalCents` fracionado quando o preço vem em reais (`price * 100` sem arredondar) | P3 | — (sem Vitest no front) | — | `src/components/cart/CartDrawer.jsx` (itens); `src/context/CartContext.jsx:69-75` |
 | 28 | Newsletter do Footer mostra confirmação de inscrição mas não grava nem envia nada (o `handleNewsletter` só limpa o campo e exibe o toast) | P3 | — (sem Vitest no front) | — | `src/components/Footer.jsx:10-16` |
 
-Em aberto: 4 bugs, 2 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
+Em aberto: 2 bugs, 0 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
 
 ## Corrigidos
 
 | # | Bug | Sev. | Correção | Teste que agora garante (characterization) |
 |---|-----|------|----------|--------------------------------------------|
+| 15 | `transitionTo()` validava contra o status em memória, não o do banco: podia sobrescrever um pedido já cancelado | P1 | corrigido — M-16: a decisão usa o status lido do banco dentro da transação e a gravação é um UPDATE condicional (`WHERE status = <lido>`); corrida com o mesmo destino é no-op, com outro destino lança a exceção com o status real; a instância recebida é atualizada em todos os resultados; eventos só depois do commit da transação mais externa (`DB::afterCommit`) | `OrderStateMachine/TransitionSideEffectsTest::test_transicao_valida_contra_o_status_real_do_banco`, `::test_pedido_cancelado_entre_a_leitura_e_a_gravacao_nao_e_sobrescrito`, `::test_dois_processos_com_o_mesmo_destino_geram_uma_transicao_sem_erro`, `::test_rollback_da_transacao_externa_nao_dispara_eventos_nem_grava_log` |
+| 22 | `dispatchOrder()` gravava o código de rastreio antes de validar a transição | P2 | corrigido — M-16: o código entra no mesmo UPDATE condicional do status; em pedido já expedido é no-op (não troca o código) e, com código diferente, `Log::warning` só com o número do pedido | `TransitionSideEffectsTest::test_dispatch_order_invalido_nao_grava_o_codigo`, `::test_dispatch_order_com_pedido_cancelado_entre_a_leitura_e_a_gravacao_nao_grava_o_codigo`, `::test_dispatch_order_em_pedido_ja_expedido_preserva_o_codigo_e_avisa_no_log` |
 | 1 | Webhook sem `MERCADOPAGO_WEBHOOK_SECRET` aceitava qualquer requisição (fail-open) | P0 | `fix/webhook-fail-closed`: sem segredo → 401 + log critical; `validateWebhookSignature()` devolve false | `Webhook/WebhookSignatureTest::test_sem_segredo_configurado_webhook_e_rejeitado_fail_closed`, `::test_validate_webhook_signature_do_servico_rejeita_sem_segredo` |
 | 2 | `getPayment()` devolvia `approved` para IDs `SIM_`/`TEST_` sem consultar a API | P0 | `fix/remove-sim-backdoor`: atalho removido; o comando `mimoo:simulate-order-flow` passou a usar um cliente HTTP falso do SDK só durante a execução e recusa rodar em produção ou sem segredo | `Webhook/WebhookBackdoorTest::test_get_payment_nao_tem_atalho_sim_test_e_sempre_consulta_a_api`, `::test_webhook_assinado_com_id_sim_nao_aprova_o_pedido`; `Console/SimulateOrderFlowCommandTest` |
 | 3 | POST anônimo com `data.id=SIM_<pedido>_1` marcava o pedido como pago | P0 | resolvido pelo fail-closed do #1 | `Webhook/WebhookBackdoorTest::test_webhook_forjado_com_id_sim_sem_segredo_nao_marca_pedido_como_pago` |

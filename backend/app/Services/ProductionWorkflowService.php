@@ -56,6 +56,10 @@ class ProductionWorkflowService
     /**
      * Executa a transição de status atômica com validação formal da máquina de estados.
      *
+     * A decisão usa o status gravado no banco (não o do objeto recebido) e a gravação é um UPDATE
+     * condicional (WHERE status = status lido), que funciona igual no Postgres e no SQLite.
+     * Em todos os resultados a instância $order recebida é atualizada com o estado do banco.
+     *
      * @throws InvalidOrderStatusTransitionException
      * @throws Exception
      */
@@ -65,58 +69,91 @@ class ProductionWorkflowService
         string $notes = '',
         ?string $author = 'Sistema / Operador 3D'
     ): Order {
-        $currentStatus = $order->status;
+        $this->applyTransition($order, $newStatus, $notes, $author);
 
-        // Se o status já for o desejado, operação é idempotente
-        if ($currentStatus === $newStatus) {
-            Log::info("Transição idempotente ignorada para o pedido #{$order->order_number}: já se encontra em '{$newStatus->value}'.");
+        return $order;
+    }
 
-            return $order;
-        }
+    /**
+     * @param  array<string, mixed>  $extra  colunas gravadas no mesmo UPDATE do status
+     * @return bool true se a transição foi gravada; false se o pedido já estava no status pedido (no-op)
+     *
+     * @throws InvalidOrderStatusTransitionException
+     */
+    private function applyTransition(Order $order, OrderStatus $newStatus, string $notes, ?string $author, array $extra = []): bool
+    {
+        $auditNote = ! empty($author) ? "[{$author}] {$notes}" : $notes;
 
-        // Validação da Máquina de Estados (Impedir transições ilegais)
-        $allowedNext = self::ALLOWED_TRANSITIONS[$currentStatus->value] ?? [];
-        if (! in_array($newStatus, $allowedNext, true)) {
-            Log::warning("Tentativa de transição de status ilegal no pedido #{$order->order_number}: '{$currentStatus->value}' -> '{$newStatus->value}'");
-            throw new InvalidOrderStatusTransitionException($currentStatus, $newStatus);
-        }
+        /** @var array{0: string, 1: OrderStatus} $outcome */
+        $outcome = DB::transaction(function () use ($order, $newStatus, $notes, $auditNote, $extra): array {
+            /** @var Order $current */
+            $current = Order::whereKey($order->getKey())->lockForUpdate()->firstOrFail();
+            $currentStatus = $current->status;
 
-        // Execução atômica com Bloqueio Pessimista (lockForUpdate)
-        $updatedOrder = DB::transaction(function () use ($order, $currentStatus, $newStatus, $notes, $author): Order {
-            /** @var Order $lockedOrder */
-            $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
+            if ($currentStatus === $newStatus) {
+                return ['noop', $currentStatus];
+            }
 
-            $lockedOrder->status = $newStatus;
-            $lockedOrder->save();
+            if (! self::allows($currentStatus, $newStatus)) {
+                return ['invalid', $currentStatus];
+            }
 
-            $auditNote = ! empty($author) ? "[{$author}] {$notes}" : $notes;
+            $affected = Order::whereKey($order->getKey())
+                ->where('status', $currentStatus->value)
+                ->update(['status' => $newStatus->value, 'updated_at' => now()] + $extra);
 
-            $lockedOrder->productionLogs()->create([
+            if ($affected === 0) {
+                // Outro processo mudou o pedido entre a leitura e a gravação: decide pelo status novo
+                $racedStatus = Order::whereKey($order->getKey())->firstOrFail()->status;
+
+                return [$racedStatus === $newStatus ? 'noop' : 'invalid', $racedStatus];
+            }
+
+            $order->productionLogs()->create([
                 'previous_status' => $currentStatus->value,
                 'new_status' => $newStatus->value,
                 'notes' => $auditNote,
                 'created_at' => now(),
             ]);
 
-            return $lockedOrder;
+            // Os eventos levam o estado gravado (status e código de rastreio)
+            $order->refresh();
+
+            // Eventos só depois do commit da transação mais externa: num rollback, nada é disparado
+            DB::afterCommit(function () use ($order, $currentStatus, $newStatus, $notes): void {
+                Log::info("🔄 Status do pedido #{$order->order_number} atualizado com sucesso: '{$currentStatus->value}' -> '{$newStatus->value}'", [
+                    'order_id' => $order->id,
+                    'notes' => $notes,
+                ]);
+
+                event(new OrderStatusUpdatedEvent($order, $currentStatus, $newStatus, $notes));
+
+                if ($newStatus === OrderStatus::PRINTING) {
+                    event(new OrderPrintingStartedEvent($order, $notes));
+                } elseif ($newStatus === OrderStatus::SHIPPED) {
+                    event(new OrderShippedEvent($order, $order->carrier_tracking_code ?? ''));
+                }
+            });
+
+            return ['applied', $currentStatus];
         });
 
-        Log::info("🔄 Status do pedido #{$updatedOrder->order_number} atualizado com sucesso: '{$currentStatus->value}' -> '{$newStatus->value}'", [
-            'order_id' => $updatedOrder->id,
-            'notes' => $notes,
-        ]);
+        [$result, $statusInDatabase] = $outcome;
 
-        // Dispara evento genérico de atualização
-        event(new OrderStatusUpdatedEvent($updatedOrder, $currentStatus, $newStatus, $notes));
+        $order->refresh();
 
-        // Disparo de eventos específicos de ciclo de vida para notificações transacionais
-        if ($newStatus === OrderStatus::PRINTING) {
-            event(new OrderPrintingStartedEvent($updatedOrder, $notes));
-        } elseif ($newStatus === OrderStatus::SHIPPED) {
-            event(new OrderShippedEvent($updatedOrder, $updatedOrder->carrier_tracking_code ?? ''));
+        if ($result === 'noop') {
+            Log::info("Transição idempotente ignorada para o pedido #{$order->order_number}: já se encontra em '{$newStatus->value}'.");
+
+            return false;
         }
 
-        return $updatedOrder;
+        if ($result === 'invalid') {
+            Log::warning("Tentativa de transição de status ilegal no pedido #{$order->order_number}: '{$statusInDatabase->value}' -> '{$newStatus->value}'");
+            throw new InvalidOrderStatusTransitionException($statusInDatabase, $newStatus);
+        }
+
+        return true;
     }
 
     /**
@@ -140,12 +177,22 @@ class ProductionWorkflowService
      */
     public function dispatchOrder(Order $order, string $carrierTrackingCode, string $notes = 'Pacote despachado.'): Order
     {
-        $order->carrier_tracking_code = $carrierTrackingCode;
-        $order->save();
-
         $formattedNotes = "{$notes} | Rastreio: {$carrierTrackingCode}";
 
-        return $this->transitionTo($order, OrderStatus::SHIPPED, $formattedNotes);
+        // O código entra no mesmo UPDATE do status: transição recusada não grava nada
+        $applied = $this->applyTransition(
+            $order,
+            OrderStatus::SHIPPED,
+            $formattedNotes,
+            'Sistema / Operador 3D',
+            ['carrier_tracking_code' => $carrierTrackingCode],
+        );
+
+        if (! $applied && $order->carrier_tracking_code !== $carrierTrackingCode) {
+            Log::warning("Pedido #{$order->order_number} já expedido: o código de rastreio informado é diferente do gravado e não foi trocado.");
+        }
+
+        return $order;
     }
 
     /**
