@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Blindagem Global de Segurança HTTP (HSTS, CSP, Anti-Clickjacking, Anti-Sniffing)
         $middleware->append(SecurityHeadersMiddleware::class);
 
+        // Conta de cliente (M-26): sem sessão responde 401 em JSON, sem redirecionar.
+        // As demais rotas mantêm o padrão do Laravel (rota "login").
+        $middleware->redirectGuestsTo(
+            fn (Request $request): ?string => $request->is('api/conta/*') ? null : route('login')
+        );
+
         // Isenção explícita de CSRF para o Webhook do Mercado Pago
         $middleware->validateCsrfTokens(except: [
             'api/webhooks/mercadopago',
