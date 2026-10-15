@@ -192,6 +192,43 @@ class CheckProductionConfigCommandTest extends CharacterizationTestCase
         $this->assertFalse($this->loadConfig('session')['secure']);
     }
 
+    public function test_loja_e_api_em_hosts_diferentes_sem_session_domain_avisa_sem_reprovar(): void
+    {
+        $this->configureProduction();
+        config()->set('app.url', 'https://api.mimoolab.com.br');
+        config()->set('app.frontend_url', 'https://mimoolab.com.br');
+        config()->set('session.domain', null);
+
+        $this->artisan('mimoo:check-production')
+            ->expectsOutputToContain('Login de cliente: a loja e a API estão em endereços diferentes')
+            ->expectsOutput('Configuração de produção ok.')
+            ->assertSuccessful();
+    }
+
+    public function test_session_domain_comum_a_loja_e_api_nao_avisa(): void
+    {
+        $this->configureProduction();
+        config()->set('app.url', 'https://api.mimoolab.com.br');
+        config()->set('app.frontend_url', 'https://mimoolab.com.br');
+        config()->set('session.domain', '.mimoolab.com.br');
+
+        $this->artisan('mimoo:check-production')
+            ->doesntExpectOutputToContain('Login de cliente')
+            ->assertSuccessful();
+    }
+
+    public function test_session_domain_que_nao_cobre_a_loja_avisa(): void
+    {
+        $this->configureProduction();
+        config()->set('app.url', 'https://api.mimoolab.com.br');
+        config()->set('app.frontend_url', 'https://loja-mimoo.vercel.app');
+        config()->set('session.domain', '.mimoolab.com.br');
+
+        $this->artisan('mimoo:check-production')
+            ->expectsOutputToContain('Login de cliente: a loja e a API estão em endereços diferentes')
+            ->assertSuccessful();
+    }
+
     private function configureProduction(): void
     {
         $this->app->detectEnvironment(fn () => 'production');

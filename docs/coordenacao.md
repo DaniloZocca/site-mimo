@@ -120,6 +120,7 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 | `/api/colors` e `/api/sizes`: criar a coluna `is_active` (migration) ou listar tudo? | M-11 lista todas as cores/tamanhos (sem migration). | M-11 |
 | **Bloqueia o deploy do M-26 (b):** página de Política de Privacidade publicada, dizendo quais dados a conta guarda e como pedir a exclusão da conta. Texto e endereço são do Zocca. | O M-26 (a) pode ir para produção (as rotas não aparecem na loja). O (b) não vai para produção sem a página. | M-26 |
 | Excluir a conta pelo próprio site (LGPD)? | Exclusão a pedido do cliente, pelo canal que a Política de Privacidade indicar; feita à mão no banco (o painel não lista contas). | M-26 ou tarefa nova |
+| Riscos da conta de cliente apontados na revisão de segurança do M-26 (a): (1) o cadastro diz "Este e-mail já tem conta", o que revela quem é cliente (limite de 3 por minuto por IP); (2) o token de "nova senha" fica no `payload` da fila (`jobs`, e `failed_jobs` se o envio falhar) até o e-mail sair, como no padrão do Laravel. Aceitar ou mudar? | Mantidos: (1) era o comportamento do plano aprovado; (2) quem lê o banco já vê os dados dos clientes, e o token vale 60 min. | M-26 |
 | Painel para contas de cliente (ver, bloquear, excluir), endereços salvos, "comprar de novo", login com Google? | Fora do M-26. | tarefa nova |
 | Cancelar pedido já pago no painel: estorno automático pelo Mercado Pago ou manual? | M-10 cancela só pedido não pago; pago fica para estorno manual. | M-10 |
 | Validade do PIX (`date_of_expiration`): qual prazo? | Prazo padrão do Mercado Pago. | M-17 ou tarefa nova |
@@ -175,10 +176,12 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   for servida em `https://mimoolab.com.br/api`), `SESSION_SECURE_COOKIE=true`, `SESSION_SAME_SITE=lax` (o padrão),
   `CORS_ALLOWED_ORIGINS` com o endereço exato da loja (nunca `*`: o CORS agora aceita cookie) e `FRONTEND_URL` (os links
   dos e-mails de conta abrem a loja). O cadastro só vale com SMTP e worker da fila funcionando (os e-mails de
-  confirmação e de nova senha vão pela fila `database`, como os de pedido). Verificar depois do deploy: criar uma conta de
-  teste com um e-mail seu, conferir que o e-mail "Confirme seu e-mail na MIMOO LAB" chega em até 1 min, clicar no link
-  (tem que abrir a loja com `?conta=verificada`), pedir "Esqueci minha senha" e conferir o segundo e-mail; se não chegar,
-  `php artisan mimoo:check-production` mostra job parado ou falhado.
+  confirmação e de nova senha vão pela fila `database`, como os de pedido). Com loja e API em
+  endereços diferentes e `SESSION_DOMAIN` errado, o `mimoo:check-production` avisa (todo login daria 419). Verificar
+  depois do deploy do (b) (o (a) sozinho não tem tela): criar uma conta de teste com um e-mail seu, conferir que
+  "Confirme seu e-mail na MIMOO LAB" chega em até 1 min, abrir o link (abre a loja, que confirma com você logado),
+  pedir "Esqueci minha senha" e conferir o segundo e-mail; se algum não chegar, `php artisan mimoo:check-production`
+  mostra job parado ou falhado.
 - Build do front com Vite 6 (M-34): Node `^18`, `^20` ou `>=22` (o `engines` do Vite 6.4.4); usar Node 22, o mesmo do CI
   (o 18 já não recebe correção). O build roda onde o `npm run build` for executado (não há deploy automático ligado ao
   repositório): conferir `node -v` nessa máquina antes do build e rodar `npm ci` depois do pull.

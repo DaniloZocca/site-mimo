@@ -54,8 +54,8 @@ class CheckProductionConfigCommand extends Command
             $problems[] = 'Fila sync: e-mails e avisos rodam dentro da requisição do cliente. Use QUEUE_CONNECTION=database com um worker rodando.';
         }
 
-        // Avisos (não reprovam): sinais de worker parado e jobs que falharam
-        foreach ($this->queueWarnings($connection) as $warning) {
+        // Avisos (não reprovam): login de cliente com cookie, sinais de worker parado e jobs que falharam
+        foreach ([...$this->accountCookieWarnings(), ...$this->queueWarnings($connection)] as $warning) {
             $this->warn($warning);
         }
 
@@ -71,6 +71,31 @@ class CheckProductionConfigCommand extends Command
         $this->info('Configuração de produção ok.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Conta de cliente (M-26): com loja e API em hosts diferentes, o front só lê o cookie XSRF-TOKEN se
+     * SESSION_DOMAIN for o domínio comum aos dois (ex.: .mimoolab.com.br); sem isso todo login dá 419.
+     *
+     * @return list<string>
+     */
+    private function accountCookieWarnings(): array
+    {
+        $apiHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        $frontHost = strtolower((string) parse_url((string) config('app.frontend_url'), PHP_URL_HOST));
+
+        if ($apiHost === '' || $frontHost === '' || $apiHost === $frontHost) {
+            return [];
+        }
+
+        $domain = ltrim(strtolower((string) config('session.domain')), '.');
+        $covers = fn (string $host): bool => $domain !== '' && ($host === $domain || str_ends_with($host, '.'.$domain));
+
+        if ($covers($apiHost) && $covers($frontHost)) {
+            return [];
+        }
+
+        return ['Login de cliente: a loja e a API estão em endereços diferentes e SESSION_DOMAIN não é o domínio comum aos dois (ex.: SESSION_DOMAIN=.mimoolab.com.br). Sem isso, entrar e criar conta dão erro 419.'];
     }
 
     /**

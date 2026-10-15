@@ -88,9 +88,6 @@ Route::prefix('conta')->middleware(['web'])->group(function (): void {
     Route::post('/login', [AccountController::class, 'login'])->middleware('throttle:conta-login');
     Route::post('/forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:conta-forgot');
     Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:conta-reset');
-    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
-        ->middleware('throttle:conta-verify')
-        ->name('conta.verification.verify');
 
     Route::middleware(['auth:customer', 'auth.session'])->group(function (): void {
         Route::get('/me', [AccountController::class, 'me'])->middleware('throttle:conta');
@@ -98,5 +95,8 @@ Route::prefix('conta')->middleware(['web'])->group(function (): void {
         Route::get('/orders', CustomerOrdersController::class)->middleware('throttle:conta');
         Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
             ->middleware('throttle:conta-resend');
+        Route::post('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+            ->middleware('throttle:conta-verify')
+            ->name('conta.verification.verify');
     });
 });
