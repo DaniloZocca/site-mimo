@@ -310,6 +310,7 @@ class NotificationListenersTest extends CharacterizationTestCase
     public function test_webhook_aprovado_com_fila_database_enfileira_um_job_por_listener(): void
     {
         // QUEUE_CONNECTION=database (valor de produção): o webhook responde 200 e grava 1 job por listener.
+        // M-24: a liberação passa pelo ProductionWorkflowService, que também dispara OrderStatusUpdatedEvent.
         config(['queue.default' => 'database']);
         $order = Order::factory()->create(['total_cents' => 10000]);
         $this->apiReturnsPayment(123, 'approved', $order);
@@ -321,6 +322,7 @@ class NotificationListenersTest extends CharacterizationTestCase
         $this->assertSame([
             SendOrderConfirmedNotification::class,
             SendOrderPaidNotification::class,
+            SendOrderStatusUpdatedNotification::class,
         ], $jobs);
     }
 }

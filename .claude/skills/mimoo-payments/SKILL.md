@@ -16,7 +16,7 @@ description: Regras de checkout, pagamento PIX/cartão e webhook do Mercado Pago
 - Manifesto `id:{data.id};request-id:{x-request-id};ts:{ts};` (data.id alfanumérico em minúsculas), HMAC-SHA256 hex, compare com `hash_equals`. Inválido → 401. Rejeite `ts` muito antigo.
 - Registre o evento de forma idempotente (unique por provedor + id + ação); duplicado → 200 sem reprocessar.
 - Responda 200 rápido (MP espera até 22 s e reenvia a cada 15 min); processamento pesado em job.
-- Confirme via `getPayment()`: só avance para `in_queue` se `status=approved`, `transaction_amount*100 == total_cents` e `external_reference` confere. Transição via `ProductionWorkflowService::transitionTo()`.
+- Confirme via `getPayment()`: só avance para `in_queue` se `status=approved`, `transaction_amount*100 == total_cents` e `external_reference` confere. Transição via `ProductionWorkflowService::transitionFrom(pending_payment → in_queue)` com `paid_at`, `code=payment_approved` e `reference=<id do pagamento>`.
 - `rejected`/`cancelled` → `cancelled`. `refunded`/`charged_back` depois de pago → log + alerta ao operador (estado ainda não existe no enum: pergunte antes de criar).
 
 ## Proibido
