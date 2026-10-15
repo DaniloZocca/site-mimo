@@ -7,8 +7,6 @@ namespace Tests\Feature\Characterization\OrderStateMachine;
 use App\Enums\OrderStatus;
 use App\Listeners\SendOrderStatusUpdatedNotification;
 use App\Models\Order;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Group;
 use RuntimeException;
 use Tests\Feature\Characterization\Support\BuildsCheckoutPayload;
@@ -41,15 +39,22 @@ class StatusListenerFailureTest extends CharacterizationTestCase
         });
     }
 
-    /** Roda os jobs da fila como o worker de produção e confirma que o do status falhou. */
+    /** Roda os jobs gravados na fila, como o worker de produção, e confirma que só o do status falhou. */
     private function runQueueAndExpectStatusListenerFailure(): void
     {
-        Artisan::call('queue:work', ['--stop-when-empty' => true, '--tries' => 1]);
+        $failures = [];
+        $processed = 0;
+        while ($job = app('queue')->connection('database')->pop()) {
+            $processed++;
+            try {
+                $job->fire();
+            } catch (RuntimeException $e) {
+                $failures[] = [$job->resolveName(), $e->getMessage()];
+            }
+        }
 
-        $failed = DB::table('failed_jobs')->get(['payload', 'exception']);
-        $this->assertCount(1, $failed, 'Só o job do listener de status falha.');
-        $this->assertSame(SendOrderStatusUpdatedNotification::class, json_decode($failed[0]->payload, true)['displayName']);
-        $this->assertStringContainsString('falha no listener de status', $failed[0]->exception);
+        $this->assertGreaterThan(1, $processed);
+        $this->assertSame([[SendOrderStatusUpdatedNotification::class, 'falha no listener de status']], $failures);
     }
 
     public function test_checkout_com_cartao_aprovado_responde_201_mesmo_com_o_listener_de_status_falhando(): void
