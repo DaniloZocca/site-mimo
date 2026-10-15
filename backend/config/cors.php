@@ -36,6 +36,8 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    // Login de cliente (M-26): o front manda o cookie de sessão para /api/conta/*.
+    // Só funciona com origens explícitas em CORS_ALLOWED_ORIGINS (nunca '*').
+    'supports_credentials' => true,
 
 ];

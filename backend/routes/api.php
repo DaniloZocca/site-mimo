@@ -3,6 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\Conta\AccountController;
+use App\Http\Controllers\Api\Conta\CustomerOrdersController;
+use App\Http\Controllers\Api\Conta\EmailVerificationController;
+use App\Http\Controllers\Api\Conta\PasswordResetController;
 use App\Http\Controllers\Api\MercadoPagoWebhookController;
 use App\Http\Controllers\Api\OrderTrackingController;
 use App\Http\Controllers\Api\ProductController;
@@ -71,3 +75,26 @@ Route::middleware(['throttle:30,1,shipping'])->group(function (): void {
 // 5. Webhooks de Pagamento (Mercado Pago - HMAC Validated)
 // =========================================================================
 Route::post('/webhooks/mercadopago', MercadoPagoWebhookController::class);
+
+// =========================================================================
+// 6. Conta de cliente (M-26): sessão em cookie httpOnly + CSRF (grupo web)
+// =========================================================================
+// O front manda credentials: 'include' e o cabeçalho X-XSRF-TOKEN (cookie XSRF-TOKEN, que
+// toda resposta deste grupo devolve). Só estas rotas usam sessão; checkout, frete e rastreio não.
+Route::prefix('conta')->middleware(['web'])->group(function (): void {
+    Route::post('/register', [AccountController::class, 'register'])->middleware('throttle:conta-register');
+    Route::post('/login', [AccountController::class, 'login'])->middleware('throttle:conta-login');
+    Route::post('/forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:conta-forgot');
+    Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:conta-reset');
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware('throttle:conta-verify')
+        ->name('conta.verification.verify');
+
+    Route::middleware(['auth:customer', 'auth.session'])->group(function (): void {
+        Route::get('/me', [AccountController::class, 'me'])->middleware('throttle:conta');
+        Route::post('/logout', [AccountController::class, 'logout'])->middleware('throttle:conta');
+        Route::get('/orders', CustomerOrdersController::class)->middleware('throttle:conta');
+        Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
+            ->middleware('throttle:conta-resend');
+    });
+});
