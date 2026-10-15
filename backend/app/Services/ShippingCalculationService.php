@@ -27,6 +27,14 @@ class ShippingCalculationService
     }
 
     /**
+     * CEP é dado pessoal (regra 8): no log vai só o prefixo de 5 dígitos, ex.: 01001-***.
+     */
+    private function maskCep(string $cleanCep): string
+    {
+        return substr($cleanCep, 0, 5).'-***';
+    }
+
+    /**
      * Calcula as opções de frete (PAC, SEDEX, etc.) com tempo total combinado de manufatura 3D.
      *
      * @param  string  $destinationCep  CEP de destino (8 dígitos)
@@ -50,7 +58,7 @@ class ShippingCalculationService
         return Cache::remember($cacheKey, now()->addHours(6), function () use ($cleanCep, $package): array {
             // Se o token da API não estiver configurado, usa fallback regional local
             if (empty($this->melhorEnvioToken)) {
-                Log::info("Cotação de frete para CEP {$cleanCep} calculada via Fallback Regional (Token do Melhor Envio não configurado).");
+                Log::info("Cotação de frete para CEP {$this->maskCep($cleanCep)} calculada via Fallback Regional (Token do Melhor Envio não configurado).");
 
                 return $this->calculateFallbackShipping($cleanCep, $package);
             }
