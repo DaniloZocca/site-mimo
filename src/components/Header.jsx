@@ -5,7 +5,6 @@ import {
   Search, 
   ShoppingBag, 
   Heart, 
-  User, 
   Truck, 
   Menu, 
   X
@@ -20,9 +19,7 @@ export const Header = () => {
     setActiveTab, 
     setSelectedCategory,
     searchQuery,
-    setSearchQuery,
-    setIsAuthModalOpen,
-    user
+    setSearchQuery
   } = useShop();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -154,14 +151,7 @@ export const Header = () => {
               )}
             </button>
 
-            {/* User Account / Auth */}
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 p-2.5 rounded-2xl border-2 border-mimoo-dark bg-white hover:bg-slate-50 transition-all shadow-chunky-sm"
-              title={user ? `Olá, ${user.name}` : 'Entrar ou Criar Conta'}
-            >
-              <User className="w-5 h-5 text-slate-700" />
-            </button>
+            {/* Botão da conta escondido até o login de verdade (M-26) */}
 
             {/* Cart Button with Bounce */}
             <button

@@ -49,7 +49,6 @@ export const CheckoutModal = () => {
     setCart,
     clearCart,
     cartTotalPrintHours, 
-    user, 
     showToast,
     setActiveTab,
     selectedShipping,
@@ -92,8 +91,8 @@ export const CheckoutModal = () => {
     resolver: zodResolver(checkoutFormSchema),
     mode: 'onBlur',
     defaultValues: {
-      fullName: user?.name || '',
-      email: user?.email || '',
+      fullName: '',
+      email: '',
       cpf: '',
       phone: '',
       cep: '',

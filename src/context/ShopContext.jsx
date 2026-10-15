@@ -82,13 +82,13 @@ export const ShopProvider = ({ children }) => {
   const [trackingIdInput, setTrackingIdInput] = useState('MIMOO-8492');
   const [activeOrder, setActiveOrder] = useState(MOCK_ORDERS[0]);
 
-  // Auth
+  // Auth: ninguém começa logado; o login de verdade chega no M-26.
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [user, setUser] = useState({
-    name: 'Fernanda Oliveira',
-    email: 'fernanda@mimoolab.com.br',
-    isLoggedIn: true,
-    ordersCount: 2,
+    name: '',
+    email: '',
+    isLoggedIn: false,
+    ordersCount: 0,
   });
 
   // Notification Toast
