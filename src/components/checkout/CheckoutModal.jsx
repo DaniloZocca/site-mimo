@@ -150,10 +150,22 @@ export const CheckoutModal = () => {
   }, [isCheckoutOpen, isSubmittingPix, isSubmittingCard, setIsCheckoutOpen]);
 
   // Cliente logado (M-26): nome e e-mail vêm da conta ao abrir o checkout, só nos campos vazios (continuam editáveis).
+  // Ao sair ou trocar de conta, o que veio da conta anterior e não foi editado sai do formulário
+  // (num computador compartilhado, o próximo cliente não vê nem compra com o e-mail de outra pessoa).
+  const prefilledFromAccount = useRef({ fullName: null, email: null });
   useEffect(() => {
-    if (!isCheckoutOpen || !user?.isLoggedIn) return;
-    if (!getValues('fullName')) setValue('fullName', user.name);
-    if (!getValues('email')) setValue('email', user.email);
+    const accountValues = user?.isLoggedIn ? { fullName: user.name, email: user.email } : { fullName: null, email: null };
+    ['fullName', 'email'].forEach((field) => {
+      const previous = prefilledFromAccount.current[field];
+      if (previous !== null && previous !== accountValues[field] && getValues(field) === previous) {
+        setValue(field, '');
+        prefilledFromAccount.current[field] = null;
+      }
+      if (isCheckoutOpen && accountValues[field] && !getValues(field)) {
+        setValue(field, accountValues[field]);
+        prefilledFromAccount.current[field] = accountValues[field];
+      }
+    });
   }, [isCheckoutOpen, user?.isLoggedIn, user?.name, user?.email, getValues, setValue]);
 
   // Contagem regressiva do PIX (15 minutos)

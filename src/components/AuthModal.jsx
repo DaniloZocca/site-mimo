@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useShop } from '../context/ShopContext';
 import { X, User, Lock, Mail, ArrowRight, Package, RefreshCw } from 'lucide-react';
 import { accountApi } from '../utils/accountApi';
@@ -111,7 +111,7 @@ const MyOrders = () => {
         <li key={order.order_number} className="bg-slate-50 p-3 rounded-2xl border-2 border-mimoo-dark/20 flex items-center justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <p className="font-fredoka font-bold text-slate-800 truncate">#{order.order_number}</p>
-            <span className="badge-chunky bg-mimoo-purple-soft text-mimoo-purple-dark border-mimoo-purple-light">
+            <span className="badge-chunky inline-block leading-tight bg-mimoo-purple-soft text-mimoo-purple-dark border-mimoo-purple-light">
               {order.status_label}
             </span>
             <p className="text-slate-500">
@@ -142,6 +142,7 @@ export const AuthModal = () => {
     login,
     register,
     logout,
+    refreshUser,
     resetToken,
     setResetToken,
     pendingVerification,
@@ -156,16 +157,44 @@ export const AuthModal = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  const dialogRef = useRef(null);
+
   const close = () => setIsAuthModalOpen(false);
 
+  // Esc fecha; Tab fica dentro do modal; ao abrir o foco vai para o modal e ao fechar volta para onde estava.
   useEffect(() => {
     if (!isAuthModalOpen) return undefined;
+    const previouslyFocused = document.activeElement;
+    const focusables = () => [...(dialogRef.current?.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    ) || [])];
+    (focusables().find((el) => el.tagName === 'INPUT') || dialogRef.current)?.focus();
+
     const onKey = (e) => {
-      if (e.key === 'Escape') setIsAuthModalOpen(false);
+      if (e.key === 'Escape') {
+        setIsAuthModalOpen(false);
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !dialogRef.current.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !dialogRef.current.contains(document.activeElement))) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') previouslyFocused.focus();
+    };
   }, [isAuthModalOpen, setIsAuthModalOpen]);
+
 
   if (!isAuthModalOpen) return null;
 
@@ -229,6 +258,8 @@ export const AuthModal = () => {
         password_confirmation: passwordConfirmation,
       });
       setResetToken(null);
+      // Trocar a senha encerra as sessões abertas da conta (inclusive esta, se estava logada).
+      await refreshUser();
       goTo('login');
       setSuccess(message);
     });
@@ -244,11 +275,16 @@ export const AuthModal = () => {
   const handleLogout = () => {
     run(async () => {
       await logout();
+      // Nada do formulário anterior fica na tela para a próxima pessoa.
+      setEmail('');
+      setName('');
       setIsAuthModalOpen(false);
       showToast('Você saiu da sua conta.', 'info');
     });
   };
 
+  // Link de nova senha aberto com alguém logado: mostra o formulário de nova senha, não o perfil.
+  const showProfile = user.isLoggedIn && !(authModalView === 'reset' && resetToken);
   const isTabView = authModalView === 'login' || authModalView === 'register';
   const subtitle = {
     login: 'Acesse seus mimos 3D e acompanhe a fila de impressão!',
@@ -264,6 +300,8 @@ export const AuthModal = () => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
+        tabIndex={-1}
+        ref={dialogRef}
         className="relative w-full max-w-md bg-white rounded-3xl border-2 border-mimoo-dark shadow-chunky-xl overflow-hidden p-6 sm:p-8"
       >
 
@@ -274,7 +312,7 @@ export const AuthModal = () => {
           aria-label="Fechar"
           className="absolute top-4 right-4 p-2 rounded-xl border-2 border-mimoo-dark bg-white shadow-chunky-sm hover:bg-mimoo-pink-light transition-all"
         >
-          <X className="w-5 h-5" />
+          <X className="w-5 h-5" aria-hidden="true" />
         </button>
 
         {/* Mascot Avatar Header */}
@@ -288,17 +326,17 @@ export const AuthModal = () => {
           </div>
 
           <h3 id="auth-modal-title" className="font-fredoka font-bold text-2xl text-mimoo-dark">
-            {user.isLoggedIn ? `Olá, ${user.name.split(' ')[0]}! 🐮` : 'Área do Cliente MIMOO'}
+            {showProfile ? `Olá, ${user.name.split(' ')[0]}! 🐮` : 'Área do Cliente MIMOO'}
           </h3>
 
           <p className="text-xs text-slate-500 font-nunito">
-            {user.isLoggedIn
+            {showProfile
               ? 'Acompanhe aqui as suas encomendas sob encomenda.'
               : subtitle}
           </p>
         </div>
 
-        {user.isLoggedIn ? (
+        {showProfile ? (
           /* Logged-in profile panel */
           <div className="space-y-4 font-nunito text-xs">
             <div className="bg-slate-50 p-4 rounded-2xl border-2 border-mimoo-dark/20 space-y-2">
