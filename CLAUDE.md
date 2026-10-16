@@ -7,7 +7,7 @@ As regras abaixo descrevem o comportamento-alvo; onde o código ainda diverge, e
 
 ## Comandos
 - Front: `npm run dev` | `npm run lint` (oxlint) | `npm run build`. Ainda não há testes de front (Vitest não instalado).
-- Lint tem teto de avisos: `oxlint --max-warnings 75` no `package.json` (aviso novo reprova o CI). O teto só pode baixar: ao remover avisos, diminua o número; nunca o aumente.
+- Lint tem teto de avisos: `oxlint --max-warnings 72` no `package.json` (aviso novo reprova o CI). O teto só pode baixar: ao remover avisos, diminua o número; nunca o aumente.
 - CI: `.github/workflows/ci.yml` roda em todo PR para a `main` — `backend (8.2)` e `backend (8.3)` (Postgres 16, `composer audit --no-dev`, `pint --test`, migrations, `vendor/bin/phpunit`) e `frontend` (`npm ci`, `npm audit --omit=dev`, lint, build). Os dois audits reprovam só aviso alto ou crítico de pacote de produção. Sem `.env` nem segredos.
 - Back (dentro de `backend/`): `php artisan serve` (porta 8000) | `php artisan test` (PHPUnit) | `vendor/bin/pint --dirty`
 - O backend está 100% formatado pelo Pint; `vendor/bin/pint --test` deve passar em todo PR. Edite PHP normalmente pelas ferramentas de edição (o hook formata só o arquivo editado).

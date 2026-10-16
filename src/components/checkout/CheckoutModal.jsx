@@ -49,6 +49,7 @@ export const CheckoutModal = () => {
     setCart,
     clearCart,
     cartTotalPrintHours, 
+    user,
     showToast,
     setActiveTab,
     selectedShipping,
@@ -147,6 +148,13 @@ export const CheckoutModal = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isCheckoutOpen, isSubmittingPix, isSubmittingCard, setIsCheckoutOpen]);
+
+  // Cliente logado (M-26): nome e e-mail vêm da conta ao abrir o checkout, só nos campos vazios (continuam editáveis).
+  useEffect(() => {
+    if (!isCheckoutOpen || !user?.isLoggedIn) return;
+    if (!getValues('fullName')) setValue('fullName', user.name);
+    if (!getValues('email')) setValue('email', user.email);
+  }, [isCheckoutOpen, user?.isLoggedIn, user?.name, user?.email, getValues, setValue]);
 
   // Contagem regressiva do PIX (15 minutos)
   useEffect(() => {

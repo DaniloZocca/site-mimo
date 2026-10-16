@@ -1,10 +1,35 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { PRODUCTS, MOCK_ORDERS, FILAMENT_COLORS } from '../data/mockProducts';
 import { useCart } from './CartContext';
 import { API_BASE } from '../config/api';
+import { accountApi } from '../utils/accountApi';
 
 const ShopContext = createContext();
+
+const LOGGED_OUT_USER = { name: '', email: '', isLoggedIn: false, emailVerified: false };
+
+const readAccountLink = () => {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    verification: params.get('verificar') === '1'
+      ? {
+          id: params.get('id') || '',
+          hash: params.get('hash') || '',
+          expires: params.get('expires') || '',
+          signature: params.get('signature') || '',
+        }
+      : null,
+    resetToken: params.get('reset') || null,
+  };
+};
+
+const toUser = (customer) => ({
+  name: customer.name || '',
+  email: customer.email || '',
+  isLoggedIn: true,
+  emailVerified: Boolean(customer.email_verified),
+});
 
 export const ShopProvider = ({ children }) => {
   const cartCtx = useCart();
@@ -82,23 +107,114 @@ export const ShopProvider = ({ children }) => {
   const [trackingIdInput, setTrackingIdInput] = useState('MIMOO-8492');
   const [activeOrder, setActiveOrder] = useState(MOCK_ORDERS[0]);
 
-  // Auth: ninguém começa logado; o login de verdade chega no M-26.
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [user, setUser] = useState({
-    name: '',
-    email: '',
-    isLoggedIn: false,
-    ordersCount: 0,
-  });
+  // Conta de cliente (M-26): a sessão é um cookie da API; ao abrir a loja, GET /api/conta/me diz quem está logado.
+  // Links dos e-mails de conta: ?verificar=1&id&hash&expires&signature (confirmação) e ?reset=<token> (nova senha)
+  const [accountLink] = useState(readAccountLink);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(Boolean(accountLink.resetToken));
+  const [authModalView, setAuthModalView] = useState(accountLink.resetToken ? 'reset' : 'login'); // 'login' | 'register' | 'forgot' | 'reset'
+  const [user, setUser] = useState(LOGGED_OUT_USER);
+  const [pendingVerification, setPendingVerification] = useState(null);
+  const [resetToken, setResetToken] = useState(accountLink.resetToken);
+  const verifyingRef = useRef(false);
 
   // Notification Toast
   const [toast, setToast] = useState(null);
 
-  const showToast = (message, type = 'success') => {
+  const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type, id: Date.now() });
     setTimeout(() => {
       setToast(null);
     }, 4000);
+  }, []);
+
+  const applyCustomer = useCallback((customer) => {
+    setUser(customer ? toUser(customer) : LOGGED_OUT_USER);
+  }, []);
+
+  // Confirmação de e-mail: só vale logada na própria conta (a API recusa outra conta ou sem login).
+  const confirmPendingEmail = useCallback(async (verification) => {
+    if (!verification || verifyingRef.current) return;
+    verifyingRef.current = true;
+    try {
+      const { customer } = await accountApi.verifyEmail(verification);
+      applyCustomer(customer);
+      setPendingVerification(null);
+      showToast('💜 E-mail confirmado! Seus pedidos já aparecem na sua conta.');
+    } catch (err) {
+      if (err.status === 401) {
+        setAuthModalView('login');
+        setIsAuthModalOpen(true);
+        showToast('Entre na sua conta para confirmar o e-mail. 🐮', 'info');
+      } else {
+        setPendingVerification(null);
+        showToast(err.message, 'info');
+      }
+    } finally {
+      verifyingRef.current = false;
+    }
+  }, [applyCustomer, showToast]);
+
+  useEffect(() => {
+    const { verification, resetToken: linkResetToken } = accountLink;
+
+    // Tira os dados do link da barra de endereço (não ficam no histórico nem num recarregar).
+    if (verification || linkResetToken) {
+      const params = new URLSearchParams(window.location.search);
+      ['verificar', 'id', 'hash', 'expires', 'signature', 'reset'].forEach((key) => params.delete(key));
+      const query = params.toString();
+      window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+    }
+
+    let cancelled = false;
+    accountApi.me()
+      .then(({ customer }) => {
+        if (cancelled) return;
+        applyCustomer(customer);
+        if (verification) confirmPendingEmail(verification);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        applyCustomer(null);
+        if (verification) {
+          setPendingVerification(verification);
+          setAuthModalView('login');
+          setIsAuthModalOpen(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountLink, applyCustomer, confirmPendingEmail]);
+
+  const login = async (credentials) => {
+    const { customer } = await accountApi.login(credentials);
+    applyCustomer(customer);
+    if (pendingVerification) await confirmPendingEmail(pendingVerification);
+    return customer;
+  };
+
+  const register = async (data) => {
+    const { customer } = await accountApi.register(data);
+    applyCustomer(customer);
+    return customer;
+  };
+
+  const logout = async () => {
+    try {
+      await accountApi.logout();
+    } finally {
+      applyCustomer(null);
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const { customer } = await accountApi.me();
+      applyCustomer(customer);
+    } catch {
+      applyCustomer(null);
+    }
   };
 
   // Delegated addToCart with Toast notification
@@ -190,8 +306,16 @@ export const ShopProvider = ({ children }) => {
       setActiveOrder,
       isAuthModalOpen,
       setIsAuthModalOpen,
+      authModalView,
+      setAuthModalView,
       user,
-      setUser,
+      login,
+      register,
+      logout,
+      refreshUser,
+      resetToken,
+      setResetToken,
+      pendingVerification,
       toast,
       showToast
     }}>

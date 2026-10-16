@@ -5,6 +5,7 @@ import {
   Search, 
   ShoppingBag, 
   Heart, 
+  User, 
   Truck, 
   Menu, 
   X
@@ -19,7 +20,10 @@ export const Header = () => {
     setActiveTab, 
     setSelectedCategory,
     searchQuery,
-    setSearchQuery
+    setSearchQuery,
+    setIsAuthModalOpen,
+    setAuthModalView,
+    user
   } = useShop();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -151,7 +155,19 @@ export const Header = () => {
               )}
             </button>
 
-            {/* Botão da conta escondido até o login de verdade (M-26) */}
+            {/* Conta do cliente (M-26): também no celular */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!user.isLoggedIn) setAuthModalView('login');
+                setIsAuthModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 p-2.5 rounded-2xl border-2 border-mimoo-dark bg-white hover:bg-slate-50 transition-all shadow-chunky-sm"
+              title={user.isLoggedIn ? `Olá, ${user.name}` : 'Entrar ou Criar Conta'}
+              aria-label={user.isLoggedIn ? 'Minha conta' : 'Entrar ou criar conta'}
+            >
+              <User className="w-5 h-5 text-slate-700" />
+            </button>
 
             {/* Cart Button with Bounce */}
             <button
