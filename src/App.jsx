@@ -9,7 +9,6 @@ import { ProductDetailModal } from './components/ProductDetailModal';
 import { TrackingView } from './components/TrackingView';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/checkout/CheckoutModal';
-import { AuthModal } from './components/AuthModal';
 import { FAQSection } from './components/FAQSection';
 import { Footer } from './components/Footer';
 import { Sparkles, Heart, Clock, ArrowRight, CheckCircle, ShieldCheck } from 'lucide-react';
@@ -163,7 +162,6 @@ const MainContent = () => {
       <ProductDetailModal />
       <CartDrawer />
       <CheckoutModal />
-      <AuthModal />
 
       {/* Footer */}
       <Footer />
