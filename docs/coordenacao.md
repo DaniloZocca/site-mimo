@@ -99,7 +99,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-23 | `composer audit` e `npm audit` e correção do que aparecer | D | stack | M-22 | concluído (backend: Laravel 11 → 12, que fecha a injeção de CRLF na regra `email`, e patches de `league/commonmark`, `symfony/http-foundation` e `symfony/yaml`; `composer audit` zerado; models com `HasVersion4Uuids` para manter o UUID v4; mensagem de material inválido mantida como era, ver "Decisões pendentes"; o front saiu como M-34) | #41 |
 | M-24 | Migrar checkout, webhook e painel para o `ProductionWorkflowService` (dívida da regra 5) | C | checkout, pedidos, painel | M-16, M-17 | concluído (novo `transitionFrom()` com origem esperada: tela antiga ou estorno atrasado não cancela pedido pago; toda transição dispara `OrderStatusUpdatedEvent`; notas fora do log do servidor; runbook de revisão usa o serviço) | #38 |
 | M-25 | CSP sem `unsafe-eval`/`unsafe-inline` onde o Filament permitir (B1) | B | rotas | M-15 | concluído (painel Filament mantém `unsafe-inline`/`unsafe-eval`: scripts inline sem nonce e Alpine com `new Function`) | #28 |
-| M-26 | Área de cliente: `AuthModal` mock e usuário fixo "Fernanda" (B3) | C | front | decisão pendente | bloqueado | — |
+| M-26 | Área de cliente: `AuthModal` mock e usuário fixo "Fernanda" (B3). Decidido (2026-10-15): login de verdade, em 2 PRs. **(a) backend:** tabela `customers` separada de `users`, guard `customer` com sessão em cookie + CSRF (grupo `web`, só em `/api/conta/*`), cadastro, login, logout, confirmação de e-mail, "Esqueci minha senha", "Meus pedidos" pelo e-mail confirmado (inclusive pedidos antigos), cadastro com `@mimoolab.com.br` recusado. **(b) front:** `AuthModal` real, botão da conta também no celular, checkout preenchido só com login; depois do merge do (a). Plano: `/mnt/project-files/planos/m-26-login-cliente.md` | C/D | (a) rotas, config, pedidos; (b) front | (b): (a) e M-38 | (a) em revisão; (b) a fazer, deploy bloqueado pela Política de Privacidade (ver "Decisões pendentes") | — |
 | M-27 | Botão "Acompanhar" dos e-mails de pedido (`confirmed`, `printing`, `shipped`) monta `$trackingUrl` com `APP_URL` e abre o endereço da API, não o da loja: usar o domínio do front (config nova) e fazer a loja abrir o rastreio a partir do link (sem router hoje). Achado no M-04 (#18) | B | pedidos, config, front | M-04 | concluído (produção precisa de `FRONTEND_URL`, ver "Antes do deploy") | #21 |
 | M-28 | Texto do formulário de rastreio ainda pede "primeiros dígitos do CPF" (`OrderSearchForm.jsx:90`, `trackingSchema.js`): trocar por "CPF completo" e conferir os 11 dígitos antes de enviar, sem mudança visual. Achado no M-09 | B | front | M-09 | concluído | #25 |
 | M-29 | Preço unitário negativo quando o modificador do tamanho é mais negativo que o preço base: o painel aceita (`SizeResource.php:42`, campo sem mínimo). Ex.: base 5000, tamanho −6000, frete 1490: o checkout mostra PIX R$ 5,90 e cartão R$ 4,90, mas o back trava as peças em 0 com `max(0, …)` e cobra R$ 14,90 (só o frete); `calculateProductPricing` trava em 0 e `calculateCartTotals` não. Caracterizado como PERGUNTA em `CheckoutValidationTest::test_modificador_negativo_maior_que_o_preco_gera_unitario_negativo`. Direção (a decidir no plano): proibir unitário negativo, com validação no painel e/ou 422 no checkout. Só abre com o OK do Zocca. Achado na conferência do M-18 | C | painel, checkout | M-17 | concluído (o checkout recusa com 422 peça abaixo de R$ 0,01, inclusive zero, em `items.N.size_id`/`items.N.product_id`; o painel não salva tamanho nem peça que gere essa combinação; o catálogo omite o tamanho; consulta só leitura em `docs/consultas/m-29-pecas-sem-preco.sql`) | #37 |
@@ -118,7 +118,10 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 |---|---|---|
 | Recusar tamanho inativo no checkout? A tabela `sizes` não tem `is_active` (exigiria migration, classe D). | Todo tamanho vinculado ao produto é aceito. | M-03, M-11 |
 | `/api/colors` e `/api/sizes`: criar a coluna `is_active` (migration) ou listar tudo? | M-11 lista todas as cores/tamanhos (sem migration). | M-11 |
-| Área de cliente: remover login de mentira ou implementar login real? | Nada muda até decidir. | M-26 |
+| **Bloqueia o deploy do M-26 (b):** página de Política de Privacidade publicada, dizendo quais dados a conta guarda e como pedir a exclusão da conta. Texto e endereço são do Zocca. | O M-26 (a) pode ir para produção (as rotas não aparecem na loja). O (b) não vai para produção sem a página. | M-26 |
+| Excluir a conta pelo próprio site (LGPD)? | Exclusão a pedido do cliente, pelo canal que a Política de Privacidade indicar; feita à mão no banco (o painel não lista contas). | M-26 ou tarefa nova |
+| Riscos da conta de cliente apontados na revisão de segurança do M-26 (a): (1) o cadastro diz "Este e-mail já tem conta", o que revela quem é cliente (limite de 3 por minuto por IP); (2) o token de "nova senha" fica no `payload` da fila (`jobs`, e `failed_jobs` se o envio falhar) até o e-mail sair, como no padrão do Laravel. Aceitar ou mudar? | Mantidos: (1) era o comportamento do plano aprovado; (2) quem lê o banco já vê os dados dos clientes, e o token vale 60 min. | M-26 |
+| Painel para contas de cliente (ver, bloquear, excluir), endereços salvos, "comprar de novo", login com Google? | Fora do M-26. | tarefa nova |
 | Cancelar pedido já pago no painel: estorno automático pelo Mercado Pago ou manual? | M-10 cancela só pedido não pago; pago fica para estorno manual. | M-10 |
 | Validade do PIX (`date_of_expiration`): qual prazo? | Prazo padrão do Mercado Pago. | M-17 ou tarefa nova |
 | Frete grátis como política futura (valor mínimo, regiões)? | Sem frete grátis (M-02). | — |
@@ -167,6 +170,18 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   não traz migration; o passo fica para as próximas), `php artisan config:cache`, `php artisan queue:restart` (o worker
   antigo ainda tem o Laravel 11 carregado) e `php artisan mimoo:check-production`, que precisa terminar com
   "Configuração de produção ok.".
+- Conta de cliente (M-26 a): `php artisan migrate --force` cria `customers` e `customer_password_reset_tokens`. Loja e API
+  no mesmo domínio (ex.: loja `https://mimoolab.com.br`, API `https://api.mimoolab.com.br`), porque o login usa cookie.
+  No `.env` da API: `SESSION_DOMAIN=.mimoolab.com.br` (com o ponto, para a loja ler o cookie `XSRF-TOKEN`; vazio se a API
+  for servida em `https://mimoolab.com.br/api`), `SESSION_SECURE_COOKIE=true`, `SESSION_SAME_SITE=lax` (o padrão),
+  `CORS_ALLOWED_ORIGINS` com o endereço exato da loja (nunca `*`: o CORS agora aceita cookie) e `FRONTEND_URL` (os links
+  dos e-mails de conta abrem a loja). O cadastro só vale com SMTP e worker da fila funcionando (os e-mails de
+  confirmação e de nova senha vão pela fila `database`, como os de pedido). Com loja e API em
+  endereços diferentes e `SESSION_DOMAIN` errado, o `mimoo:check-production` avisa (todo login daria 419). Verificar
+  depois do deploy do (b) (o (a) sozinho não tem tela): criar uma conta de teste com um e-mail seu, conferir que
+  "Confirme seu e-mail na MIMOO LAB" chega em até 1 min, abrir o link (abre a loja, que confirma com você logado),
+  pedir "Esqueci minha senha" e conferir o segundo e-mail; se algum não chegar, `php artisan mimoo:check-production`
+  mostra job parado ou falhado.
 - Build do front com Vite 6 (M-34): Node `^18`, `^20` ou `>=22` (o `engines` do Vite 6.4.4); usar Node 22, o mesmo do CI
   (o 18 já não recebe correção). O build roda onde o `npm run build` for executado (não há deploy automático ligado ao
   repositório): conferir `node -v` nessa máquina antes do build e rodar `npm ci` depois do pull.

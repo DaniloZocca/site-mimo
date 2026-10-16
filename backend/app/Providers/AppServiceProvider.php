@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -56,7 +59,37 @@ class AppServiceProvider extends ServiceProvider
             }
         }
 
-        // 2. Listeners de app/Listeners são registrados pela descoberta automática do Laravel 11
+        // 2. Limites da conta de cliente (M-26): por IP e, onde há e-mail, por IP + e-mail.
+        $this->configureAccountRateLimiters();
+
+        // 3. Listeners de app/Listeners são registrados pela descoberta automática do Laravel 11
         // (não repetir com Event::listen aqui: cada listener rodaria duas vezes).
+    }
+
+    private function configureAccountRateLimiters(): void
+    {
+        $ipAndEmail = fn (HttpRequest $request): string => $request->ip().'|'.mb_strtolower(trim((string) $request->input('email')));
+
+        RateLimiter::for('conta-login', fn (HttpRequest $request): array => [
+            Limit::perMinute(5)->by('login:'.$ipAndEmail($request)),
+            Limit::perMinute(20)->by('login-ip:'.$request->ip()),
+        ]);
+
+        RateLimiter::for('conta-register', fn (HttpRequest $request): Limit => Limit::perMinute(3)->by('register:'.$request->ip()));
+
+        RateLimiter::for('conta-forgot', fn (HttpRequest $request): array => [
+            Limit::perMinute(3)->by('forgot:'.$ipAndEmail($request)),
+            Limit::perMinute(10)->by('forgot-ip:'.$request->ip()),
+        ]);
+
+        RateLimiter::for('conta-reset', fn (HttpRequest $request): Limit => Limit::perMinute(5)->by('reset:'.$request->ip()));
+
+        RateLimiter::for('conta-verify', fn (HttpRequest $request): Limit => Limit::perMinute(6)->by('verify:'.$request->ip()));
+
+        RateLimiter::for('conta-resend', fn (HttpRequest $request): Limit => Limit::perMinute(3)->by(
+            'resend:'.($request->user('customer')?->getAuthIdentifier() ?? $request->ip())
+        ));
+
+        RateLimiter::for('conta', fn (HttpRequest $request): Limit => Limit::perMinute(60)->by('conta:'.$request->ip()));
     }
 }
