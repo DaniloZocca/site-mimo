@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\ShippingOptionDTO;
+use App\Support\Cents;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -112,15 +113,14 @@ class ShippingCalculationService
                         continue;
                     }
 
-                    $priceFloat = (float) ($rate['price'] ?? $rate['custom_price'] ?? 0.0);
-                    if ($priceFloat <= 0) {
+                    // Valor em reais vindo da API ("28.03"); preço sem valor exato em centavos é descartado
+                    $priceInCents = Cents::fromReais(self::rawPrice($rate['price'] ?? $rate['custom_price'] ?? null));
+                    if ($priceInCents === null || $priceInCents <= 0) {
                         continue;
                     }
 
                     $carrierDeliveryDays = (int) ($rate['delivery_time'] ?? $rate['custom_delivery_time'] ?? 3);
                     $totalDays = $carrierDeliveryDays + $manufacturingDays;
-                    $priceInCents = (int) round($priceFloat * 100);
-
                     $serviceName = (string) ($rate['name'] ?? 'Padrão');
                     $serviceCode = strtolower(str_contains($serviceName, 'SEDEX') ? 'sedex' : 'pac');
 
@@ -129,7 +129,7 @@ class ShippingCalculationService
                         serviceName: $serviceName,
                         carrierName: (string) ($rate['company']['name'] ?? 'Correios'),
                         priceInCents: $priceInCents,
-                        price: $priceFloat,
+                        price: $priceInCents / 100,
                         carrierDeliveryDays: $carrierDeliveryDays,
                         manufacturingLeadTimeDays: $manufacturingDays,
                         totalEstimatedDays: $totalDays,
@@ -172,6 +172,14 @@ class ShippingCalculationService
     }
 
     /**
+     * O preço da API chega como texto ("28.03") ou número; qualquer outro tipo não é preço.
+     */
+    private static function rawPrice(mixed $price): int|float|string|null
+    {
+        return is_int($price) || is_float($price) || is_string($price) ? $price : null;
+    }
+
+    /**
      * Origem do preço de uma opção: 'fallback' (tabela regional) ou 'melhor_envio'.
      */
     public static function priceSource(ShippingOptionDTO $option): string
@@ -190,36 +198,36 @@ class ShippingCalculationService
         $manufacturingDays = $package['manufacturing_lead_days'];
         $cepPrefix = (int) substr($cleanCep, 0, 2);
 
-        // Classificação por Macrorregiões dos Correios
+        // Classificação por Macrorregiões dos Correios (preços em centavos)
         if ($cepPrefix >= 1 && $cepPrefix <= 19) {
             // Estado de São Paulo (Origem MIMOO LAB)
-            $pacPrice = 14.90;
+            $pacPriceCents = 1490;
             $pacDays = 3;
-            $sedexPrice = 22.90;
+            $sedexPriceCents = 2290;
             $sedexDays = 1;
         } elseif ($cepPrefix >= 20 && $cepPrefix <= 39) {
             // Sudeste (RJ, MG, ES)
-            $pacPrice = 22.90;
+            $pacPriceCents = 2290;
             $pacDays = 5;
-            $sedexPrice = 36.90;
+            $sedexPriceCents = 3690;
             $sedexDays = 2;
         } elseif ($cepPrefix >= 80 && $cepPrefix <= 99) {
             // Sul (PR, SC, RS)
-            $pacPrice = 26.90;
+            $pacPriceCents = 2690;
             $pacDays = 6;
-            $sedexPrice = 44.90;
+            $sedexPriceCents = 4490;
             $sedexDays = 3;
         } elseif ($cepPrefix >= 70 && $cepPrefix <= 79) {
             // Centro-Oeste (DF, GO, MT, MS)
-            $pacPrice = 31.90;
+            $pacPriceCents = 3190;
             $pacDays = 7;
-            $sedexPrice = 52.90;
+            $sedexPriceCents = 5290;
             $sedexDays = 3;
         } else {
             // Norte e Nordeste (BA, PE, CE, AM, PA, etc.)
-            $pacPrice = 38.90;
+            $pacPriceCents = 3890;
             $pacDays = 9;
-            $sedexPrice = 64.90;
+            $sedexPriceCents = 6490;
             $sedexDays = 4;
         }
 
@@ -228,8 +236,8 @@ class ShippingCalculationService
                 serviceCode: 'pac',
                 serviceName: 'PAC (Econômico)',
                 carrierName: 'Correios',
-                priceInCents: (int) round($pacPrice * 100),
-                price: $pacPrice,
+                priceInCents: $pacPriceCents,
+                price: $pacPriceCents / 100,
                 carrierDeliveryDays: $pacDays,
                 manufacturingLeadTimeDays: $manufacturingDays,
                 totalEstimatedDays: $pacDays + $manufacturingDays,
@@ -244,8 +252,8 @@ class ShippingCalculationService
                 serviceCode: 'sedex',
                 serviceName: 'SEDEX (Expresso)',
                 carrierName: 'Correios',
-                priceInCents: (int) round($sedexPrice * 100),
-                price: $sedexPrice,
+                priceInCents: $sedexPriceCents,
+                price: $sedexPriceCents / 100,
                 carrierDeliveryDays: $sedexDays,
                 manufacturingLeadTimeDays: $manufacturingDays,
                 totalEstimatedDays: $sedexDays + $manufacturingDays,

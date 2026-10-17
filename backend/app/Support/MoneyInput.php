@@ -64,9 +64,9 @@ final class MoneyInput
             return null;
         }
 
-        $cents = ((int) $reais) * 100 + (int) str_pad($decimals, 2, '0');
+        $cents = Cents::fromReais(($reais === '' ? '0' : $reais).($decimals === '' ? '' : '.'.$decimals));
 
-        if ($cents > self::MAX_CENTS) {
+        if ($cents === null || $cents > self::MAX_CENTS) {
             return null;
         }
 
