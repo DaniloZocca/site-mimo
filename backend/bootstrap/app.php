@@ -24,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         // Isenção explícita de CSRF para o Webhook do Mercado Pago
-        $middleware->validateCsrfTokens(except: [
+        $middleware->preventRequestForgery(except: [
             'api/webhooks/mercadopago',
         ]);
     })

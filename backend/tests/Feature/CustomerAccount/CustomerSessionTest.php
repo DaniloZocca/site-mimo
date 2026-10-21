@@ -8,7 +8,7 @@ use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 
 /**
@@ -102,6 +102,33 @@ class CustomerSessionTest extends CharacterizationTestCase
             ->assertOk();
     }
 
+    /**
+     * M-35: no Laravel 13 o CSRF também aceita `Sec-Fetch-Site: same-origin` sem token. A loja chama a API
+     * de outro subdomínio (same-site), então ali o token continua obrigatório.
+     */
+    public function test_sem_token_cross_site_e_same_site_dao_419(): void
+    {
+        $this->enforceCsrf();
+        Customer::factory()->create(['email' => 'ana@exemplo.com', 'password' => 'gatinho123']);
+
+        foreach (['cross-site', 'same-site', 'none'] as $site) {
+            $this->withHeader('Sec-Fetch-Site', $site)
+                ->postJson('/api/conta/login', ['email' => 'ana@exemplo.com', 'password' => 'gatinho123'])
+                ->assertStatus(419);
+        }
+        $this->assertGuest('customer');
+    }
+
+    public function test_sem_token_same_origin_passa_pelo_csrf(): void
+    {
+        $this->enforceCsrf();
+        Customer::factory()->create(['email' => 'ana@exemplo.com', 'password' => 'gatinho123']);
+
+        $this->withHeader('Sec-Fetch-Site', 'same-origin')
+            ->postJson('/api/conta/login', ['email' => 'ana@exemplo.com', 'password' => 'gatinho123'])
+            ->assertOk();
+    }
+
     public function test_checkout_frete_e_rastreio_continuam_sem_csrf(): void
     {
         $this->enforceCsrf();
@@ -133,7 +160,7 @@ class CustomerSessionTest extends CharacterizationTestCase
 
     private function enforceCsrf(): void
     {
-        $this->app->bind(ValidateCsrfToken::class, fn (Application $app) => new class($app, $app->make(Encrypter::class)) extends ValidateCsrfToken
+        $this->app->bind(PreventRequestForgery::class, fn (Application $app) => new class($app, $app->make(Encrypter::class)) extends PreventRequestForgery
         {
             protected function runningUnitTests(): bool
             {
