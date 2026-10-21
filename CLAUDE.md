@@ -1,14 +1,14 @@
 # MIMOO LAB 3D Studio — site-mimo
 
 Loja brasileira de colecionáveis impressos em 3D sob encomenda (FDM). Só imprimimos após pagamento confirmado.
-Monorepo: frontend React 19 + Vite (raiz, `src/`) + API Laravel 12 + Filament 3 (`backend/`). UI, mensagens e commits em pt-BR.
+Monorepo: frontend React 19 + Vite (raiz, `src/`) + API Laravel 13 + Filament 3 (`backend/`). UI, mensagens e commits em pt-BR.
 Antes de tarefas de segurança/pagamento, leia `RELATORIO_SEGURANCA_MIMOO.md` (achados abertos C1–B3) e `docs/known-bugs.md` (bugs confirmados por teste, com severidade).
 As regras abaixo descrevem o comportamento-alvo; onde o código ainda diverge, está registrado em `docs/doc-vs-codigo.md`.
 
 ## Comandos
 - Front: `npm run dev` | `npm run lint` (oxlint) | `npm run build`. Ainda não há testes de front (Vitest não instalado).
 - Lint tem teto de avisos: `oxlint --max-warnings 72` no `package.json` (aviso novo reprova o CI). O teto só pode baixar: ao remover avisos, diminua o número; nunca o aumente.
-- CI: `.github/workflows/ci.yml` roda em todo PR para a `main` — `backend (8.2)` e `backend (8.3)` (Postgres 16, `composer audit --no-dev`, `pint --test`, migrations, `vendor/bin/phpunit`) e `frontend` (`npm ci`, `npm audit --omit=dev`, lint, build). Os dois audits reprovam só aviso alto ou crítico de pacote de produção. Sem `.env` nem segredos.
+- CI: `.github/workflows/ci.yml` roda em todo PR para a `main` — `backend (8.3)` e `backend (8.4)` (Postgres 16, `composer audit --no-dev`, `pint --test`, migrations, `vendor/bin/phpunit`) e `frontend` (`npm ci`, `npm audit --omit=dev`, lint, build). Os dois audits reprovam só aviso alto ou crítico de pacote de produção. Sem `.env` nem segredos.
 - Back (dentro de `backend/`): `php artisan serve` (porta 8000) | `php artisan test` (PHPUnit) | `vendor/bin/pint --dirty`
 - O backend está 100% formatado pelo Pint; `vendor/bin/pint --test` deve passar em todo PR. Edite PHP normalmente pelas ferramentas de edição (o hook formata só o arquivo editado).
 - Testes de caracterização: `php artisan test --group=characterization` (deve ficar 100% verde) e `php artisan test --group=known-bugs` (falha de propósito; um gêmeo por bug em `docs/known-bugs.md`; excluído da suíte padrão). Exigem a extensão `pdo_sqlite` no PHP.
@@ -57,7 +57,7 @@ Na dúvida entre dois tamanhos, escolha o menor — exceto se tocar pagamento, q
 - Componentes duplicados: existem `src/components/ProductCard.jsx` e `src/components/catalog/ProductCard.jsx` (idem `CartDrawer`, `ProductDetailModal`). `App.jsx`/`ProductGrid.jsx` importam as versões da raiz de `components/`. Confirme qual é importada antes de editar.
 - Carrinho em localStorage (`mimoo_cart_v2` em `CartContext.jsx`).
 - `PackagingService`: tara caixa 50 g + plástico bolha 30 g; mínimo Correios 16×11×6 cm.
-- Frete: Melhor Envio com cache 6 h (MD5 de CEP+cubagem), fallback regional, soma o lead time de impressão.
+- Frete: Melhor Envio com cache 6 h (MD5 de CEP+cubagem; o cache guarda só arrays, porque `cache.serializable_classes = false` não desserializa objetos), fallback regional, soma o lead time de impressão.
 - Contrato de frete no `POST /api/checkout`: o front envia `shipping_service` (o `service_code` devolvido por `/api/shipping/calculate`, ex.: `pac`/`sedex`) e, opcionalmente, `shipping_cost_cents` (valor exibido). O servidor recalcula com o `ShippingCalculationService` (mesmo cache): serviço indisponível → 422 em `errors.shipping_service`; valor exibido diferente → 409 `{"code":"shipping_price_changed","message","shipping_service","shipping_cost_cents","shipping_options":[...]}` sem criar pedido. O pedido grava o snapshot `shipping_service_code/name`, `shipping_carrier_name`, `shipping_delivery_days` e `shipping_price_source` (`melhor_envio` | `fallback`).
 - Idempotência do `POST /api/checkout`: header `Idempotency-Key` (UUID) obrigatório — ausente/inválido → 400 `idempotency_key_required`. `orders.idempotency_key` é UNIQUE (a garantia contra duplicata; não use `lockForUpdate`) e `request_fingerprint` é o SHA-256 do payload canônico sem `card_token`. Mesma chave + mesmo payload → replay da primeira resposta (mesmo status HTTP e corpo, header `Idempotent-Replayed: true`, montada de `order_payments`) sem chamar o gateway; payload diferente → 422 `idempotency_key_reused`; primeiro envio ainda sem resposta → 409 `request_in_progress` (`Retry-After: 2`). O `X-Idempotency-Key` do Mercado Pago é `orders.payment_idempotency_key`, o mesmo em toda tentativa de pagamento do pedido. No front, a chave vem de `useCheckoutAttemptKey` e o envio de `postCheckout` (`src/utils/checkoutRequest.js`).
 - Aprovação de pagamento: `PaymentApprovalValidator` é o único ponto de decisão (webhook e cartão síncrono) — libera `pending_payment → in_queue` só com `approved`, centavos == `total_cents`, BRL, `external_reference` e payment id de `order_payments`, e `live_mode` em produção.

@@ -1,7 +1,7 @@
 # Backend Laravel — convenções
 
 - `declare(strict_types=1);` em todo arquivo PHP novo.
-- Models com `HasVersion4Uuids` (UUID ordenado v4, `Str::orderedUuid()`, igual aos IDs já gravados); não use `HasUuids`, que no Laravel 12 gera UUID v7. PKs e FKs `uuid`. Colunas monetárias `*_cents` inteiras.
+- Models com `HasVersion4Uuids` (UUID ordenado v4, `Str::orderedUuid()`, igual aos IDs já gravados); não use `HasUuids`, que desde o Laravel 12 gera UUID v7. PKs e FKs `uuid`. Colunas monetárias `*_cents` inteiras.
 - DTOs readonly em `app/DTOs` (ver `CheckoutOrderDTO`). Controllers finos: validação em FormRequest (`app/Http/Requests`), lógica em `app/Services`, saída em `app/Http/Resources`.
 - Enums em `app/Enums` implementam `HasLabel/HasColor/HasIcon` do Filament; labels em pt-BR.
 - Erros de domínio viram exceções próprias em `app/Exceptions` (ver `InvalidOrderStatusTransitionException`).
