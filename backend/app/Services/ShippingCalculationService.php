@@ -54,9 +54,10 @@ class ShippingCalculationService
         $package = $this->packagingService->calculatePackage($items);
 
         // 2. Chave de cache inteligente baseada no CEP e cubagem (Validade: 6 horas)
-        $cacheKey = 'shipping_rate:'.md5("{$cleanCep}:".json_encode($package));
+        // v2 (M-35): o cache guarda arrays; uma entrada antiga, com objeto, nunca é lida
+        $cacheKey = 'shipping_rate:v2:'.md5("{$cleanCep}:".json_encode($package));
 
-        return Cache::remember($cacheKey, now()->addHours(6), function () use ($cleanCep, $package): array {
+        $quote = function () use ($cleanCep, $package): array {
             // Se o token da API não estiver configurado, usa fallback regional local
             if (empty($this->melhorEnvioToken)) {
                 Log::info("Cotação de frete para CEP {$this->maskCep($cleanCep)} calculada via Fallback Regional (Token do Melhor Envio não configurado).");
@@ -148,7 +149,15 @@ class ShippingCalculationService
 
                 return $this->calculateFallbackShipping($cleanCep, $package);
             }
-        });
+        };
+
+        // O cache não desserializa objetos (cache.serializable_classes = false): guarda só arrays
+        $cached = Cache::remember($cacheKey, now()->addHours(6), fn (): array => array_map(
+            static fn (ShippingOptionDTO $option): array => $option->toCacheArray(),
+            $quote()
+        ));
+
+        return array_map(static fn (array $option): ShippingOptionDTO => ShippingOptionDTO::fromCacheArray($option), $cached);
     }
 
     /**

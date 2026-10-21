@@ -21,9 +21,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Sem indicação da versão de produção no repositório: testa 8.2 e 8.3
-        # até o upgrade do Laravel (composer.json pede ^8.2).
-        php: ['8.2', '8.3']
+        # Laravel 13 (M-35): composer.json pede ^8.3. Testa o mínimo e o 8.4, já que a
+        # hospedagem ainda não foi escolhida.
+        php: ['8.3', '8.4']
     defaults:
       run:
         working-directory: backend
