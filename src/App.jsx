@@ -12,6 +12,7 @@ import { CheckoutModal } from './components/checkout/CheckoutModal';
 import { AuthModal } from './components/AuthModal';
 import { FAQSection } from './components/FAQSection';
 import { Footer } from './components/Footer';
+import { LegalPage } from './components/LegalPage';
 import { Sparkles, Heart, Clock, ArrowRight, CheckCircle, ShieldCheck } from 'lucide-react';
 
 const MainContent = () => {
@@ -149,6 +150,14 @@ const MainContent = () => {
 
         {activeTab === 'tracking' && (
           <TrackingView />
+        )}
+
+        {activeTab === 'privacy' && (
+          <LegalPage page="privacy" />
+        )}
+
+        {activeTab === 'terms' && (
+          <LegalPage page="terms" />
         )}
 
         {activeTab === 'howItWorks' && (

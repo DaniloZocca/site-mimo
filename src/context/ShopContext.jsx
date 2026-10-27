@@ -98,8 +98,10 @@ export const ShopProvider = ({ children }) => {
   // Link de rastreio (ex.: botão "Acompanhar" do e-mail, /?token=...) abre direto na aba de rastreio.
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('token') || params.get('order') || params.get('order_number') ? 'tracking' : 'home';
-  }); // 'home' | 'catalog' | 'tracking' | 'howItWorks'
+    if (params.get('token') || params.get('order') || params.get('order_number')) return 'tracking';
+    // Páginas legais (M-41): /?pagina=privacidade e /?pagina=termos (links do rodapé dos e-mails).
+    return { privacidade: 'privacy', termos: 'terms' }[params.get('pagina')] || 'home';
+  }); // 'home' | 'catalog' | 'tracking' | 'howItWorks' | 'privacy' | 'terms'
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   

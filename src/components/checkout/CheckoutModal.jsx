@@ -36,6 +36,7 @@ import { postCheckout, CheckoutInProgressError, PAYMENT_UNDER_REVIEW } from '../
 import { useCheckoutAttemptKey } from '../../hooks/useCheckoutAttemptKey';
 import { calculateCartTotals, formatMoney } from '../../utils/pricing';
 import { API_BASE } from '../../config/api';
+import { LEGAL_LINKS } from '../../content/legal';
 
 /**
  * Modal Principal de Finalização de Encomendas 3D (MIMOO LAB)
@@ -956,7 +957,11 @@ export const CheckoutModal = () => {
                       className="w-4 h-4 mt-0.5 rounded border-2 border-slate-400 text-mimoo-purple focus:ring-mimoo-purple"
                     />
                     <span className="text-xs text-slate-600 font-nunito leading-snug">
-                      Concordo com os <strong>termos de produção personalizada sob demanda</strong> e autorizo o processamento dos meus dados para emissão e entrega da encomenda (em conformidade com a LGPD).
+                      Li e concordo com os{' '}
+                      <a href={LEGAL_LINKS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Termos de Uso<span className="sr-only"> (abre em nova aba)</span></a>
+                      {' '}(produção personalizada sob demanda) e a{' '}
+                      <a href={LEGAL_LINKS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Política de Privacidade<span className="sr-only"> (abre em nova aba)</span></a>
+                      , e autorizo o processamento dos meus dados para emissão e entrega da encomenda (em conformidade com a LGPD).
                     </span>
                   </label>
                   {errors.lgpdConsent && (

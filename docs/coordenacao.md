@@ -112,6 +112,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-38 | Usuária de demonstração "Fernanda Oliveira" logada para todo visitante: o checkout abria com nome e e-mail dela preenchidos (`ShopContext.jsx`, `CheckoutModal.jsx`), e quem não apagou fez pedido com `fernanda@mimoolab.com.br`. Começar sem usuário, checkout vazio, esconder o botão da conta e o `AuthModal` falso até o M-26; consulta só leitura dos pedidos afetados. Pedido do Zocca na thread do M-26 | B | front | — | concluído (rodar `docs/consultas/m-38-pedidos-email-fernanda.sql` e avisar os clientes listados) | #43 |
 | M-39 | Frete calculado com float (`ShippingCalculationService.php:115` preço do Melhor Envio e `:188` tabela de reserva, `round(float × 100)`, contra a regra 2). Verificado: o float no `ShippingCalculationService` (linhas 115 e 188) não altera nenhum valor: 9 preços da tabela de reserva e 10 milhões de valores do Melhor Envio (R$ 0,01 a R$ 100.000,00) testados sem erro em 2026-10-17. Decisão do Zocca: não mudar o código; exceção legada anotada no `CLAUDE.md`. A limpeza virou o M-40 | A | — | — | concluído (só documentação) | #46 |
 | M-40 | **P3.** Unificar `MoneyInput::toCents` e a conversão do `GatewayPayment` (`amountToCents`) num conversor único só com inteiros e usá-lo no frete: tabela de reserva escrita em centavos e preço do Melhor Envio convertido sem float, mantendo o campo `price` da resposta de `/api/shipping/calculate`. Teste provando os mesmos 9 valores da tabela e os mesmos resultados do Melhor Envio. Pedido no M-39 | B | checkout, painel | M-39 | em revisão (`App\Support\Cents::fromReais` é o conversor único; tabela de reserva em centavos; nenhum valor mudou: 0 diferenças de R$ 0,01 a R$ 100.000,00; preço do Melhor Envio com mais de 2 casas ou fora do formato decimal passa a ser descartado em vez de arredondado) | — |
+| M-41 | Páginas legais: Política de Privacidade e Termos de Uso na loja (`/?pagina=privacidade`, `/?pagina=termos`), links no rodapé da loja, no checkout, no cadastro e no rodapé dos e-mails (que apontavam para a API e traziam CNPJ inventado), dados da loja em branco para o Zocca preencher (`src/config/loja.js` e `LOJA_*` no `.env`), `mimoo:check-production` reprova sem razão social e CNPJ, exclusão de conta à mão por `docs/runbook-excluir-conta-cliente.md`. Plano: `/mnt/project-files/planos/m-41-paginas-legais.md` | C | front, pedidos, config | — | em merge (antes do deploy: preencher os dados da loja e revisar o texto; também sobe o zod para 4.6.7 por um alerta alto novo do `npm audit`) | #49 |
 
 ## Decisões pendentes
 
@@ -121,7 +122,7 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 |---|---|---|
 | Recusar tamanho inativo no checkout? A tabela `sizes` não tem `is_active` (exigiria migration, classe D). | Todo tamanho vinculado ao produto é aceito. | M-03, M-11 |
 | `/api/colors` e `/api/sizes`: criar a coluna `is_active` (migration) ou listar tudo? | M-11 lista todas as cores/tamanhos (sem migration). | M-11 |
-| **Bloqueia o deploy do M-26 (b):** página de Política de Privacidade publicada, dizendo quais dados a conta guarda e como pedir a exclusão da conta. Texto e endereço são do Zocca. | O M-26 (a) pode ir para produção (as rotas não aparecem na loja). O (b) não vai para produção sem a página. | M-26 |
+| **Bloqueia o deploy do M-26 (b):** página de Política de Privacidade publicada, dizendo quais dados a conta guarda e como pedir a exclusão da conta. O M-41 cria a página com o texto (e-mail de contato e de privacidade: contato.mimoolab@gmail.com); falta o Zocca preencher os dados da loja e revisar o texto (de preferência com um advogado). | O M-26 (a) pode ir para produção (as rotas não aparecem na loja). O (b) não vai para produção sem a página publicada e preenchida. | M-26, M-41 |
 | Excluir a conta pelo próprio site (LGPD)? | Exclusão a pedido do cliente, pelo canal que a Política de Privacidade indicar; feita à mão no banco (o painel não lista contas). | M-26 ou tarefa nova |
 | Riscos da conta de cliente apontados na revisão de segurança do M-26 (a): (1) o cadastro diz "Este e-mail já tem conta", o que revela quem é cliente (limite de 3 por minuto por IP); (2) o token de "nova senha" fica no `payload` da fila (`jobs`, e `failed_jobs` se o envio falhar) até o e-mail sair, como no padrão do Laravel. Aceitar ou mudar? | Mantidos: (1) era o comportamento do plano aprovado; (2) quem lê o banco já vê os dados dos clientes, e o token vale 60 min. | M-26 |
 | Painel para contas de cliente (ver, bloquear, excluir), endereços salvos, "comprar de novo", login com Google? | Fora do M-26. | tarefa nova |
@@ -135,6 +136,11 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 | Rastreador de erros (Sentry, Flare etc.): decidido (M-32) que, quando entrar, uma falha depois da mudança de status reporta uma exceção nova só com a classe da original e o `order_number`, nunca a mensagem (pode trazer o e-mail do cliente). | Sem rastreador: só `Log::error` sem a mensagem da exceção. | tarefa nova |
 | Mensagem de material inválido no checkout: no Laravel 12 a mensagem própria "O material selecionado não é um polímero homologado pela MIMOO LAB." passaria a aparecer (no 11 nunca aparecia). Usar essa ou manter a padrão? | M-23 tirou a mensagem própria: segue "O valor escolhido em material é inválido.", como hoje. A loja só envia materiais válidos, então o cliente não vê nenhuma das duas. | M-23 |
 | E-mail de confirmação promete "~4 horas de extrusão" (o campo `estimated_total_print_time_hours` não existe; sempre cai no 4). Manter, tirar ou calcular? | Texto atual mantido (M-04 não mudou o texto). | tarefa nova |
+| Prazo de guarda dos pedidos e das contas sem uso (M-41). | A política diz "pelo tempo que a lei fiscal e o Código de Defesa do Consumidor exigem", sem número; conta fica até o cliente pedir a exclusão. O sistema não apaga nada sozinho. | M-41 |
+| Troca e devolução de peça feita sob encomenda (M-41): restringir o arrependimento de 7 dias (art. 49 do CDC) em peça personalizada? Quem paga o frete da devolução? | Os Termos garantem os 7 dias sem exceção e a devolução de todo o valor pago, frete incluído; defeito de fabricação em até 90 dias (art. 26 do CDC). | M-41 |
+| Encarregado de dados (DPO) (M-41). Microempresa pode ficar dispensada (Resolução CD/ANPD nº 2/2022), mas precisa de um canal. | Campo "encarregado" em branco; o canal é contato.mimoolab@gmail.com. | M-41 |
+| Fontes do Google (M-41): hospedar Fredoka/Nunito/Quicksand no próprio site evitaria mandar o IP do visitante ao Google (visual igual). | Fontes do Google mantidas e citadas na Política. | tarefa nova |
+| Excluir conta pelo próprio site, em vez de por e-mail (M-41). | Exclusão por e-mail, feita à mão com o runbook. | tarefa nova |
 
 ## Riscos aceitos
 
@@ -187,6 +193,13 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   "Confirme seu e-mail na MIMOO LAB" chega em até 1 min, abrir o link (abre a loja, que confirma com você logado),
   pedir "Esqueci minha senha" e conferir o segundo e-mail; se algum não chegar, `php artisan mimoo:check-production`
   mostra job parado ou falhado.
+- Páginas legais (M-41): antes do `npm run build`, preencher `src/config/loja.js` (razão social, CNPJ, endereço,
+  encarregado, serviço de e-mail, hospedagem e data da publicação; o que ficar vazio aparece na página como
+  "[a preencher: …]"). No `.env` da API: `LOJA_RAZAO_SOCIAL`, `LOJA_CNPJ` e, se quiser no rodapé dos e-mails,
+  `LOJA_CIDADE_UF` (sem razão social e CNPJ o `mimoo:check-production` reprova). Publicar as páginas junto ou antes da
+  conta de cliente (M-26 b). Endereços para cadastrar onde pedirem a política (Mercado Pago, Google):
+  `FRONTEND_URL/?pagina=privacidade` e `FRONTEND_URL/?pagina=termos`. Pedido de exclusão de conta:
+  `docs/runbook-excluir-conta-cliente.md`.
 - Build do front com Vite 6 (M-34): Node `^18`, `^20` ou `>=22` (o `engines` do Vite 6.4.4); usar Node 22, o mesmo do CI
   (o 18 já não recebe correção). O build roda onde o `npm run build` for executado (não há deploy automático ligado ao
   repositório): conferir `node -v` nessa máquina antes do build e rodar `npm ci` depois do pull.
