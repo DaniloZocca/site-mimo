@@ -122,9 +122,18 @@
                       MIMOO LAB • Manufatura Aditiva & Objetos de Design
                     </p>
                     
+                    @php
+                      $dadosDaLoja = array_filter([
+                          config('loja.razao_social'),
+                          config('loja.cnpj') ? 'CNPJ: '.config('loja.cnpj') : '',
+                          config('loja.cidade_uf') ? config('loja.cidade_uf').' — Brasil' : '',
+                      ]);
+                    @endphp
+                    @if ($dadosDaLoja !== [])
                     <p style="margin: 0 0 12px 0; font-size: 10px; color: #94A3B8;">
-                      CNPJ: 00.000.000/0001-00 • São Paulo / SP — Brasil
+                      {{ implode(' • ', $dadosDaLoja) }}
                     </p>
+                    @endif
 
                     <p style="margin: 0 0 14px 0; font-size: 10px; color: #94A3B8; max-width: 460px; line-height: 1.5;">
                       🛡️ <strong>Privacidade & LGPD:</strong> Você está recebendo este e-mail porque realizou uma encomenda em nossa loja. Esta é uma comunicação transacional essencial para a execução e entrega do seu pedido. Seus dados cadastrais permanecem confidenciais e protegidos.
@@ -132,11 +141,11 @@
 
                     <!-- Links Institucionais -->
                     <p style="margin: 0; font-size: 11px; font-weight: 600;">
-                      <a href="{{ config('app.url') }}/termos" target="_blank" style="color: #7C3AED; text-decoration: none; margin: 0 8px;">
+                      <a href="{{ config('app.frontend_url') }}/?pagina=termos" target="_blank" style="color: #7C3AED; text-decoration: none; margin: 0 8px;">
                         Termos de Uso
                       </a>
                       <span style="color: #CBD5E1;">•</span>
-                      <a href="{{ config('app.url') }}/privacidade" target="_blank" style="color: #7C3AED; text-decoration: none; margin: 0 8px;">
+                      <a href="{{ config('app.frontend_url') }}/?pagina=privacidade" target="_blank" style="color: #7C3AED; text-decoration: none; margin: 0 8px;">
                         Política de Privacidade
                       </a>
                       <span style="color: #CBD5E1;">•</span>

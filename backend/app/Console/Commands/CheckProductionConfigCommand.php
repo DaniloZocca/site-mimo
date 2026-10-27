@@ -20,7 +20,7 @@ class CheckProductionConfigCommand extends Command
 
     protected $signature = 'mimoo:check-production';
 
-    protected $description = 'Falha se a configuração não estiver pronta para produção (APP_ENV, APP_DEBUG, CORS, cookie de sessão, HTTPS, fila).';
+    protected $description = 'Falha se a configuração não estiver pronta para produção (APP_ENV, APP_DEBUG, CORS, cookie de sessão, HTTPS, fila, dados da loja).';
 
     public function handle(): int
     {
@@ -52,6 +52,15 @@ class CheckProductionConfigCommand extends Command
         $connection = (string) config('queue.default');
         if (config("queue.connections.{$connection}.driver") === 'sync' || $connection === 'sync') {
             $problems[] = 'Fila sync: e-mails e avisos rodam dentro da requisição do cliente. Use QUEUE_CONNECTION=database com um worker rodando.';
+        }
+
+        // M-41: a Política de Privacidade e o rodapé dos e-mails identificam a loja (LGPD, art. 9º, II)
+        $missingStoreData = array_keys(array_filter([
+            'LOJA_RAZAO_SOCIAL' => (string) config('loja.razao_social') === '',
+            'LOJA_CNPJ' => (string) config('loja.cnpj') === '',
+        ]));
+        if ($missingStoreData !== []) {
+            $problems[] = 'Dados da loja em branco ('.implode(', ', $missingStoreData).'): a Política de Privacidade e o rodapé dos e-mails precisam identificar a loja.';
         }
 
         // Avisos (não reprovam): login de cliente com cookie, sinais de worker parado e jobs que falharam

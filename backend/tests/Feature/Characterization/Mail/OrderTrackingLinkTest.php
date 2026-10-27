@@ -15,7 +15,7 @@ use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 
 /**
  * M-27: o botão "Acompanhar" e o link da loja no rodapé dos e-mails de pedido abrem a loja (FRONTEND_URL),
- * não o endereço da API (APP_URL). Termos/Privacidade do rodapé seguem em APP_URL (páginas ainda não existem).
+ * não o endereço da API (APP_URL). Termos/Privacidade do rodapé: ver LegalPages/EmailFooterLegalLinksTest (M-41).
  */
 #[Group('characterization')]
 class OrderTrackingLinkTest extends CharacterizationTestCase

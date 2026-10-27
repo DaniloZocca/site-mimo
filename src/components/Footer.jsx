@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { useShop } from '../context/ShopContext';
 import { CATEGORY_LIST } from '../constants/categories';
+import { LEGAL_LINKS } from '../content/legal';
 import { Heart, Sparkles, Truck, ShieldCheck, Mail, ArrowRight, Share2 } from 'lucide-react';
 
 export const Footer = () => {
   const { setActiveTab, setSelectedCategory, showToast } = useShop();
   const [emailInput, setEmailInput] = useState('');
+
+  const openLegalPage = (tab) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleNewsletter = (e) => {
     e.preventDefault();
@@ -148,9 +154,25 @@ export const Footer = () => {
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-mimoo-purple transition-colors">
+                <a href={`${LEGAL_LINKS.terms}#trocas`} className="hover:text-mimoo-purple transition-colors">
                   🛡️ Política de Trocas
                 </a>
+              </li>
+              <li>
+                <button 
+                  onClick={() => openLegalPage('terms')}
+                  className="hover:text-mimoo-purple transition-colors"
+                >
+                  📜 Termos de Uso
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => openLegalPage('privacy')}
+                  className="hover:text-mimoo-purple transition-colors"
+                >
+                  🔒 Política de Privacidade
+                </button>
               </li>
             </ul>
           </div>
