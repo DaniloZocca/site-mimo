@@ -18,6 +18,12 @@ class CheckProductionConfigCommand extends Command
     /** Job disponível há mais que isso sem ser pego indica worker parado. */
     private const STALE_JOB_MINUTES = 5;
 
+    /**
+     * M-42: primeira versão de cada ramo com a correção da PHP2Shell (CVE-2026-109618 e CVE-2026-109619,
+     * lançada em 21/10/2026). O composer.json já recusa as anteriores.
+     */
+    private const PATCHED_PHP_VERSIONS = ['8.3' => '8.3.36', '8.4' => '8.4.27'];
+
     protected $signature = 'mimoo:check-production';
 
     protected $description = 'Falha se a configuração não estiver pronta para produção (APP_ENV, APP_DEBUG, CORS, cookie de sessão, HTTPS, fila, dados da loja).';
@@ -63,8 +69,14 @@ class CheckProductionConfigCommand extends Command
             $problems[] = 'Dados da loja em branco ('.implode(', ', $missingStoreData).'): a Política de Privacidade e o rodapé dos e-mails precisam identificar a loja.';
         }
 
-        // Avisos (não reprovam): login de cliente com cookie, sinais de worker parado e jobs que falharam
-        foreach ([...$this->accountCookieWarnings(), ...$this->queueWarnings($connection)] as $warning) {
+        // Avisos (não reprovam): PHP sem a correção de segurança, login de cliente com cookie, sinais de worker
+        // parado e jobs que falharam
+        $warnings = [
+            ...array_filter([self::phpVersionWarning(PHP_VERSION)]),
+            ...$this->accountCookieWarnings(),
+            ...$this->queueWarnings($connection),
+        ];
+        foreach ($warnings as $warning) {
             $this->warn($warning);
         }
 
@@ -80,6 +92,25 @@ class CheckProductionConfigCommand extends Command
         $this->info('Configuração de produção ok.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * M-42: avisa (não reprova) quando o PHP deste comando está abaixo da versão corrigida do ramo. Pacote de
+     * distribuição (Ubuntu/Debian) pode trazer a correção sem mudar o número, e o PHP do site (FPM) pode ser
+     * outro que o do terminal, por isso é aviso.
+     */
+    public static function phpVersionWarning(string $version): ?string
+    {
+        $branch = implode('.', array_slice(explode('.', $version), 0, 2));
+        $patched = self::PATCHED_PHP_VERSIONS[$branch] ?? null;
+
+        if ($patched === null || version_compare($version, $patched, '>=')) {
+            return null;
+        }
+
+        return "PHP {$version} não tem a correção de segurança de 21/10/2026 (CVE-2026-109618 e CVE-2026-109619). "
+            ."Atualize para {$patched} ou mais novo, no site e no terminal, e rode php artisan queue:restart. "
+            .'Se a hospedagem diz que o pacote já tem a correção com outro número, confira no changelog dela.';
     }
 
     /**
