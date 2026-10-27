@@ -21,8 +21,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Laravel 13 (M-35): composer.json pede ^8.3. Testa o mínimo e o 8.4, já que a
-        # hospedagem ainda não foi escolhida.
+        # Laravel 13 (M-35): composer.json pede 8.3 ou 8.4. Testa os dois, já que a
+        # hospedagem ainda não foi escolhida. O setup-php instala a última versão de cada ramo (M-42: precisa
+        # ser 8.3.36+ / 8.4.27+, senão o composer install recusa).
         php: ['8.3', '8.4']
     defaults:
       run:

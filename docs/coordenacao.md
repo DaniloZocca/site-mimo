@@ -113,6 +113,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-39 | Frete calculado com float (`ShippingCalculationService.php:115` preço do Melhor Envio e `:188` tabela de reserva, `round(float × 100)`, contra a regra 2). Verificado: o float no `ShippingCalculationService` (linhas 115 e 188) não altera nenhum valor: 9 preços da tabela de reserva e 10 milhões de valores do Melhor Envio (R$ 0,01 a R$ 100.000,00) testados sem erro em 2026-10-17. Decisão do Zocca: não mudar o código; exceção legada anotada no `CLAUDE.md`. A limpeza virou o M-40 | A | — | — | concluído (só documentação) | #46 |
 | M-40 | **P3.** Unificar `MoneyInput::toCents` e a conversão do `GatewayPayment` (`amountToCents`) num conversor único só com inteiros e usá-lo no frete: tabela de reserva escrita em centavos e preço do Melhor Envio convertido sem float, mantendo o campo `price` da resposta de `/api/shipping/calculate`. Teste provando os mesmos 9 valores da tabela e os mesmos resultados do Melhor Envio. Pedido no M-39 | B | checkout, painel | M-39 | em revisão (`App\Support\Cents::fromReais` é o conversor único; tabela de reserva em centavos; nenhum valor mudou: 0 diferenças de R$ 0,01 a R$ 100.000,00; preço do Melhor Envio com mais de 2 casas ou fora do formato decimal passa a ser descartado em vez de arredondado) | — |
 | M-41 | Páginas legais: Política de Privacidade e Termos de Uso na loja (`/?pagina=privacidade`, `/?pagina=termos`), links no rodapé da loja, no checkout, no cadastro e no rodapé dos e-mails (que apontavam para a API e traziam CNPJ inventado), dados da loja em branco para o Zocca preencher (`src/config/loja.js` e `LOJA_*` no `.env`), `mimoo:check-production` reprova sem razão social e CNPJ, exclusão de conta à mão por `docs/runbook-excluir-conta-cliente.md`. Plano: `/mnt/project-files/planos/m-41-paginas-legais.md` | C | front, pedidos, config | — | em merge (antes do deploy: preencher os dados da loja e revisar o texto; também sobe o zod para 4.6.7 por um alerta alto novo do `npm audit`) | #49 |
+| M-42 | Exigir PHP com a correção da PHP2Shell (CVE-2026-109618 e CVE-2026-109619, corrigidas em 21/10/2026): `composer.json` pede `~8.3.36 \|\| ^8.4.27` e o `mimoo:check-production` avisa (sem reprovar) quando o PHP está abaixo disso. O código da loja não muda; a correção de verdade é o PHP do servidor. Plano: `/mnt/project-files/planos/m-42-php-seguranca.md` | D | stack | — | em revisão (antes do deploy: PHP 8.3.36+ ou 8.4.27+ no servidor) | — |
 
 ## Decisões pendentes
 
@@ -174,7 +175,14 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   confirmação; "Iniciar Impressão" e "Expedir Pedido" do painel mandam os e-mails de impressão e de envio (M-10). O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
 - `.env` de produção com `FRONTEND_URL` = endereço da loja publicada, em `https://` e sem barra no final (M-27; ex.:
   `FRONTEND_URL=https://www.dominio.com.br`). Sem ela, o botão "Acompanhar" dos e-mails aponta para `http://localhost:5173`.
-- Laravel 13 (M-35; antes, Laravel 12 pelo M-23): o servidor precisa de **PHP 8.3 ou mais novo** (o CI testa 8.3 e
+- PHP do servidor (M-42): **8.3.36 ou mais novo no ramo 8.3, ou 8.4.27 ou mais novo** (correção da PHP2Shell,
+  CVE-2026-109618 e CVE-2026-109619, de 21/10/2026; as versões anteriores permitem invadir o servidor sem login). Vale
+  para o PHP do site (FPM) e para o do terminal (fila, cron e `artisan`): conferir no painel da hospedagem e com
+  `php -v`. Com PHP anterior, o `composer install` recusa e o `mimoo:check-production` avisa. Se a hospedagem diz que o
+  pacote dela tem a correção com outro número (Ubuntu/Debian fazem isso), conferir no changelog e, só nesse caso, usar
+  `composer install --ignore-platform-req=php`. Depois de atualizar o PHP, `php artisan queue:restart`. Enquanto a
+  hospedagem não atualizar, contorno parcial no `php.ini`: `session.upload_progress.enabled=0`.
+- Laravel 13 (M-35; antes, Laravel 12 pelo M-23): o servidor precisa da versão de PHP do item acima (o CI testa 8.3 e
   8.4). No deploy, dentro de `backend/`, nesta ordem: `composer install --no-dev --optimize-autoloader`,
   `php artisan optimize:clear`, `php artisan migrate --force` (o M-35 não traz migration), `php artisan config:cache`,
   `php artisan queue:restart` (o worker antigo ainda tem a versão anterior do Laravel carregada) e
