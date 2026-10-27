@@ -433,11 +433,11 @@ export const AuthModal = () => {
                 <Field label="Repita a senha:" icon={Lock} type="password" required autoComplete="new-password" value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} placeholder="••••••••" />
                 <FormMessage error={error} success={success} />
                 <SubmitButton busy={busy}>Criar Conta de Amigo MIMOO</SubmitButton>
-                <p className="text-[11px] text-slate-500 text-center leading-snug">
+                <p className="text-xs text-slate-500 text-center leading-snug">
                   Ao criar a conta, você concorda com os{' '}
-                  <a href={LEGAL_LINKS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Termos de Uso</a>
+                  <a href={LEGAL_LINKS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Termos de Uso<span className="sr-only"> (abre em nova aba)</span></a>
                   {' '}e a{' '}
-                  <a href={LEGAL_LINKS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Política de Privacidade</a>.
+                  <a href={LEGAL_LINKS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Política de Privacidade<span className="sr-only"> (abre em nova aba)</span></a>.
                 </p>
               </form>
             )}

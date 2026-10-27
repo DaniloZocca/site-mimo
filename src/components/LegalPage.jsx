@@ -8,7 +8,7 @@ import { LOJA, LOJA_CAMPOS } from '../config/loja';
 // selo amarelo, título Fredoka e cards chunky). Os textos ficam em src/content/legal.js.
 
 const MissingField = ({ field }) => (
-  <span className="font-bold text-amber-800 bg-mimoo-yellow-light border border-amber-400 rounded px-1">
+  <span className="font-bold text-amber-800 bg-mimoo-yellow-light border border-amber-400 rounded px-1 box-decoration-clone">
     [a preencher: {LOJA_CAMPOS[field] || field}]
   </span>
 );
@@ -32,11 +32,14 @@ export const LegalPage = ({ page }) => {
   const content = LEGAL_PAGES[page];
   const otherPage = page === 'privacy' ? 'terms' : 'privacy';
 
-  // Link com seção (ex.: ?pagina=termos#trocas) rola até ela.
+  // Link com seção (ex.: ?pagina=termos#trocas) rola até ela uma vez; depois a âncora sai do endereço.
   useEffect(() => {
     const id = window.location.hash.slice(1);
-    if (id) document.getElementById(id)?.scrollIntoView();
-  }, [page]);
+    const target = id && document.getElementById(id);
+    if (!target) return;
+    target.scrollIntoView();
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+  }, []);
 
   const goTo = (tab) => {
     setActiveTab(tab);
@@ -73,7 +76,7 @@ export const LegalPage = ({ page }) => {
         {/* Sections */}
         <div className="space-y-6">
           {content.sections.map((section) => (
-            <article key={section.id} id={section.id} className="card-chunky p-6 scroll-mt-6">
+            <article key={section.id} id={section.id} className="card-chunky p-6 scroll-mt-40">
               <h3 className="font-fredoka font-bold text-lg text-mimoo-dark leading-snug mb-3">
                 {section.title}
               </h3>

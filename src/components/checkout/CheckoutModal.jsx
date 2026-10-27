@@ -958,9 +958,9 @@ export const CheckoutModal = () => {
                     />
                     <span className="text-xs text-slate-600 font-nunito leading-snug">
                       Li e concordo com os{' '}
-                      <a href={LEGAL_LINKS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Termos de Uso</a>
+                      <a href={LEGAL_LINKS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Termos de Uso<span className="sr-only"> (abre em nova aba)</span></a>
                       {' '}(produção personalizada sob demanda) e a{' '}
-                      <a href={LEGAL_LINKS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Política de Privacidade</a>
+                      <a href={LEGAL_LINKS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-mimoo-purple-dark underline underline-offset-2">Política de Privacidade<span className="sr-only"> (abre em nova aba)</span></a>
                       , e autorizo o processamento dos meus dados para emissão e entrega da encomenda (em conformidade com a LGPD).
                     </span>
                   </label>
