@@ -196,11 +196,8 @@ export const ShopProvider = ({ children }) => {
     return customer;
   };
 
-  const register = async (data) => {
-    const { customer } = await accountApi.register(data);
-    applyCustomer(customer);
-    return customer;
-  };
+  // M-44: o cadastro não loga (resposta neutra, igual para e-mail novo e para e-mail que já tem conta).
+  const register = (data) => accountApi.register(data);
 
   const logout = async () => {
     try {

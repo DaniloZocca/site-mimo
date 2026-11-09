@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Mail\CustomerResetPasswordMail;
+use App\Mail\CustomerSignupAttemptMail;
 use App\Mail\CustomerVerifyEmailMail;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Concerns\HasVersion4Uuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -22,6 +24,9 @@ use Throwable;
 class Customer extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, HasVersion4Uuids;
+
+    /** M-44: intervalo mínimo entre dois avisos de "alguém tentou criar uma conta com seu e-mail". */
+    public const SIGNUP_ATTEMPT_WARNING_MINUTES = 60;
 
     /**
      * @var array<int, string>
@@ -78,6 +83,19 @@ class Customer extends Authenticatable implements MustVerifyEmail
     public function sendPasswordResetNotification($token): void
     {
         $this->queueMail(new CustomerResetPasswordMail($this, (string) $token));
+    }
+
+    /**
+     * M-44: alguém tentou se cadastrar com o e-mail desta conta. No máximo um aviso por conta por hora,
+     * para ninguém lotar a caixa de entrada da pessoa repetindo o cadastro.
+     */
+    public function sendSignupAttemptNotification(): void
+    {
+        if (! Cache::add('conta:aviso-cadastro:'.$this->getKey(), true, now()->addMinutes(self::SIGNUP_ATTEMPT_WARNING_MINUTES))) {
+            return;
+        }
+
+        $this->queueMail(new CustomerSignupAttemptMail($this));
     }
 
     /**
