@@ -9,7 +9,7 @@ use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 
 /**
  * M-50: o `mimoo:check-production` reprova credenciais e endereços que, esquecidos no .env de produção, não dão
- * erro nenhum (PIX simulado, webhook recusado, frete do sandbox, e-mail que não sai, links para o localhost).
+ * erro nenhum (pagamento sem token, webhook recusado, frete do sandbox, e-mail que não sai, links para o localhost).
  * A mensagem nomeia a variável e nunca mostra o valor.
  */
 class CheckProductionServicesTest extends CharacterizationTestCase
@@ -35,11 +35,11 @@ class CheckProductionServicesTest extends CharacterizationTestCase
     public static function configuracoesQueReprovam(): array
     {
         return [
-            'token do Mercado Pago vazio (PIX simulado)' => [
+            'token do Mercado Pago vazio (pagamento falharia)' => [
                 ['services.mercadopago.access_token' => ''],
-                'MERCADOPAGO_ACCESS_TOKEN vazio ou de exemplo: a loja mostraria um PIX simulado',
+                'MERCADOPAGO_ACCESS_TOKEN vazio ou de exemplo: todo pagamento falharia',
             ],
-            'token de exemplo TEST-000000 (PIX simulado)' => [
+            'token de exemplo TEST-000000 (pagamento falharia)' => [
                 ['services.mercadopago.access_token' => 'TEST-0000000000000000-000000-abc'],
                 'MERCADOPAGO_ACCESS_TOKEN vazio ou de exemplo',
             ],
