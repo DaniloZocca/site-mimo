@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\CheckoutOrderDTO;
+use App\Exceptions\PaymentGatewayNotConfiguredException;
 use App\Models\Order;
 use App\Support\ErrorReference;
 use Exception;
@@ -66,10 +67,12 @@ class MercadoPagoService
             ],
         ];
 
-        $accessToken = (string) config('services.mercadopago.access_token', '');
-        $isMockToken = empty($accessToken) || str_contains($accessToken, 'TEST-000000');
+        // M-51: o PIX simulado só existe em local/testing; fora disso, token ausente é falha de gateway.
+        if (! $this->hasRealAccessToken()) {
+            if (! app()->environment(['local', 'testing'])) {
+                throw new PaymentGatewayNotConfiguredException;
+            }
 
-        if ($isMockToken) {
             Log::info("Ambiente de desenvolvimento MIMOO LAB: Simulando emissão de PIX para pedido #{$order->order_number}");
             $mockPix = '00020126580014br.gov.bcb.pix0136'.(string) Str::uuid().'5204000053039865405'.number_format($amountInReais, 2, '.', '').'5802BR5913MIMOO LAB 3D6009SAO PAULO62070503***6304ABCD';
 
@@ -123,6 +126,11 @@ class MercadoPagoService
      */
     public function createCardPayment(Order $order, CheckoutOrderDTO $dto): array
     {
+        // M-51: sem token de verdade fora de local/testing, nada (token do cartão, CPF) sai para a API.
+        if (! $this->hasRealAccessToken() && ! app()->environment(['local', 'testing'])) {
+            throw new PaymentGatewayNotConfiguredException;
+        }
+
         $amountInReais = (float) round($order->total_cents / 100, 2);
         $idempotencyKey = $this->paymentIdempotencyKey($order);
 
@@ -183,6 +191,16 @@ class MercadoPagoService
      * Chave do X-Idempotency-Key do pedido: a mesma em toda tentativa de criar o pagamento deste
      * pedido (o Mercado Pago deduplica). Pedidos anteriores à coluna recebem uma chave agora.
      */
+    /**
+     * Token vazio ou o de exemplo (`TEST-000000`) não é credencial do Mercado Pago.
+     */
+    private function hasRealAccessToken(): bool
+    {
+        $accessToken = trim((string) config('services.mercadopago.access_token', ''));
+
+        return $accessToken !== '' && ! str_contains($accessToken, 'TEST-000000');
+    }
+
     private function paymentIdempotencyKey(Order $order): string
     {
         if (empty($order->payment_idempotency_key)) {

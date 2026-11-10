@@ -70,7 +70,7 @@ class CheckProductionConfigCommand extends Command
             $problems[] = 'Dados da loja em branco ('.implode(', ', $missingStoreData).'): a Política de Privacidade e o rodapé dos e-mails precisam identificar a loja.';
         }
 
-        // M-50: credenciais e endereços que, esquecidos no .env, não dão erro nenhum: PIX simulado, webhook
+        // M-50: credenciais e endereços que, esquecidos no .env, não dão erro nenhum: pagamento sem token, webhook
         // recusado, frete do sandbox, e-mail que não sai e links dos e-mails para o localhost
         $problems = [...$problems, ...$this->servicesProblems()];
 
@@ -116,7 +116,7 @@ class CheckProductionConfigCommand extends Command
 
         $accessToken = trim((string) config('services.mercadopago.access_token'));
         if ($accessToken === '' || str_contains($accessToken, 'TEST-000000')) {
-            $problems[] = 'MERCADOPAGO_ACCESS_TOKEN vazio ou de exemplo: a loja mostraria um PIX simulado (QR falso) ao cliente. Use o Access Token de produção.';
+            $problems[] = 'MERCADOPAGO_ACCESS_TOKEN vazio ou de exemplo: todo pagamento falharia (PIX e cartão; desde o M-51 o PIX simulado só existe em local/testing). Use o Access Token de produção.';
         } elseif (str_starts_with($accessToken, 'TEST-')) {
             $problems[] = 'MERCADOPAGO_ACCESS_TOKEN é de teste: em produção nenhum pagamento seria liberado (todos iriam para "Pagamento em revisão"). Use o Access Token de produção.';
         }
