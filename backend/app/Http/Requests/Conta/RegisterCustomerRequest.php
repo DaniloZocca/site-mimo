@@ -14,8 +14,6 @@ class RegisterCustomerRequest extends FormRequest
 
     public const BLOCKED_DOMAIN_MESSAGE = 'Não foi possível criar a conta com este e-mail. Use outro endereço.';
 
-    public const EMAIL_TAKEN_MESSAGE = 'Este e-mail já tem conta. Entre ou use "Esqueci minha senha".';
-
     /** Domínio da loja: ninguém cria conta de cliente com ele (ex.: a antiga usuária de demonstração). */
     private const BLOCKED_DOMAIN = 'mimoolab.com.br';
 
@@ -89,14 +87,9 @@ class RegisterCustomerRequest extends FormRequest
                 $email = Customer::normalizeEmail((string) $this->input('email'));
                 $domain = substr((string) strrchr($email, '@'), 1);
 
+                // M-44: e-mail que já tem conta não dá erro aqui (o AccountController responde igual nos dois casos).
                 if ($domain === self::BLOCKED_DOMAIN || str_ends_with($domain, '.'.self::BLOCKED_DOMAIN)) {
                     $validator->errors()->add('email', self::BLOCKED_DOMAIN_MESSAGE);
-
-                    return;
-                }
-
-                if (Customer::where('email', $email)->exists()) {
-                    $validator->errors()->add('email', self::EMAIL_TAKEN_MESSAGE);
                 }
             },
         ];

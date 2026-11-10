@@ -35,8 +35,11 @@ class CustomerAccountLogPrivacyTest extends CharacterizationTestCase
     {
         $this->postJson('/api/conta/register', [
             'name' => 'Ana Clara', 'email' => 'ana@exemplo.com', 'password' => 'gatinho123', 'password_confirmation' => 'gatinho123',
-        ])->assertCreated();
-        $this->postJson('/api/conta/logout')->assertNoContent();
+        ])->assertStatus(202);
+        // M-44: cadastro repetido (aviso para a dona da conta) também não loga nada sensível.
+        $this->postJson('/api/conta/register', [
+            'name' => 'Ana Clara', 'email' => 'ana@exemplo.com', 'password' => 'outra1234', 'password_confirmation' => 'outra1234',
+        ])->assertStatus(202);
         $this->postJson('/api/conta/login', ['email' => 'ana@exemplo.com', 'password' => 'errada123'])->assertStatus(422);
         $this->postJson('/api/conta/login', ['email' => 'ana@exemplo.com', 'password' => 'gatinho123'])->assertOk();
         $this->postJson('/api/conta/forgot-password', ['email' => 'ana@exemplo.com'])->assertStatus(202);
@@ -51,7 +54,7 @@ class CustomerAccountLogPrivacyTest extends CharacterizationTestCase
             'token' => $token, 'email' => 'ana@exemplo.com', 'password' => 'novinha123', 'password_confirmation' => 'novinha123',
         ])->assertOk();
 
-        $this->assertNothingSensitiveLogged(['ana@exemplo.com', 'gatinho123', 'errada123', 'novinha123', (string) $token]);
+        $this->assertNothingSensitiveLogged(['ana@exemplo.com', 'gatinho123', 'outra1234', 'errada123', 'novinha123', (string) $token]);
     }
 
     public function test_falha_ao_enfileirar_email_nao_derruba_o_cadastro_e_loga_so_as_classes(): void
@@ -60,7 +63,7 @@ class CustomerAccountLogPrivacyTest extends CharacterizationTestCase
 
         $this->postJson('/api/conta/register', [
             'name' => 'Bia', 'email' => 'bia@exemplo.com', 'password' => 'gatinho123', 'password_confirmation' => 'gatinho123',
-        ])->assertCreated();
+        ])->assertStatus(202);
 
         $this->assertSame(1, Customer::count());
         $this->assertCount(1, $this->logged);

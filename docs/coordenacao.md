@@ -115,6 +115,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-41 | Páginas legais: Política de Privacidade e Termos de Uso na loja (`/?pagina=privacidade`, `/?pagina=termos`), links no rodapé da loja, no checkout, no cadastro e no rodapé dos e-mails (que apontavam para a API e traziam CNPJ inventado), dados da loja em branco para o Zocca preencher (`src/config/loja.js` e `LOJA_*` no `.env`), `mimoo:check-production` reprova sem razão social e CNPJ, exclusão de conta à mão por `docs/runbook-excluir-conta-cliente.md`. Plano: `/mnt/project-files/planos/m-41-paginas-legais.md` | C | front, pedidos, config | — | em merge (antes do deploy: preencher os dados da loja e revisar o texto; também sobe o zod para 4.6.7 por um alerta alto novo do `npm audit`) | #49 |
 | M-42 | Exigir PHP com a correção da PHP2Shell (CVE-2026-109618 e CVE-2026-109619, corrigidas em 21/10/2026): `composer.json` pede `~8.3.36 \|\| ^8.4.27` e o `mimoo:check-production` avisa (sem reprovar) quando o PHP está abaixo disso. O código da loja não muda; a correção de verdade é o PHP do servidor. Plano: `/mnt/project-files/planos/m-42-php-seguranca.md` | D | stack | — | em revisão (antes do deploy: PHP 8.3.36+ ou 8.4.27+ no servidor) | #50 |
 | M-43 | Ajuste do CI: actions que ainda rodavam em Node 20 (aviso de deprecação) passam para versões em Node 24: `actions/checkout@v6`, `actions/setup-node@v6`, `actions/cache@v5` (`shivammathur/setup-php@v2` já roda em Node 24). Mesmos passos e mesmos nomes de check (`backend (8.3)`, `backend (8.4)`, `frontend`); o projeto segue no Node 22. Plano: `/mnt/project-files/planos/m-43-ajuste-ci.md` | D | stack | — | em revisão | #51 |
+| M-44 | Cadastro de conta sem revelar e-mail existente (decisão do Zocca em 2026-11-09, item (1) de "Riscos da conta de cliente"): `POST /api/conta/register` responde sempre 202 com "Enviamos um e-mail para você confirmar o cadastro", sem dados da conta e sem login. E-mail novo: cria a conta e manda "Confirme seu e-mail". E-mail que já tem conta: não mexe na conta e manda à dona o aviso "Alguém tentou criar uma conta com seu e-mail" (no máximo 1 por hora por conta). A loja abre "Entrar" depois do cadastro. Plano: `/mnt/project-files/planos/m-44-cadastro-sem-revelar-email.md` | C | pedidos, front | M-26 | em revisão | #52 |
 
 ## Decisões pendentes
 
@@ -126,7 +127,7 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 | `/api/colors` e `/api/sizes`: criar a coluna `is_active` (migration) ou listar tudo? | M-11 lista todas as cores/tamanhos (sem migration). | M-11 |
 | **Bloqueia o deploy do M-26 (b):** página de Política de Privacidade publicada, dizendo quais dados a conta guarda e como pedir a exclusão da conta. O M-41 cria a página com o texto (e-mail de contato e de privacidade: contato.mimoolab@gmail.com); falta o Zocca preencher os dados da loja e revisar o texto (de preferência com um advogado). | O M-26 (a) pode ir para produção (as rotas não aparecem na loja). O (b) não vai para produção sem a página publicada e preenchida. | M-26, M-41 |
 | Excluir a conta pelo próprio site (LGPD)? | Exclusão a pedido do cliente, pelo canal que a Política de Privacidade indicar; feita à mão no banco (o painel não lista contas). | M-26 ou tarefa nova |
-| Riscos da conta de cliente apontados na revisão de segurança do M-26 (a): (1) o cadastro diz "Este e-mail já tem conta", o que revela quem é cliente (limite de 3 por minuto por IP); (2) o token de "nova senha" fica no `payload` da fila (`jobs`, e `failed_jobs` se o envio falhar) até o e-mail sair, como no padrão do Laravel. Aceitar ou mudar? | Mantidos: (1) era o comportamento do plano aprovado; (2) quem lê o banco já vê os dados dos clientes, e o token vale 60 min. | M-26 |
+| Risco da conta de cliente apontado na revisão de segurança do M-26 (a): o token de "nova senha" fica no `payload` da fila (`jobs`, e `failed_jobs` se o envio falhar) até o e-mail sair, como no padrão do Laravel. Aceitar ou mudar? (O outro risco, "cadastro revela e-mail existente", foi resolvido no M-44.) | Mantido: quem lê o banco já vê os dados dos clientes, e o token vale 60 min. | M-26 |
 | Painel para contas de cliente (ver, bloquear, excluir), endereços salvos, "comprar de novo", login com Google? | Fora do M-26. | tarefa nova |
 | Cancelar pedido já pago no painel: estorno automático pelo Mercado Pago ou manual? | M-10 cancela só pedido não pago; pago fica para estorno manual. | M-10 |
 | Validade do PIX (`date_of_expiration`): qual prazo? | Prazo padrão do Mercado Pago. | M-17 ou tarefa nova |
@@ -202,6 +203,25 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   "Confirme seu e-mail na MIMOO LAB" chega em até 1 min, abrir o link (abre a loja, que confirma com você logado),
   pedir "Esqueci minha senha" e conferir o segundo e-mail; se algum não chegar, `php artisan mimoo:check-production`
   mostra job parado ou falhado.
+- Cadastro neutro (M-44): depois do deploy da conta de cliente, cadastrar de novo um e-mail que já tem conta e conferir
+  que a tela mostra a mesma mensagem de um cadastro novo e que chega à caixa da conta o aviso "🐮 Alguém tentou criar
+  uma conta com seu e-mail" (vai pela fila, como os outros e-mails de conta). Depois do cadastro ninguém sai logado: a
+  pessoa entra pela aba "Entrar".
+- Hospedagem (decidida em 2026-11-03: loja no Cloudflare Pages; API, fila, cron e Postgres numa VM Oracle Cloud Always
+  Free em São Paulo; detalhes em `/mnt/project-files/planos/deploy-gratuito.md`):
+  - criar a conta Oracle (região São Paulo), passar para Pay As You Go e ligar um alerta de orçamento;
+  - instalar nginx, PHP-FPM (com `pdo_pgsql`, `intl`, `mbstring`, `bcmath`, `curl`, `zip`, `gd`; versão do item do
+    M-42), Postgres 16, Composer e supervisor;
+  - `queue:work` sempre ligado (supervisor/systemd) e crontab `* * * * * php artisan schedule:run`;
+  - backup diário do Postgres para fora da VM (ex.: Object Storage grátis da Oracle ou R2 da Cloudflare) e um teste de
+    restauração;
+  - Cloudflare: zona `mimoolab.com.br`, Pages com `VITE_API_URL` e `NODE_VERSION=22`, registro `api` com proxy, SSL
+    Full (strict) + Origin Certificate;
+  - Resend: verificar o domínio (registros DNS na Cloudflare);
+  - webhook do Mercado Pago apontando para `https://api.mimoolab.com.br/...` (depois do DNS).
+  Não mudam: `.env` do servidor (`ADMIN_*`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL` sem barra,
+  `SESSION_DOMAIN=.mimoolab.com.br`, `QUEUE_CONNECTION=database`, `MAIL_*`), build, comandos do backend,
+  `mimoo:check-production` e as consultas SQL.
 - Páginas legais (M-41): antes do `npm run build`, preencher `src/config/loja.js` (razão social, CNPJ, endereço,
   encarregado, serviço de e-mail, hospedagem e data da publicação; o que ficar vazio aparece na página como
   "[a preencher: …]"). No `.env` da API: `LOJA_RAZAO_SOCIAL`, `LOJA_CNPJ` e, se quiser no rodapé dos e-mails,

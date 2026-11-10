@@ -234,10 +234,10 @@ export const AuthModal = () => {
   const handleRegister = (e) => {
     e.preventDefault();
     run(async () => {
-      const customer = await register({ name, email, password, password_confirmation: passwordConfirmation });
-      setPassword('');
-      setPasswordConfirmation('');
-      showToast(`🐮 Bem-vindo(a) à MIMOO LAB, ${customer.name.split(' ')[0]}! Confira seu e-mail.`);
+      // M-44: a resposta é a mesma para e-mail novo e para e-mail que já tem conta; ninguém sai logado.
+      const { message } = await register({ name, email, password, password_confirmation: passwordConfirmation });
+      goTo('login');
+      setSuccess(message);
     });
   };
 
