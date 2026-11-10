@@ -17,7 +17,7 @@ use RecursiveIteratorIterator;
  *
  * M-54: também reprova a variável da exceção (do catch ou de um parâmetro Throwable/Exception/Error) em
  * qualquer lugar da chamada, a não ser $e::class ou $e->método() (ex.: getCode()); (string) $e, interpolação,
- * getTraceAsString(), __toString() e getPrevious(); e os helpers logger() e info(). report($e) continua
+ * getTraceAsString(), getTrace(), __toString(), getPrevious(), getSql(), getBindings() e errorInfo; e os helpers logger() e info(). report($e) continua
  * permitido: passa pelo callback seguro do bootstrap/app.php.
  */
 #[Group('characterization')]
@@ -81,6 +81,8 @@ class LogCallsArchitectureTest extends TestCase
             info('ok', ['pedido' => $pedido]);
             Log::error('ok', [...ErrorReference::context($falha), 'tipo' => $falha instanceof QueryException]);
             Log::error('h', ['x' => json_encode($falha)]);
+            Log::error('i', ['sql' => $falha->getSql(), 'b' => $falha->getBindings()]);
+            Log::error('j', ['info' => $falha->errorInfo, 't' => $falha->getTrace()]);
         }
         function failed(Evento $evento, Throwable $exception): void {
             Log::error('g', ['detalhe' => $exception]);
@@ -88,7 +90,7 @@ class LogCallsArchitectureTest extends TestCase
         }
         PHP;
 
-        $this->assertSame([3, 4, 5, 6, 7, 8, 13, 16], $this->violations($code));
+        $this->assertSame([3, 4, 5, 6, 7, 8, 13, 14, 15, 18], $this->violations($code));
     }
 
     public function test_sanitizador_cobre_cpf_e_cnpj_formatados(): void
@@ -114,6 +116,10 @@ class LogCallsArchitectureTest extends TestCase
                 || str_contains($statement, 'getTraceAsString(')
                 || str_contains($statement, '__toString(')
                 || str_contains($statement, 'getPrevious(')
+                || str_contains($statement, 'getTrace(')
+                || str_contains($statement, 'getSql(')
+                || str_contains($statement, 'getBindings(')
+                || str_contains($statement, '->errorInfo')
                 || preg_match('/[\'"]exception[\'"]\s*=>\s*\$\w+\s*[,\]\)]/', $statement) === 1
                 || $this->usesThrowableAsValue($statement, $thrown)) {
                 $lines[] = $line;
