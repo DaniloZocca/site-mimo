@@ -62,7 +62,7 @@ class EnvModelDocTest extends TestCase
 
         $model = [];
         foreach (explode("\n", $block[1]) as $line) {
-            if (preg_match('/^([A-Z][A-Z0-9_]*)=("[^"]*"|\S*)\s*(?:#\s*(.*))?$/', $line, $m) === 1) {
+            if (preg_match('/^([A-Z][A-Z0-9_]*)=("[^"]*"|<[^>]*>|\S*)\s*(?:#\s*(.*))?$/', $line, $m) === 1) {
                 $this->assertArrayNotHasKey($m[1], $model, "{$m[1]} repetida no modelo");
                 $model[$m[1]] = [trim($m[2], '"'), trim($m[3] ?? '')];
             }

@@ -121,7 +121,7 @@ class MailReplyToTest extends CharacterizationTestCase
     {
         // Gerenciador real (o da base é falso e não aplica o Reply-To global); send() direto, como o worker da fila faz
         $mailer = (new MailManager($this->app))->mailer('array');
-        $mailable->send($mailer);
+        $mailable->to('cliente@exemplo.test')->send($mailer);
 
         $messages = $mailer->getSymfonyTransport()->messages();
         $this->assertCount(1, $messages, $mailable::class);
