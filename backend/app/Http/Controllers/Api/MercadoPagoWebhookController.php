@@ -14,6 +14,7 @@ use App\Services\AfterCommitDispatcher;
 use App\Services\MercadoPagoService;
 use App\Services\PaymentApprovalValidator;
 use App\Services\ProductionWorkflowService;
+use App\Support\ErrorReference;
 use Exception;
 use Illuminate\Contracts\Database\ConcurrencyErrorDetector;
 use Illuminate\Http\JsonResponse;
@@ -302,8 +303,10 @@ class MercadoPagoWebhookController extends Controller
                     ->header('Retry-After', '5');
             }
 
-            Log::error("❌ Exceção ao processar webhook para #{$externalReference}: ".$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
+            // M-46: só a classe e os códigos (SQLSTATE), nunca a mensagem nem o trace
+            Log::error("❌ Exceção ao processar webhook para #{$externalReference}.", [
+                'payment_id' => $dataId,
+                ...ErrorReference::context($e),
             ]);
 
             return response()->json(['message' => 'Erro interno ao processar transação de webhook.'], 500);
