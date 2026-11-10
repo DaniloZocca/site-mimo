@@ -23,7 +23,7 @@ class QueueScheduleTest extends TestCase
 
         /** @var Event $worker */
         $worker = $events->first();
-        $this->assertStringEndsWith("'artisan' queue:work --stop-when-empty --max-time=50", (string) $worker->command);
+        $this->assertStringEndsWith("'artisan' queue:work --stop-when-empty --max-time=50 --tries=3", (string) $worker->command);
         $this->assertSame('* * * * *', $worker->expression);
         $this->assertTrue($worker->withoutOverlapping);
         $this->assertSame(5, $worker->expiresAt);
