@@ -16,6 +16,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
+use Mockery;
 use PDOException;
 use PHPUnit\Framework\Attributes\Group;
 use RuntimeException;
@@ -55,10 +56,8 @@ class CheckoutUnexpectedErrorPrivacyTest extends CharacterizationTestCase
     public function test_erro_de_banco_no_checkout_responde_texto_fixo_com_codigo_e_sem_dados_pessoais(): void
     {
         ['payload' => $payload] = $this->simpleCheckout('pix');
-        $this->partialMock(OrderCreationService::class, function ($mock): void {
-            $mock->shouldReceive('createOrder')->andThrow($this->queryException(QueryException::class, '22001', 1406,
-                "Data too long for column 'customer_email' at row 1"));
-        });
+        $this->createOrderThrows(fn () => $this->queryException(QueryException::class, '22001', 1406,
+            "Data too long for column 'customer_email' at row 1"));
 
         $response = $this->postJson('/api/checkout', $payload, ['Idempotency-Key' => (string) Str::uuid()]);
 
@@ -84,10 +83,8 @@ class CheckoutUnexpectedErrorPrivacyTest extends CharacterizationTestCase
     public function test_duplicate_entry_de_outro_indice_responde_texto_fixo_e_loga_o_codigo_1062(): void
     {
         ['payload' => $payload] = $this->simpleCheckout('pix');
-        $this->partialMock(OrderCreationService::class, function ($mock): void {
-            $mock->shouldReceive('createOrder')->andThrow($this->queryException(UniqueConstraintViolationException::class, '23000', 1062,
-                "Duplicate entry '".self::EMAIL."' for key 'customers_email_unique'"));
-        });
+        $this->createOrderThrows(fn () => $this->queryException(UniqueConstraintViolationException::class, '23000', 1062,
+            "Duplicate entry '".self::EMAIL."' for key 'customers_email_unique'"));
 
         $response = $this->postJson('/api/checkout', $payload, ['Idempotency-Key' => (string) Str::uuid()]);
 
@@ -100,16 +97,14 @@ class CheckoutUnexpectedErrorPrivacyTest extends CharacterizationTestCase
         $this->assertSame(UniqueConstraintViolationException::class, $entry['context']['exception']);
         $this->assertSame('23000', $entry['context']['sqlstate']);
         $this->assertSame(1062, $entry['context']['driver_code']);
-        $this->assertStringStartsWith('app/', (string) $entry['context']['location']);
+        $this->assertMatchesRegularExpression('#^app/Http/Controllers/Api/CheckoutController\.php:\d+$#', (string) $entry['context']['location']);
         $this->assertNoSensitiveData(json_encode($this->logged));
     }
 
     public function test_codigo_do_erro_e_diferente_a_cada_erro(): void
     {
         ['payload' => $payload] = $this->simpleCheckout('pix');
-        $this->partialMock(OrderCreationService::class, function ($mock): void {
-            $mock->shouldReceive('createOrder')->andThrow($this->queryException(QueryException::class, '40001', 1213, 'Deadlock found'));
-        });
+        $this->createOrderThrows(fn () => $this->queryException(QueryException::class, '40001', 1213, 'Deadlock found'));
 
         $first = $this->postJson('/api/checkout', $payload, ['Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
         $second = $this->postJson('/api/checkout', $payload, ['Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
@@ -199,6 +194,19 @@ class CheckoutUnexpectedErrorPrivacyTest extends CharacterizationTestCase
         $this->assertSame(1062, $entry['context']['driver_code']);
         $this->assertArrayNotHasKey('trace', $entry['context']);
         $this->assertNoSensitiveData(json_encode($this->logged));
+    }
+
+    /**
+     * O frete é recalculado de verdade; só a gravação do pedido falha (mock parcial sobre a instância real).
+     * A exceção nasce dentro da chamada, para o trace passar pelo CheckoutController como num erro real.
+     *
+     * @param  callable(): QueryException  $makeException
+     */
+    private function createOrderThrows(callable $makeException): void
+    {
+        $mock = Mockery::mock($this->app->make(OrderCreationService::class));
+        $mock->shouldReceive('createOrder')->andReturnUsing(fn () => throw $makeException());
+        $this->app->instance(OrderCreationService::class, $mock);
     }
 
     /**

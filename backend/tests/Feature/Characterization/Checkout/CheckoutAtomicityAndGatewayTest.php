@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Characterization\Checkout;
 
 use App\Enums\OrderStatus;
+use App\Http\Controllers\Api\CheckoutController;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -58,7 +59,10 @@ class CheckoutAtomicityAndGatewayTest extends CharacterizationTestCase
             $this->itemPayload($b, $color),
         ]))
             ->assertStatus(422)
-            ->assertExactJson(['message' => 'falha simulada no insert']);
+            // M-46 (bug #30): antes repetia a mensagem da exceção; agora texto fixo com código do erro
+            ->assertJsonPath('code', CheckoutController::UNEXPECTED_ERROR_CODE)
+            ->assertJsonMissingPath('errors')
+            ->assertDontSee('falha simulada no insert');
 
         $this->assertSame(0, Order::count());
         $this->assertSame(0, OrderItem::count());
