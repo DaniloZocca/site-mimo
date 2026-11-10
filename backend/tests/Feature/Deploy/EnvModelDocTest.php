@@ -38,6 +38,7 @@ class EnvModelDocTest extends TestCase
         foreach (self::SECRET_KEYS as $key) {
             $this->assertArrayHasKey($key, $model);
             [$value] = $model[$key];
+            $this->assertMatchesRegularExpression('/^\s*'.$key.'=(\'|$|\s)/m', $this->modelBlock(), "{$key} precisa estar entre aspas simples no modelo (ou vazio)");
             $this->assertMatchesRegularExpression('/^(|<[^>]+>)$/', $value, "{$key} precisa ficar vazio ou com <marcador> no modelo");
         }
 
@@ -54,17 +55,22 @@ class EnvModelDocTest extends TestCase
         $this->assertContains('MAIL_REPLY_TO_NAME', $keys);
     }
 
-    /** @return array<string, array{0: string, 1: string}> chave => [valor, comentário] */
-    private function model(): array
+    private function modelBlock(): string
     {
         $doc = $this->read('docs/deploy-hostinger.md');
         $this->assertSame(1, preg_match('/<!-- modelo-env:inicio -->\s*```dotenv\n(.*?)```\s*<!-- modelo-env:fim -->/s', $doc, $block), 'Bloco do modelo de .env não encontrado no roteiro');
 
+        return $block[1];
+    }
+
+    /** @return array<string, array{0: string, 1: string}> chave => [valor, comentário] */
+    private function model(): array
+    {
         $model = [];
-        foreach (explode("\n", $block[1]) as $line) {
-            if (preg_match('/^([A-Z][A-Z0-9_]*)=("[^"]*"|<[^>]*>|\S*)\s*(?:#\s*(.*))?$/', $line, $m) === 1) {
+        foreach (explode("\n", $this->modelBlock()) as $line) {
+            if (preg_match('/^([A-Z][A-Z0-9_]*)=("[^"]*"|\'[^\']*\'|<[^>]*>|\S*)\s*(?:#\s*(.*))?$/', $line, $m) === 1) {
                 $this->assertArrayNotHasKey($m[1], $model, "{$m[1]} repetida no modelo");
-                $model[$m[1]] = [trim($m[2], '"'), trim($m[3] ?? '')];
+                $model[$m[1]] = [trim($m[2], '"\''), trim($m[3] ?? '')];
             }
         }
 

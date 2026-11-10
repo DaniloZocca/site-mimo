@@ -109,20 +109,22 @@ fi
 cd "$APP_DIR/backend"
 
 step "Modo manutenção (503 com Retry-After)"
-IN_MAINTENANCE=1
 "$PHP" artisan down --retry=60
+IN_MAINTENANCE=1
 
 step "Código ($( [ -n "$TARGET" ] && echo "volta para $TARGET" || echo "fast-forward de origin/$BRANCH"))"
-# Arquivos do repositório com a permissão normal do Git (644/755): o servidor web precisa ler os estáticos de
-# public/ (CSS/JS do painel). Só os arquivos gerados nos passos seguintes ficam com o umask 077.
+# Código e dependências com a permissão normal (644/755): o servidor web precisa ler os estáticos de public/,
+# inclusive o CSS/JS do painel que o composer publica (filament:upgrade no post-autoload-dump). Só os arquivos
+# gerados nos passos seguintes (caches com a configuração) ficam com o umask 077. O "trap - ERR" no subshell evita
+# a mensagem de erro em dobro.
 if [ -n "$TARGET" ]; then
-    (umask 022 && git -C "$APP_DIR" reset --quiet --hard "$NEXT")
+    (trap - ERR; umask 022 && git -C "$APP_DIR" reset --quiet --hard "$NEXT")
 else
-    (umask 022 && git -C "$APP_DIR" merge --quiet --ff-only "origin/$BRANCH")
+    (trap - ERR; umask 022 && git -C "$APP_DIR" merge --quiet --ff-only "origin/$BRANCH")
 fi
 
 step "Dependências (composer2, sem pacotes de desenvolvimento)"
-"$PHP" "$COMPOSER" install --no-dev --optimize-autoloader --no-interaction --no-progress
+(trap - ERR; umask 022 && "$PHP" "$COMPOSER" install --no-dev --optimize-autoloader --no-interaction --no-progress)
 
 step "Migrations"
 "$PHP" artisan migrate --force

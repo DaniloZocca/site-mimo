@@ -30,6 +30,7 @@ if [ "$1" = "-r" ]; then exit 0; fi
 if [ "$(basename "$1")" = "composer2" ]; then
     if [ "$2" = "--version" ]; then echo "Composer version 2.8.12 2025-09-19 13:41:59"; exit 0; fi
     echo "composer $2" >> "$CALLS"
+    mkdir -p backend-public-filament && echo "/* asset */" > backend-public-filament/app.css
     [ "${FAIL_ON:-}" = "composer" ] && exit 1
     exit 0
 fi
@@ -52,7 +53,7 @@ new_repo() {
     git -C "$WORK/dev" checkout --quiet -b producao
     mkdir -p "$WORK/dev/backend/public"
     echo "v1" > "$WORK/dev/backend/public/app.css"
-    printf 'bootstrap-cache-config.php\n' > "$WORK/dev/backend/.gitignore"
+    printf 'bootstrap-cache-config.php\nbackend-public-filament/\n' > "$WORK/dev/backend/.gitignore"
     git -C "$WORK/dev" add -A && git -C "$WORK/dev" commit --quiet -m "v1"
     git -C "$WORK/dev" push --quiet origin producao
     git clone --quiet -b producao "$WORK/origin.git" "$WORK/app"
@@ -118,6 +119,10 @@ run_deploy
     && ok "umask 077: cache gerado pelo deploy fica 600" || not_ok "umask 077: cache 600" "$(stat -c %a "$WORK/app/backend/bootstrap-cache-config.php")"
 [ "$(stat -c %a "$WORK/app/backend/public/app.css")" = "644" ] \
     && ok "arquivo do repositório atualizado fica 644 (servidor web lê os estáticos)" || not_ok "estático 644" "$(stat -c %a "$WORK/app/backend/public/app.css")"
+[ "$(stat -c %a "$WORK/app/backend/backend-public-filament/app.css")" = "644" ] \
+    && ok "asset publicado pelo composer fica 644 (CSS/JS do painel)" || not_ok "asset do composer 644" "$(stat -c %a "$WORK/app/backend/backend-public-filament/app.css")"
+[ "$(grep -c "ERRO no passo" <<< "$(FAIL_ON="mimoo:check-production" run_deploy; echo "$OUTPUT")")" = "1" ] \
+    && ok "erro aparece uma vez só" || not_ok "erro aparece uma vez só"
 
 # --- 4. voltar versão ---------------------------------------------------------------------------------------
 run_deploy "$V1"

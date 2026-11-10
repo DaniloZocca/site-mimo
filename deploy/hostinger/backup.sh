@@ -96,6 +96,11 @@ if [ "$WEEKLY" -eq 1 ]; then
     cp -p "$DB_FILE" "$FILES_FILE" "$BACKUP_DIR/semanal/"
 fi
 
+# Retenção no servidor antes do envio: se o envio falhar todo dia, a pasta não cresce até lotar a conta
+STEP="retenção local"
+prune_local "$BACKUP_DIR/diario" "$KEEP_DAILY"
+prune_local "$BACKUP_DIR/semanal" "$KEEP_WEEKLY"
+
 STEP="cópia fora do servidor"
 "$RCLONE" copy --quiet "$DB_FILE" "${REMOTE}diario/"
 "$RCLONE" copy --quiet "$FILES_FILE" "${REMOTE}diario/"
@@ -104,13 +109,10 @@ if [ "$WEEKLY" -eq 1 ]; then
     "$RCLONE" copy --quiet "$FILES_FILE" "${REMOTE}semanal/"
 fi
 
-STEP="retenção"
-# Fora do servidor: por idade (um backup por dia/semana)
+STEP="retenção fora do servidor"
+# Por idade (um backup por dia/semana)
 "$RCLONE" delete --quiet --min-age "$((KEEP_DAILY + 1))d" "${REMOTE}diario/"
 "$RCLONE" delete --quiet --min-age "$((KEEP_WEEKLY * 7 + 1))d" "${REMOTE}semanal/"
-# No servidor: pelos N mais novos de cada tipo
-prune_local "$BACKUP_DIR/diario" "$KEEP_DAILY"
-prune_local "$BACKUP_DIR/semanal" "$KEEP_WEEKLY"
 
 PING="sem"
 if [ -n "$HEALTHCHECK_URL" ]; then

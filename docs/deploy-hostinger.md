@@ -134,7 +134,9 @@ nano .env
 Abra o `.env` e deixe **cada chave** como abaixo. O modelo tem todas as chaves do `backend/.env.example` (o teste
 `EnvModelDocTest` reprova o PR que acrescentar uma chave lá sem trazê-la para cá) e as que só a produção usa. Nenhum
 valor aqui é segredo: onde há `<...>`, o comentário da linha diz de onde vem o valor. Segredos vêm do gerenciador
-de senhas e só existem no `.env` do servidor.
+de senhas e só existem no `.env` do servidor. Deixe cada segredo **entre aspas simples**, como no modelo (`'...'`):
+sem elas, um espaço ou um `#` na senha corta o valor ou quebra a leitura do arquivo. Se o gerenciador gerar uma
+senha com aspas simples (`'`), gere outra.
 
 <!-- modelo-env:inicio -->
 ```dotenv
@@ -166,7 +168,7 @@ DB_HOST=localhost                             # fixo na Hostinger
 DB_PORT=3306                                  # fixo
 DB_DATABASE=<nome do banco>                   # hPanel → Bancos de dados (ex.: u123456789_mimoo)
 DB_USERNAME=<usuário do banco>                # hPanel → Bancos de dados
-DB_PASSWORD=<senha do banco>                  # SEGREDO: gerenciador de senhas (criada no 1.2)
+DB_PASSWORD='<senha do banco>'                # SEGREDO: gerenciador de senhas (criada no 1.2)
 
 # --- Sessão, cookies e CORS ---
 SESSION_DRIVER=database                       # fixo
@@ -201,21 +203,21 @@ MAIL_HOST=smtp.resend.com                     # fixo
 MAIL_PORT=465                                 # fixo
 MAIL_ENCRYPTION=ssl                           # fixo
 MAIL_USERNAME=resend                          # fixo (é a palavra "resend" mesmo)
-MAIL_PASSWORD=<API key do Resend>             # SEGREDO: Resend → API Keys (Sending access), guardada no gerenciador
+MAIL_PASSWORD='<API key do Resend>'           # SEGREDO: Resend → API Keys (Sending access), guardada no gerenciador
 MAIL_FROM_ADDRESS=pedidos@mimoolab.com.br     # fixo (domínio verificado no Resend)
 MAIL_FROM_NAME="MIMOO LAB"                    # fixo
 MAIL_REPLY_TO_ADDRESS=contato.mimoolab@gmail.com  # fixo: as respostas dos clientes chegam aqui
 MAIL_REPLY_TO_NAME="MIMOO LAB"                # fixo
 
 # --- Mercado Pago (fase 0 item 3) ---
-MERCADOPAGO_ACCESS_TOKEN=<Access Token>       # SEGREDO: Suas integrações → credenciais de TESTE (fase 2) / de PRODUÇÃO (fase 3)
+MERCADOPAGO_ACCESS_TOKEN='<Access Token>'     # SEGREDO: Suas integrações → credenciais de TESTE (fase 2) / de PRODUÇÃO (fase 3)
 MERCADOPAGO_PUBLIC_KEY=<Public Key>           # Suas integrações → a de TESTE (fase 2) / a de PRODUÇÃO (fase 3); a mesma da loja
-MERCADOPAGO_WEBHOOK_SECRET=<assinatura>       # SEGREDO: Webhooks → assinatura secreta do modo teste (fase 2) / produção (fase 3)
+MERCADOPAGO_WEBHOOK_SECRET='<assinatura>'     # SEGREDO: Webhooks → assinatura secreta do modo teste (fase 2) / produção (fase 3)
 MERCADOPAGO_BASE_URL=https://api.mercadopago.com  # fixo
 
 # --- Melhor Envio (fase 0 item 4) ---
 MELHOR_ENVIO_URL=https://sandbox.melhorenvio.com.br  # fase 2; fase 3: https://melhorenvio.com.br
-MELHOR_ENVIO_TOKEN=<token>                    # SEGREDO: Melhor Envio → token do sandbox (fase 2) / de produção (fase 3)
+MELHOR_ENVIO_TOKEN='<token>'                  # SEGREDO: Melhor Envio → token do sandbox (fase 2) / de produção (fase 3)
 SHIPPING_ORIGIN_CEP=<CEP>                     # CEP de onde a loja despacha, só números (dado da loja)
 
 # --- Dados da loja (fase 0 item 5; Política de Privacidade e rodapé dos e-mails) ---
@@ -225,7 +227,7 @@ LOJA_CIDADE_UF="<Cidade / UF>"                # cartão CNPJ da loja
 
 # --- Admin do painel (só durante o 1.5) ---
 ADMIN_EMAIL=<e-mail do admin do painel>       # o e-mail com que você vai entrar no /admin
-ADMIN_PASSWORD=<senha forte>                  # SEGREDO: gerenciador; APAGUE esta linha logo depois do seeder (1.5)
+ADMIN_PASSWORD='<senha forte>'                # SEGREDO: gerenciador; APAGUE esta linha logo depois do seeder (1.5)
 
 # --- Vite (sobra do Laravel; a loja não usa este arquivo) ---
 VITE_APP_NAME="${APP_NAME}"                   # fixo
@@ -496,7 +498,9 @@ Instalação, uma vez:
    `mimoo-gdrive:mimoo-backups`, criptografar nomes = `standard`, senha e "salt" **gerados pelo gerenciador de
    senhas e guardados nele** (sem eles o backup não abre). Copie o arquivo de configuração para o servidor
    (`rclone config file` mostra onde está) em `~/.config/rclone/rclone.conf` e rode
-   `chmod 600 ~/.config/rclone/rclone.conf`.
+   `chmod 600 ~/.config/rclone/rclone.conf`. Depois **apague o `rclone.conf` do PC**: ele tem o acesso ao Google
+   Drive e a senha do backup só disfarçada (dá para revelar). Para restaurar, refaça os dois remotos no PC com os
+   dados do gerenciador e apague o arquivo de novo no fim.
 3. **Senha do banco para o dump**, em `~/.my.cnf`:
    ```
    [client]
@@ -526,7 +530,8 @@ avisado se ele parar).
 baixe o do banco pelo hPanel para o PC, guarde num disco criptografado (BitLocker) e apague os antigos.
 
 **Restaurar**: baixar com `rclone copy mimoo-backup-crypt:diario/<arquivo> .`, `gunzip`, importar no banco
-(`mariadb <banco> < arquivo.sql`) e descompactar as imagens em `storage/app/public`.
+(`mariadb <banco> < arquivo.sql`) e descompactar as imagens em `storage/app/public`. O `.sql` tem dados pessoais de
+clientes: **apague** o `.sql` e o `.sql.gz` baixados assim que a importação terminar (também no teste do ensaio).
 
 ### Monitoramento de disponibilidade
 

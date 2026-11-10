@@ -99,6 +99,7 @@ FAIL_RCLONE=1 run_backup 3
     && ok "rclone falha: uma linha com o passo e backup_local=mantido" || not_ok "rclone falha: linha do log" "$OUTPUT"
 grep -q "falha simulada" "$H/backups/ultimo-erro.txt" && ok "rclone falha: mensagem da ferramenta no ultimo-erro.txt" || not_ok "rclone falha: ultimo-erro.txt"
 [ -n "$(find "$H/backups/diario" -newer "$H/marca" -name 'db-*')" ] && ok "rclone falha: dump de hoje continua no servidor" || not_ok "rclone falha: dump mantido"
+[ "$(count "$H/backups/diario" 'db-*')" = "7" ] && ok "rclone falha: retenção local roda mesmo assim (7 diários)" || not_ok "rclone falha: retenção local" "$(ls "$H/backups/diario")"
 
 # --- 4. sem DB_NAME: falha antes de qualquer arquivo ------------------------------------------------------------
 setup_home
