@@ -219,6 +219,12 @@ class MercadoPagoService
     public function getPayment(string|int $paymentId): ?array
     {
         try {
+            // M-52: sem token de verdade fora de local/testing, a consulta sairia sem autorização (401).
+            // A exceção cai no catch abaixo: mesmo log, `null` e o mesmo 422 do webhook.
+            if (! $this->hasRealAccessToken() && ! app()->environment(['local', 'testing'])) {
+                throw new PaymentGatewayNotConfiguredException;
+            }
+
             $payment = $this->client->get((int) $paymentId);
 
             return [
