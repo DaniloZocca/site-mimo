@@ -241,6 +241,11 @@ class CheckProductionConfigCommandTest extends CharacterizationTestCase
         config()->set('queue.default', 'database');
         config()->set('queue.connections.database.connection', null);
         config()->set('queue.failed.database', config('database.default'));
+        // M-50: produção exige credenciais do Mercado Pago, Melhor Envio fora do sandbox, e-mail de verdade e loja em https
+        config()->set('services.shipping.melhor_envio.url', 'https://melhorenvio.com.br');
+        config()->set('mail.default', 'smtp');
+        config()->set('mail.from.address', 'pedidos@loja.exemplo.test');
+        config()->set('app.frontend_url', 'https://loja.exemplo.test');
     }
 
     private function insertJob(int $minutesAgo, bool $reserved = false): void

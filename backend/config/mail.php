@@ -100,4 +100,14 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    | M-50: resposta do cliente a qualquer e-mail da loja vai para este endereço (o remetente pedidos@ não tem
+    | caixa de entrada). Vazio: sem Reply-To, a resposta volta para o remetente.
+    */
+
+    'reply_to' => [
+        'address' => env('MAIL_REPLY_TO_ADDRESS') ?: null,
+        'name' => env('MAIL_REPLY_TO_NAME', env('MAIL_FROM_NAME', 'Example')),
+    ],
+
 ];
