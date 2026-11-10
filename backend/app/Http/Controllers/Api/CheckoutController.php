@@ -76,7 +76,7 @@ class CheckoutController extends Controller
         // 1. Converte Request Validado em DTO Imutável (PHP 8.2+)
         $orderDTO = CheckoutOrderDTO::fromRequest($request);
 
-        // 2. Criação Atômica do Pedido no PostgreSQL com Zero-Trust Pricing
+        // 2. Criação Atômica do Pedido com Zero-Trust Pricing
         // REGRA DE OURO: A transação DB commita ANTES de qualquer chamada de rede externa
         try {
             // Frete recalculado no servidor (chamada externa, fora de transação); o valor do cliente só detecta divergência

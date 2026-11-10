@@ -10,10 +10,10 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /**
- * M-26 no banco de verdade (Postgres no CI): sessão gravada em `sessions` com o UUID do cliente
+ * M-26 no banco de verdade (MariaDB no CI): sessão gravada em `sessions` com o UUID do cliente
  * (a coluna era bigint e dava 500) e "Meus pedidos" com lower(trim(customer_email)).
  */
-class CustomerAccountPostgresTest extends TestCase
+class CustomerAccountDatabaseTest extends TestCase
 {
     use DatabaseTransactions;
 

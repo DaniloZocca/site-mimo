@@ -222,7 +222,7 @@ class OrderCreationService
         // 4. Geração de Identificador Único à Prova de Colisão (Prefixo + ULID)
         $orderNumber = 'MIMOO-'.strtoupper(substr((string) Str::ulid(), -8));
 
-        // 5. Persistência Atômica dentro de transação PostgreSQL
+        // 5. Persistência Atômica dentro de transação
         /** @var Order $order */
         $order = DB::transaction(function () use ($dto, $orderNumber, $totalCents, $shippingCostCents, $shipping, $itemsToPersist, $isPix, $discountCents, $idempotencyKey, $requestFingerprint): Order {
             $order = new Order;
