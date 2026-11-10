@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\DTOs\ShippingOptionDTO;
 use App\Support\Cents;
+use App\Support\ErrorReference;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -145,7 +146,8 @@ class ShippingCalculationService
                 return ! empty($options) ? $options : $this->calculateFallbackShipping($cleanCep, $package);
 
             } catch (Exception $e) {
-                Log::error("Exceção ao cotar frete no Melhor Envio: {$e->getMessage()}");
+                // M-46: a mensagem do cliente HTTP pode trazer a URL ou o corpo com o CEP
+                Log::error('Exceção ao cotar frete no Melhor Envio.', ErrorReference::context($e));
 
                 return $this->calculateFallbackShipping($cleanCep, $package);
             }

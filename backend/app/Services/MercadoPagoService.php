@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\DTOs\CheckoutOrderDTO;
 use App\Models\Order;
+use App\Support\ErrorReference;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -103,11 +104,13 @@ class MercadoPagoService
                 'idempotency_key' => $idempotencyKey,
             ];
         } catch (Exception $e) {
-            Log::error("Erro na emissão PIX Mercado Pago para pedido #{$order->order_number}: ".$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
+            // M-46: só a classe e os códigos, nunca a mensagem nem o trace (podem ter dados do pagador)
+            Log::error("Erro na emissão PIX Mercado Pago para pedido #{$order->order_number}.", [
+                'order_number' => $order->order_number,
+                ...ErrorReference::context($e),
             ]);
 
-            throw new Exception('Falha ao comunicar com o gateway PIX: '.$e->getMessage());
+            throw new Exception('Falha ao comunicar com o gateway PIX.', 0, $e);
         }
     }
 
@@ -167,11 +170,12 @@ class MercadoPagoService
                 'live_mode' => $payment->live_mode ?? null,
             ];
         } catch (Exception $e) {
-            Log::error("Erro no processamento de cartão Mercado Pago para pedido #{$order->order_number}: ".$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
+            Log::error("Erro no processamento de cartão Mercado Pago para pedido #{$order->order_number}.", [
+                'order_number' => $order->order_number,
+                ...ErrorReference::context($e),
             ]);
 
-            throw new Exception('Falha na autorização do cartão de crédito: '.$e->getMessage());
+            throw new Exception('Falha na autorização do cartão de crédito.', 0, $e);
         }
     }
 
@@ -209,7 +213,10 @@ class MercadoPagoService
                 'live_mode' => $payment->live_mode ?? null,
             ];
         } catch (Exception $e) {
-            Log::error("Exceção ao consultar pagamento #{$paymentId}: ".$e->getMessage());
+            Log::error("Exceção ao consultar pagamento #{$paymentId}.", [
+                'payment_id' => (string) $paymentId,
+                ...ErrorReference::context($e),
+            ]);
 
             return null;
         }

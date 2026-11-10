@@ -20,6 +20,7 @@ use App\Services\MercadoPagoService;
 use App\Services\OrderCreationService;
 use App\Services\PaymentApprovalValidator;
 use App\Services\ProductionWorkflowService;
+use App\Support\ErrorReference;
 use Exception;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,10 @@ use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
+    public const UNEXPECTED_ERROR_CODE = 'checkout_unexpected_error';
+
+    public const UNEXPECTED_ERROR_MESSAGE = 'Não conseguimos fechar seu pedido agora 😕 Nenhuma cobrança foi feita. Tente de novo em alguns instantes.';
+
     /** @var array<string, string> status_detail do Mercado Pago → mensagem ao cliente */
     private const CARD_REJECTION_MESSAGES = [
         'cc_rejected_insufficient_amount' => 'Saldo insuficiente no cartão de crédito.',
@@ -79,9 +84,11 @@ class CheckoutController extends Controller
             $order = $this->orderCreationService->createOrder($orderDTO, $shipping, $idempotencyKey, $fingerprint);
         } catch (UniqueConstraintViolationException $e) {
             // Corrida: outro envio com a mesma chave criou o pedido primeiro. O UNIQUE impediu a duplicata.
+            // Outro índice UNIQUE recusou o registro: erro inesperado, sem repetir a mensagem do banco
+            // (o "Duplicate entry" traz o valor recusado, ex.: um e-mail).
             $existing = $this->idempotency->findByKey($idempotencyKey);
             if (! $existing) {
-                throw $e;
+                return $this->unexpectedErrorResponse($e);
             }
 
             return $this->idempotency->responseForExisting($existing, $fingerprint);
@@ -99,11 +106,9 @@ class CheckoutController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (Exception $e) {
-            Log::warning('Validação de catálogo falhou no checkout: '.$e->getMessage());
-
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], 422);
+            // M-46: só erros inesperados chegam aqui (banco, por exemplo). A mensagem da exceção pode ter
+            // o SQL com e-mail e CPF: nunca vai para a resposta nem para o log.
+            return $this->unexpectedErrorResponse($e);
         }
 
         // 3. Emissão de Cobrança no Gateway (Fora de transações de banco de dados)
@@ -117,7 +122,10 @@ class CheckoutController extends Controller
             // 5. Falha no gateway: o pedido segue pending_payment. Num timeout a cobrança pode ter sido criada
             // no Mercado Pago; o webhook aprovado leva o pedido para revisão (PaymentApprovalValidator), porque
             // o cliente pode ter pago de novo em outra tentativa. O detalhe técnico fica só no log do servidor.
-            Log::error("Falha ao processar pagamento do pedido #{$order->order_number}: ".$e->getMessage());
+            Log::error("Falha ao processar pagamento do pedido #{$order->order_number}.", [
+                'order_number' => $order->order_number,
+                ...ErrorReference::context($e),
+            ]);
 
             // Resposta persistida: um reenvio com a mesma chave recebe exatamente esta resposta
             $payment = $order->payments()->create([
@@ -167,6 +175,22 @@ class CheckoutController extends Controller
         ]);
 
         return $this->idempotency->checkoutResponse($order, $payment);
+    }
+
+    /**
+     * Erro inesperado antes do gateway (M-46): texto fixo com um código curto para o suporte achar o log.
+     * Nenhum pedido foi gravado e o Mercado Pago não foi chamado.
+     */
+    private function unexpectedErrorResponse(Exception $e): JsonResponse
+    {
+        $ref = ErrorReference::generate();
+        Log::error('Erro inesperado ao criar o pedido no checkout.', ErrorReference::context($e, $ref));
+
+        return response()->json([
+            'code' => self::UNEXPECTED_ERROR_CODE,
+            'message' => ErrorReference::appendTo(self::UNEXPECTED_ERROR_MESSAGE, $ref),
+            'error_ref' => $ref,
+        ], 422);
     }
 
     /**
