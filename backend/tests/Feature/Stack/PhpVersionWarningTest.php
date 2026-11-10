@@ -60,6 +60,11 @@ class PhpVersionWarningTest extends CharacterizationTestCase
         config()->set('queue.failed.database', config('database.default'));
         config()->set('loja.razao_social', 'Exemplo Impressões Ltda');
         config()->set('loja.cnpj', '11.222.333/0001-81');
+        // M-50: produção exige credenciais do Mercado Pago, Melhor Envio fora do sandbox, e-mail de verdade e loja em https
+        config()->set('services.shipping.melhor_envio.url', 'https://melhorenvio.com.br');
+        config()->set('mail.default', 'smtp');
+        config()->set('mail.from.address', 'pedidos@loja.exemplo.test');
+        config()->set('app.frontend_url', 'https://loja.exemplo.test');
 
         $command = $this->artisan('mimoo:check-production');
         $warning = CheckProductionConfigCommand::phpVersionWarning(PHP_VERSION);

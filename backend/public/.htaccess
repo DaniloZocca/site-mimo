@@ -5,6 +5,10 @@
 
     RewriteEngine On
 
+    # M-50: arquivos que começam com ponto (.user.ini, .env, .git...) nunca são servidos; .well-known fica livre (SSL)
+    RewriteCond %{REQUEST_URI} !^/\.well-known/
+    RewriteRule (^|/)\. - [F,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -25,4 +29,10 @@
     php_value post_max_size 55M
     php_value memory_limit 512M
     php_value max_execution_time 300
+</IfModule>
+
+# M-50: o PHP da hospedagem acrescenta "X-Powered-By: PHP/x.y.z" (expose_php), que o Laravel não consegue tirar
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
 </IfModule>

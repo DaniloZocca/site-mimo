@@ -27,7 +27,7 @@ class CheckProductionConfigCommand extends Command
 
     protected $signature = 'mimoo:check-production';
 
-    protected $description = 'Falha se a configuração não estiver pronta para produção (APP_ENV, APP_DEBUG, CORS, cookie de sessão, HTTPS, fila, dados da loja).';
+    protected $description = 'Falha se a configuração não estiver pronta para produção (APP_ENV, APP_DEBUG, CORS, cookie de sessão, HTTPS, fila, dados da loja, Mercado Pago, Melhor Envio, e-mail, banco).';
 
     public function handle(): int
     {
@@ -70,6 +70,10 @@ class CheckProductionConfigCommand extends Command
             $problems[] = 'Dados da loja em branco ('.implode(', ', $missingStoreData).'): a Política de Privacidade e o rodapé dos e-mails precisam identificar a loja.';
         }
 
+        // M-50: credenciais e endereços que, esquecidos no .env, não dão erro nenhum: PIX simulado, webhook
+        // recusado, frete do sandbox, e-mail que não sai e links dos e-mails para o localhost
+        $problems = [...$problems, ...$this->servicesProblems()];
+
         // M-45: as três diferenças do MariaDB que falham sem dar erro (isolamento, linhas afetadas, collation)
         // e a espera por trava. Valem por sessão, então são conferidas na conexão que a loja usa.
         $problems = [...$problems, ...$this->databaseProblems()];
@@ -78,6 +82,7 @@ class CheckProductionConfigCommand extends Command
         // parado e jobs que falharam
         $warnings = [
             ...array_filter([self::phpVersionWarning(PHP_VERSION)]),
+            ...$this->servicesWarnings(),
             ...$this->accountCookieWarnings(),
             ...$this->queueWarnings($connection),
             ...$this->databaseWarnings(),
@@ -98,6 +103,57 @@ class CheckProductionConfigCommand extends Command
         $this->info('Configuração de produção ok.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * M-50: Mercado Pago, Melhor Envio, e-mail e endereço da loja. Só diz qual variável está errada, nunca o valor.
+     *
+     * @return list<string>
+     */
+    private function servicesProblems(): array
+    {
+        $problems = [];
+
+        $accessToken = trim((string) config('services.mercadopago.access_token'));
+        if ($accessToken === '' || str_contains($accessToken, 'TEST-000000')) {
+            $problems[] = 'MERCADOPAGO_ACCESS_TOKEN vazio ou de exemplo: a loja mostraria um PIX simulado (QR falso) ao cliente. Use o Access Token de produção.';
+        } elseif (str_starts_with($accessToken, 'TEST-')) {
+            $problems[] = 'MERCADOPAGO_ACCESS_TOKEN é de teste: em produção nenhum pagamento seria liberado (todos iriam para "Pagamento em revisão"). Use o Access Token de produção.';
+        }
+
+        if (trim((string) config('services.mercadopago.webhook_secret')) === '') {
+            $problems[] = 'MERCADOPAGO_WEBHOOK_SECRET vazio: todo aviso de pagamento do Mercado Pago seria recusado. Copie a assinatura secreta do webhook de produção.';
+        }
+
+        $melhorEnvioUrl = strtolower(trim((string) config('services.shipping.melhor_envio.url')));
+        if ($melhorEnvioUrl === '' || str_contains($melhorEnvioUrl, 'sandbox')) {
+            $problems[] = 'MELHOR_ENVIO_URL vazia ou do sandbox: o frete cobrado viria do ambiente de testes. Use MELHOR_ENVIO_URL=https://melhorenvio.com.br.';
+        }
+
+        if (in_array((string) config('mail.default'), ['log', 'array'], true)) {
+            $problems[] = 'MAIL_MAILER é "'.config('mail.default').'": nenhum e-mail chegaria ao cliente. Use MAIL_MAILER=smtp com os dados do Resend.';
+        }
+
+        $from = strtolower(trim((string) config('mail.from.address')));
+        if ($from === '' || str_ends_with($from, '@example.com')) {
+            $problems[] = 'MAIL_FROM_ADDRESS vazio ou de exemplo. Use o remetente da loja (ex.: pedidos@mimoolab.com.br).';
+        }
+
+        if (! str_starts_with((string) config('app.frontend_url'), 'https://')) {
+            $problems[] = 'FRONTEND_URL não começa com https://: os botões dos e-mails abririam o endereço de desenvolvimento. Use o endereço da loja publicada.';
+        }
+
+        return $problems;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function servicesWarnings(): array
+    {
+        return trim((string) config('services.shipping.melhor_envio.token')) === ''
+            ? ['MELHOR_ENVIO_TOKEN vazio: o frete usa a tabela de reserva por região, não a cotação do Melhor Envio.']
+            : [];
     }
 
     /**

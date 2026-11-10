@@ -91,6 +91,11 @@ class CheckProductionStoreDataTest extends CharacterizationTestCase
         config()->set('loja.razao_social', 'Exemplo Impressões Ltda');
         config()->set('loja.cnpj', '11.222.333/0001-81');
         config()->set('loja.cidade_uf', 'Campinas / SP');
+        // M-50: produção exige credenciais do Mercado Pago, Melhor Envio fora do sandbox, e-mail de verdade e loja em https
+        config()->set('services.shipping.melhor_envio.url', 'https://melhorenvio.com.br');
+        config()->set('mail.default', 'smtp');
+        config()->set('mail.from.address', 'pedidos@loja.exemplo.test');
+        config()->set('app.frontend_url', 'https://loja.exemplo.test');
     }
 
     private function setEnv(string $name, ?string $value): void
