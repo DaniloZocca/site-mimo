@@ -96,6 +96,78 @@ jobs:
       - name: PHPUnit
         run: vendor/bin/phpunit
 
+  # M-45 (passo 1): mesmo código, no MariaDB da mesma versão da Hostinger (11.8.9). Só mostra o que quebra
+  # antes de qualquer mudança no código; por isso pode falhar neste passo. O passo 2 tira o continue-on-error.
+  backend-mariadb:
+    name: backend (mariadb 11.8.9)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      mariadb:
+        image: mariadb:11.8.9
+        env:
+          MARIADB_USER: mimoo
+          MARIADB_PASSWORD: mimoo
+          MARIADB_DATABASE: mimoo_test
+          MARIADB_ROOT_PASSWORD: mimoo
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    # Banco descartável do CI: nada aqui é segredo. Sem .env; tudo por variável de ambiente.
+    env:
+      DB_CONNECTION: mariadb
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: mimoo_test
+      DB_USERNAME: mimoo
+      DB_PASSWORD: mimoo
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, pdo_sqlite, sqlite3, intl, zip, gd, bcmath, sodium
+          coverage: none
+          tools: composer:v2
+
+      - name: Pasta de cache do Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache do Composer
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-8.4-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-8.4-
+
+      - name: composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: APP_KEY descartável
+        run: echo "APP_KEY=base64:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - name: Versão do MariaDB
+        run: php -r '$p = new PDO("mysql:host=127.0.0.1;port=3306;dbname=mimoo_test", "mimoo", "mimoo"); echo $p->query("SELECT VERSION()")->fetchColumn(), PHP_EOL;'
+
+      - name: Migrations no MariaDB
+        run: php artisan migrate:fresh --force
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit
+
   frontend:
     name: frontend
     runs-on: ubuntu-24.04
