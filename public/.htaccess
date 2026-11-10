@@ -1,7 +1,0 @@
-# M-50: loja publicada na Hostinger (o Vite copia este arquivo para dist/).
-# www.<domínio> redireciona para o domínio sem www: a API aceita (CORS) só a origem exata da loja.
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
-    RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L]
-</IfModule>
