@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Queue\PrivacySafeFailedJobProvider;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Queue\Failed\DatabaseUuidFailedJobProvider;
+use Illuminate\Queue\Failed\FailedJobProviderInterface;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Request;
@@ -20,7 +24,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // M-47: failed_jobs.exception sem mensagem nem trace (dados pessoais). Só troca o driver padrão
+        // (database-uuids); os outros drivers ficam como o Laravel monta.
+        $this->app->extend('queue.failer', function (FailedJobProviderInterface $failer, Application $app): FailedJobProviderInterface {
+            if ($failer::class !== DatabaseUuidFailedJobProvider::class) {
+                return $failer;
+            }
+
+            $config = $app['config']['queue.failed'];
+
+            return new PrivacySafeFailedJobProvider($app['db'], $config['database'], $config['table']);
+        });
     }
 
     /**
