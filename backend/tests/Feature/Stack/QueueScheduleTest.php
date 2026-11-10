@@ -28,4 +28,20 @@ class QueueScheduleTest extends TestCase
         $this->assertTrue($worker->withoutOverlapping);
         $this->assertSame(5, $worker->expiresAt);
     }
+
+    /**
+     * M-54: failed_jobs.payload pode ter o e-mail e o nome do destinatário; não fica mais que 7 dias.
+     */
+    public function test_failed_jobs_com_mais_de_7_dias_sao_apagados_todo_dia(): void
+    {
+        $events = collect(app(Schedule::class)->events())
+            ->filter(fn (Event $event): bool => str_contains((string) $event->command, 'queue:prune-failed'));
+
+        $this->assertCount(1, $events);
+
+        /** @var Event $prune */
+        $prune = $events->first();
+        $this->assertStringEndsWith("'artisan' queue:prune-failed --hours=168", (string) $prune->command);
+        $this->assertSame('0 0 * * *', $prune->expression);
+    }
 }

@@ -8,6 +8,7 @@ use BadMethodCallException;
 use Error;
 use ErrorException;
 use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Application;
 use Illuminate\Routing\Route;
 use PDOException;
 use Throwable;
@@ -26,6 +27,10 @@ use WeakMap;
  * failed_jobs.exception. Acrescenta até 5 frames dentro de app/ (Classe::método arquivo:linha, sem
  * argumentos) e, só para erros do PHP (Error, ErrorException, BadMethodCallException), a mensagem
  * higienizada em message_safe. QueryException e as demais classes continuam sem mensagem.
+ *
+ * M-54: a decisão olha a cadeia inteira (getPrevious). Uma ViewException (herda de ErrorException) com uma
+ * QueryException dentro carrega o SQL com os valores na mensagem: sai sem message_safe. SQLSTATE e código do
+ * driver vêm do primeiro erro de banco em qualquer nível (template aninhado embrulha duas vezes).
  */
 final class ErrorReference
 {
@@ -38,6 +43,12 @@ final class ErrorReference
     private const MAX_MESSAGE_LENGTH = 500;
 
     private const REDACTED = '[x]';
+
+    /** Quantos níveis de getPrevious() são lidos (trava contra cadeia circular). */
+    private const MAX_CHAIN = 10;
+
+    /** Texto que só aparece em mensagem de erro de banco: nunca vira message_safe, venha de onde vier. */
+    private const DATABASE_MARKERS = ['SQLSTATE[', 'SQL:'];
 
     /**
      * Classes cuja mensagem é texto técnico do PHP (tipo errado, chave inexistente, método indefinido) e
@@ -131,16 +142,26 @@ final class ErrorReference
 
     /**
      * Mensagem de erro do PHP sem valores: troca por [x] URLs com query string (a parte depois do "?"),
-     * textos entre aspas, e-mails, números com pontuação (CPF, CNPJ, CEP, telefone) e sequências de 4+
-     * dígitos. O texto técnico ("must be of type int, string given") fica.
+     * usuário/senha de URL, textos entre aspas, e-mails (também sem ponto no domínio), tokens longos (20+
+     * caracteres com letra e número, inclui UUID), números com pontuação ou espaço (CPF, CNPJ, CEP, telefone) e
+     * sequências de 4+ dígitos. Caminho absoluto do servidor vira relativo à raiz do backend. O texto técnico
+     * ("must be of type int, string given") fica.
      */
     public static function sanitizeMessage(string $message): string
     {
+        $app = app();
+        if ($app instanceof Application) {
+            $message = str_replace(rtrim($app->basePath(), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR, '', $message);
+        }
+
         $patterns = [
             '/\?[^\s\'"?=&#]+=[^\s\'"]*/u' => '?'.self::REDACTED,          // query string (?chave=valor...)
+            '#(?<=//)[^/\s@\'"]+@#u' => self::REDACTED.'@',                 // usuário:senha@ de URL
             '/\'[^\']*\'|"[^"]*"/u' => self::REDACTED,                       // entre aspas simples ou duplas
-            '/[\p{L}\p{N}._%+\-]+@[\p{L}\p{N}.\-]+\.[\p{L}]{2,}/u' => self::REDACTED, // e-mail
+            '/[\p{L}\p{N}._%+\-]+@[\p{L}\p{N}.\-]+/u' => self::REDACTED,      // e-mail (com ou sem ponto no domínio)
+            '/(?<![\p{L}\p{N}_\-])(?=[\p{L}\p{N}_\-]*\p{N})(?=[\p{L}\p{N}_\-]*\p{L})[\p{L}\p{N}_\-]{20,}/u' => self::REDACTED, // token/UUID
             '/\d+(?:[.\-\/]\d+)+/u' => self::REDACTED,                        // 123.456.789-09, 01310-930, 12.345.678/0001-90
+            '/\d{2,}(?: \d{2,})+/u' => self::REDACTED,                        // 529 982 247 25, 98765 4321
             '/\d{4,}/u' => self::REDACTED,                                   // 4 ou mais dígitos seguidos
         ];
 
@@ -151,7 +172,28 @@ final class ErrorReference
             : $clean;
     }
 
+    /**
+     * Só quando a exceção e todas as de dentro são erros do PHP (nenhuma de banco) e a mensagem não tem
+     * marca de SQL. Ex.: ViewException(ErrorException "Undefined variable") tem; ViewException(QueryException) não.
+     */
     private static function hasSafeMessage(Throwable $e): bool
+    {
+        foreach (self::chain($e) as $link) {
+            if (self::isDatabaseException($link) || ! self::isSafeClass($link)) {
+                return false;
+            }
+        }
+
+        foreach (self::DATABASE_MARKERS as $marker) {
+            if (str_contains($e->getMessage(), $marker)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function isSafeClass(Throwable $e): bool
     {
         foreach (self::SAFE_MESSAGE_CLASSES as $class) {
             if ($e instanceof $class) {
@@ -160,6 +202,27 @@ final class ErrorReference
         }
 
         return false;
+    }
+
+    private static function isDatabaseException(Throwable $e): bool
+    {
+        return $e instanceof QueryException || $e instanceof PDOException;
+    }
+
+    /**
+     * A exceção e as de dentro (getPrevious), até MAX_CHAIN níveis.
+     *
+     * @return list<Throwable>
+     */
+    private static function chain(Throwable $e): array
+    {
+        $chain = [];
+
+        for ($link = $e; $link !== null && count($chain) < self::MAX_CHAIN; $link = $link->getPrevious()) {
+            $chain[] = $link;
+        }
+
+        return $chain;
     }
 
     /**
@@ -196,18 +259,20 @@ final class ErrorReference
     }
 
     /**
-     * SQLSTATE e código do driver (ex.: 23000/1062, 40001/1213). Só os códigos: o terceiro item do
+     * SQLSTATE e código do driver (ex.: 23000/1062, 40001/1213) do primeiro erro de banco da cadeia. Só os códigos: o terceiro item do
      * errorInfo é a mensagem do banco, que pode ter o valor recusado.
      *
      * @return array{0: string|null, 1: int|string|null}
      */
     private static function databaseCodes(Throwable $e): array
     {
-        $pdo = match (true) {
-            $e instanceof QueryException, $e instanceof PDOException => $e,
-            $e->getPrevious() instanceof QueryException, $e->getPrevious() instanceof PDOException => $e->getPrevious(),
-            default => null,
-        };
+        $pdo = null;
+        foreach (self::chain($e) as $link) {
+            if (self::isDatabaseException($link)) {
+                $pdo = $link;
+                break;
+            }
+        }
 
         if ($pdo === null) {
             return [null, null];
