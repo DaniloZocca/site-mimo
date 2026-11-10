@@ -280,7 +280,9 @@ class OrderCreationService
             ]);
 
             return $order;
-        });
+            // M-45: no MariaDB, envios simultâneos da mesma Idempotency-Key podem dar deadlock (1213) no índice
+            // UNIQUE; repetir a transação leva ao caminho normal (duplicata → replay ou 409)
+        }, attempts: 3);
 
         Log::info("✅ Pedido #{$order->order_number} criado com sucesso no banco de dados.", [
             'order_id' => $order->id,

@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -46,11 +47,13 @@ class AccountController extends Controller
         }
 
         try {
-            $customer = Customer::create([
+            // M-45: no MariaDB, cadastros simultâneos do mesmo e-mail podem dar deadlock (1213) no índice UNIQUE;
+            // repetir leva ao caminho normal (duplicata → "já tem conta")
+            $customer = DB::transaction(fn (): Customer => Customer::create([
                 'name' => trim((string) $request->validated('name')),
                 'email' => $email,
                 'password' => $password,
-            ]);
+            ]), attempts: 3);
         } catch (UniqueConstraintViolationException) {
             // Dois cadastros simultâneos com o mesmo e-mail: o UNIQUE decide e o segundo vira o caso "já tem conta".
             Customer::where('email', $email)->first()?->sendSignupAttemptNotification();
