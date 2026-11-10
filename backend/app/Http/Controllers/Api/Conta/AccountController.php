@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -23,25 +24,43 @@ class AccountController extends Controller
 {
     private const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha não conferem.';
 
+    public const REGISTERED_MESSAGE = 'Prontinho! Enviamos um e-mail para você confirmar o cadastro. 💜 Abra o link e entre com sua senha.';
+
+    /**
+     * M-44: a resposta é a mesma para e-mail novo e para e-mail que já tem conta (202, sem dados da conta e
+     * sem login), para o cadastro não revelar quem é cliente. E-mail novo: cria a conta e manda "Confirme seu
+     * e-mail". E-mail existente: não mexe na conta e avisa a dona dela. A pessoa entra depois pelo login.
+     */
     public function register(RegisterCustomerRequest $request): JsonResponse
     {
+        $email = Customer::normalizeEmail((string) $request->validated('email'));
+        $password = (string) $request->validated('password');
+        $existing = Customer::where('email', $email)->first();
+
+        if ($existing !== null) {
+            // Mesmo trabalho de hash do caso novo, para o tempo de resposta não denunciar qual caso foi.
+            Hash::make($password);
+            $existing->sendSignupAttemptNotification();
+
+            return $this->registeredResponse();
+        }
+
         try {
             $customer = Customer::create([
                 'name' => trim((string) $request->validated('name')),
-                'email' => (string) $request->validated('email'),
-                'password' => (string) $request->validated('password'),
+                'email' => $email,
+                'password' => $password,
             ]);
         } catch (UniqueConstraintViolationException) {
-            // Dois cadastros simultâneos com o mesmo e-mail: o UNIQUE decide, a resposta é a mesma da validação.
-            throw ValidationException::withMessages(['email' => RegisterCustomerRequest::EMAIL_TAKEN_MESSAGE]);
-        }
+            // Dois cadastros simultâneos com o mesmo e-mail: o UNIQUE decide e o segundo vira o caso "já tem conta".
+            Customer::where('email', $email)->first()?->sendSignupAttemptNotification();
 
-        Auth::guard('customer')->login($customer);
-        $request->session()->regenerate();
+            return $this->registeredResponse();
+        }
 
         $customer->sendEmailVerificationNotification();
 
-        return response()->json(['customer' => new CustomerResource($customer)], 201);
+        return $this->registeredResponse();
     }
 
     public function login(LoginCustomerRequest $request): JsonResponse
@@ -70,6 +89,11 @@ class AccountController extends Controller
         $request->session()->regenerateToken();
 
         return response()->noContent();
+    }
+
+    private function registeredResponse(): JsonResponse
+    {
+        return response()->json(['message' => self::REGISTERED_MESSAGE], 202);
     }
 
     public function me(Request $request): JsonResponse
