@@ -9,6 +9,7 @@ use App\Http\Requests\Conta\LoginCustomerRequest;
 use App\Http\Requests\Conta\RegisterCustomerRequest;
 use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
+use Illuminate\Contracts\Database\ConcurrencyErrorDetector;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * M-26: cadastro, login, logout e "quem sou eu" da conta de cliente (sessão em cookie, guard `customer`).
@@ -46,11 +48,13 @@ class AccountController extends Controller
         }
 
         try {
-            $customer = Customer::create([
+            // M-45: no MariaDB, cadastros simultâneos do mesmo e-mail podem dar deadlock (1213) no índice UNIQUE;
+            // repetir leva ao caminho normal (duplicata → "já tem conta"). Outros erros não se repetem.
+            $customer = retry(3, fn (): Customer => Customer::create([
                 'name' => trim((string) $request->validated('name')),
                 'email' => $email,
                 'password' => $password,
-            ]);
+            ]), 0, fn (Throwable $e): bool => app(ConcurrencyErrorDetector::class)->causedByConcurrencyError($e));
         } catch (UniqueConstraintViolationException) {
             // Dois cadastros simultâneos com o mesmo e-mail: o UNIQUE decide e o segundo vira o caso "já tem conta".
             Customer::where('email', $email)->first()?->sendSignupAttemptNotification();

@@ -116,7 +116,7 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-42 | Exigir PHP com a correção da PHP2Shell (CVE-2026-109618 e CVE-2026-109619, corrigidas em 21/10/2026): `composer.json` pede `~8.3.36 \|\| ^8.4.27` e o `mimoo:check-production` avisa (sem reprovar) quando o PHP está abaixo disso. O código da loja não muda; a correção de verdade é o PHP do servidor. Plano: `/mnt/project-files/planos/m-42-php-seguranca.md` | D | stack | — | em revisão (antes do deploy: PHP 8.3.36+ ou 8.4.27+ no servidor) | #50 |
 | M-43 | Ajuste do CI: actions que ainda rodavam em Node 20 (aviso de deprecação) passam para versões em Node 24: `actions/checkout@v6`, `actions/setup-node@v6`, `actions/cache@v5` (`shivammathur/setup-php@v2` já roda em Node 24). Mesmos passos e mesmos nomes de check (`backend (8.3)`, `backend (8.4)`, `frontend`); o projeto segue no Node 22. Plano: `/mnt/project-files/planos/m-43-ajuste-ci.md` | D | stack | — | em revisão | #51 |
 | M-44 | Cadastro de conta sem revelar e-mail existente (decisão do Zocca em 2026-11-09, item (1) de "Riscos da conta de cliente"): `POST /api/conta/register` responde sempre 202 com "Enviamos um e-mail para você confirmar o cadastro", sem dados da conta e sem login. E-mail novo: cria a conta e manda "Confirme seu e-mail". E-mail que já tem conta: não mexe na conta e manda à dona o aviso "Alguém tentou criar uma conta com seu e-mail" (no máximo 1 por hora por conta). A loja abre "Entrar" depois do cadastro. Plano: `/mnt/project-files/planos/m-44-cadastro-sem-revelar-email.md` | C | pedidos, front | M-26 | em revisão | #52 |
-| M-45 | Trocar o banco de PostgreSQL para MariaDB 11.8.9 (Hostinger compartilhada, sem `queue:work` permanente). Em 3 PRs: (1) só CI no MariaDB 11.8.9, código intacto; (2) `READ COMMITTED`, `FOUND_ROWS`, `innodb_lock_wait_timeout=10`, `utf8mb4_bin` em tokens e e-mails, fila pelo agendador, testes de concorrência com duas conexões, checagens no `mimoo:check-production`; (3) tirar o Postgres do CI. Plano aprovado em 2026-11-10: `/mnt/project-files/planos/m-45-mariadb-hostinger.md` | D | stack | — | em andamento (passo 1: CI) | — |
+| M-45 | Trocar o banco de PostgreSQL para MariaDB 11.8.9 (Hostinger compartilhada, sem `queue:work` permanente). Em 3 PRs: (1) só CI no MariaDB 11.8.9, código intacto (#53); (2) conexão `mariadb` com `READ COMMITTED`, `FOUND_ROWS`, `innodb_lock_wait_timeout=10` e fuso UTC, `utf8mb4_bin` em tokens e e-mails (migration nova), webhook com pedido travado responde 503 para o Mercado Pago reenviar, checkout e cadastro repetem em deadlock (1213), busca do painel sem diferença de maiúscula, fila pelo agendador (`schedule:run` a cada minuto), `mimoo:check-production` reprova o banco mal configurado, testes de concorrência com dois processos (grupo `concurrency`); (3) tirar o Postgres do CI. Plano aprovado em 2026-11-10: `/mnt/project-files/planos/m-45-mariadb-hostinger.md`; ambiente local: `docs/ambiente-local-mariadb.md` | D | stack | — | em revisão (passo 2; antes do deploy: ver "Antes do deploy"; depois: passo 3) | #53, #54 |
 
 ## Decisões pendentes
 
@@ -154,6 +154,13 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 
 ## Antes do deploy
 
+- Banco MariaDB (M-45, Hostinger): `.env` com `DB_CONNECTION=mariadb` e os dados do banco do hPanel (`DB_HOST`,
+  `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`), sem `DB_COLLATION`. Banco novo: `php artisan migrate --force`.
+  O `mimoo:check-production` reprova se o banco não for MariaDB 10.6+ (a Hostinger tem 11.8.9), se a sessão não
+  estiver em `READ COMMITTED` com espera por trava de 10 s, se `FOUND_ROWS` estiver desligado ou se alguma coluna de
+  token/e-mail não estiver em `utf8mb4_bin`. O cron do `schedule:run` usa o PHP do terminal: conferir que é 8.3/8.4
+  (`php -v` no SSH) com `intl`, `bcmath`, `sodium`, `pdo_mysql` e `zip`. Webhook de teste do Mercado Pago precisa
+  passar pelo firewall da Hostinger e receber 200.
 - Rodar `/mnt/project-files/consultas/produtos-sem-cor-ou-tamanho.sql` (só leitura) na produção e corrigir no
   painel os produtos sem cor/tamanho vinculados; depois do M-03 eles passam a dar 422 no checkout.
 - Rodar `docs/consultas/m-29-pecas-sem-preco.sql` (só leitura; pode ser antes do deploy) e corrigir no painel as
@@ -171,8 +178,9 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
   - **VPS / servidor próprio:** supervisor mantendo `php artisan queue:work --tries=3 --sleep=3` (ex.: arquivo
     `/etc/supervisor/conf.d/mimoo-worker.conf` com `command=php /caminho/backend/artisan queue:work --tries=3 --sleep=3`,
     `autostart=true`, `autorestart=true`, `user=<usuário do site>`), e `php artisan queue:restart` a cada deploy;
-  - **hospedagem sem processo permanente:** cron a cada minuto,
-    `* * * * * cd /caminho/backend && php artisan queue:work --stop-when-empty --max-time=55 --tries=3 >> /dev/null 2>&1`.
+  - **hospedagem sem processo permanente (Hostinger, M-45):** cron a cada minuto chamando o agendador,
+    `* * * * * cd /caminho/backend && php artisan schedule:run >> /dev/null 2>&1`; o agendador (`routes/console.php`)
+    sobe `queue:work --stop-when-empty --max-time=50 --tries=3` sem dois workers juntos. E-mails saem em até ~1 min.
   Depois do deploy, o `mimoo:check-production` mostra se há job parado há mais de 5 min e quantos jobs falharam. Se usar
   `php artisan event:cache`, rodar de novo a cada deploy. PIX (webhook) e cartão aprovado (M-08) mandam o e-mail de
   confirmação; "Iniciar Impressão" e "Expedir Pedido" do painel mandam os e-mails de impressão e de envio (M-10). O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).

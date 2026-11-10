@@ -163,6 +163,8 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('order_number')
                     ->label('# Encomenda')
                     ->searchable()
+                    // M-45: no MariaDB a coluna compara exato (utf8mb4_bin); a busca segue sem diferença de maiúscula
+                    ->forceSearchCaseInsensitive()
                     ->weight('bold')
                     ->copyable()
                     ->copyMessage('Número do pedido copiado!'),

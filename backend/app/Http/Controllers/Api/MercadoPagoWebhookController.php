@@ -15,6 +15,7 @@ use App\Services\MercadoPagoService;
 use App\Services\PaymentApprovalValidator;
 use App\Services\ProductionWorkflowService;
 use Exception;
+use Illuminate\Contracts\Database\ConcurrencyErrorDetector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -289,6 +290,18 @@ class MercadoPagoWebhookController extends Controller
             });
 
         } catch (Exception $e) {
+            // M-45: pedido travado por outra operação (espera de 10 s esgotada, deadlock ou "Record has changed"):
+            // nada foi gravado. Resposta não-2xx para o Mercado Pago reenviar; o reenvio processa normalmente.
+            if (app(ConcurrencyErrorDetector::class)->causedByConcurrencyError($e)) {
+                Log::warning("⏳ Webhook do pedido #{$externalReference} adiado: o pedido estava travado por outra operação. O Mercado Pago vai reenviar.", [
+                    'payment_id' => $dataId,
+                    'exception' => $e::class,
+                ]);
+
+                return response()->json(['message' => 'Pedido em processamento. Tente novamente.'], 503)
+                    ->header('Retry-After', '5');
+            }
+
             Log::error("❌ Exceção ao processar webhook para #{$externalReference}: ".$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);

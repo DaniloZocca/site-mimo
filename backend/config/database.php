@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\DatabaseSettings;
 use Illuminate\Support\Str;
 
 return [
@@ -74,8 +75,18 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // M-45: o banco de produção (Hostinger, MariaDB 11.8). As três configurações abaixo valem por sessão
+            // (na hospedagem compartilhada não dá para mudar o servidor) e o mimoo:check-production confere todas.
+            // READ COMMITTED: igual ao Postgres; a releitura depois do UPDATE condicional vê o que o outro gravou
+            // (o padrão REPEATABLE READ devolveria a foto antiga e, no 11.8, erro 1020 em corrida).
+            'isolation_level' => 'READ COMMITTED',
+            'timezone' => '+00:00',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // UPDATE devolve linhas encontradas (como o Postgres), não só as alteradas: "0 linhas" = conflito
+                PDO::MYSQL_ATTR_FOUND_ROWS => true,
+                // Espera por trava de 10 s (padrão 50 s): o Mercado Pago desiste do webhook em 22 s
+                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET SESSION innodb_lock_wait_timeout = '.DatabaseSettings::LOCK_WAIT_TIMEOUT_SECONDS,
             ]) : [],
         ],
 
