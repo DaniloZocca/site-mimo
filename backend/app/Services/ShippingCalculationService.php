@@ -8,6 +8,7 @@ use App\DTOs\ShippingOptionDTO;
 use App\Support\Cents;
 use App\Support\ErrorReference;
 use Exception;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -96,7 +97,12 @@ class ShippingCalculationService
                     ]);
 
                 if (! $response->successful()) {
-                    Log::warning("Falha na resposta da API Melhor Envio (HTTP {$response->status()}): {$response->body()}");
+                    // M-49: o corpo da resposta pode repetir o CEP ou os dados do envio; vai só o status HTTP
+                    Log::warning('Falha na resposta da API Melhor Envio.', [
+                        'error_ref' => ErrorReference::generate(),
+                        'http_status' => $response->status(),
+                        'location' => 'app/Services/ShippingCalculationService.php:'.__LINE__,
+                    ]);
 
                     return $this->calculateFallbackShipping($cleanCep, $package);
                 }
@@ -147,7 +153,11 @@ class ShippingCalculationService
 
             } catch (Exception $e) {
                 // M-46: a mensagem do cliente HTTP pode trazer a URL ou o corpo com o CEP
-                Log::error('Exceção ao cotar frete no Melhor Envio.', ErrorReference::context($e));
+                // M-49: com retry(), resposta de erro chega aqui como RequestException; vai só o status HTTP
+                Log::error('Exceção ao cotar frete no Melhor Envio.', [
+                    ...ErrorReference::context($e, ErrorReference::generate()),
+                    'http_status' => $e instanceof RequestException ? $e->response->status() : null,
+                ]);
 
                 return $this->calculateFallbackShipping($cleanCep, $package);
             }
