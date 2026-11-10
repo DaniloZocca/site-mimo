@@ -14,3 +14,7 @@ Artisan::command('inspire', function () {
 Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')
     ->everyMinute()
     ->withoutOverlapping(5);
+
+// M-54: o failed_jobs.payload guarda o job inteiro (num e-mail de conta, o destinatário: e-mail e nome).
+// Depois de 7 dias sem `queue:retry`, a linha é apagada (dá tempo de reenviar depois de um fim de semana).
+Schedule::command('queue:prune-failed --hours=168')->daily();
