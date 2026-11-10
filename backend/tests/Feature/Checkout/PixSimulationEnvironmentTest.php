@@ -10,6 +10,7 @@ use App\Models\Order;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Characterization\Support\BuildsCheckoutPayload;
 use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 use Tests\Feature\Characterization\Support\FakeMercadoPagoHttpClient;
@@ -127,9 +128,28 @@ class PixSimulationEnvironmentTest extends CharacterizationTestCase
         $this->assertCount(0, $this->mpHttp->requests);
     }
 
-    public function test_cartao_em_producao_sem_token_nao_chama_o_mercado_pago(): void
+    public function test_ambiente_desconhecido_com_token_so_de_espacos_nao_simula_pix(): void
     {
-        $response = $this->checkoutIn('production', '', 'credit_card');
+        // Lista fechada (local/testing): um ambiente com nome novo cai no lado seguro.
+        $this->assertGatewayFailureWithoutCallingMercadoPago($this->checkoutIn('homolog', '   '));
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function cardWithoutRealTokenProvider(): array
+    {
+        return [
+            'produção sem token' => ['production', ''],
+            'produção com TEST-000000' => ['production', 'TEST-000000'],
+            'staging sem token' => ['staging', ''],
+        ];
+    }
+
+    #[DataProvider('cardWithoutRealTokenProvider')]
+    public function test_cartao_sem_token_de_verdade_fora_de_local_testing_nao_chama_o_mercado_pago(string $environment, string $token): void
+    {
+        $response = $this->checkoutIn($environment, $token, 'credit_card');
 
         $order = Order::sole();
         $response->assertStatus(502)

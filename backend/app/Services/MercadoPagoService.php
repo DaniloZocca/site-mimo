@@ -188,10 +188,6 @@ class MercadoPagoService
     }
 
     /**
-     * Chave do X-Idempotency-Key do pedido: a mesma em toda tentativa de criar o pagamento deste
-     * pedido (o Mercado Pago deduplica). Pedidos anteriores à coluna recebem uma chave agora.
-     */
-    /**
      * Token vazio ou o de exemplo (`TEST-000000`) não é credencial do Mercado Pago.
      */
     private function hasRealAccessToken(): bool
@@ -201,6 +197,10 @@ class MercadoPagoService
         return $accessToken !== '' && ! str_contains($accessToken, 'TEST-000000');
     }
 
+    /**
+     * Chave do X-Idempotency-Key do pedido: a mesma em toda tentativa de criar o pagamento deste
+     * pedido (o Mercado Pago deduplica). Pedidos anteriores à coluna recebem uma chave agora.
+     */
     private function paymentIdempotencyKey(Order $order): string
     {
         if (empty($order->payment_idempotency_key)) {
