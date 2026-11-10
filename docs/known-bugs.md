@@ -7,17 +7,18 @@ e dos gêmeos que afirmam o comportamento correto (`backend/tests/Feature/KnownB
 "known-bugs" passa a passar. Nesse momento, apague o teste characterization antigo e mova o gêmeo para
 `Characterization/` (trocando o grupo para `characterization`).
 
-- Rodar: `php artisan test --group=known-bugs` (deve falhar; hoje o grupo não tem testes: o M-16 moveu os dois últimos gêmeos).
+- Rodar: `php artisan test --group=known-bugs` (deve falhar; hoje só o gêmeo do #31, M-54).
 - O grupo `known-bugs` está excluído da suíte padrão no `phpunit.xml`.
 
 Severidade: **P0** = dinheiro/pedido pago sem pagamento; **P1** = cliente lesado, dados expostos ou fluxo quebrado; **P2** = inconsistência sem dano imediato.; **P3** = exibição/texto incorreto sem efeito no valor cobrado.
 
 | # | Bug | Sev. | Teste characterization (comportamento atual) | Teste known-bugs (comportamento esperado) | Causa provável (arquivo:linha) |
 |---|-----|------|----------------------------------------------|-------------------------------------------|--------------------------------|
+| 31 | Erro de banco **dentro de um template Blade** (e-mail da fila ou tabela do painel) vira `ViewException`, que herda de `ErrorException`: o `ErrorReference` grava a mensagem dela em `message_safe`, e ela é a da `QueryException` de dentro (SQL com os valores sem aspas, nome do banco, caminho absoluto da view). Vai para o `laravel.log` e para `failed_jobs.exception`. Na busca do painel, o termo buscado (nome da cliente) aparece no log. Com a view aninhada (componente `item-row`), o `sqlstate` sai `null` | P1 | — (o teste de M-47 não cobre view) | `KnownBugs/ViewExceptionLogPrivacyTest` | `app/Support/ErrorReference.php` (`SAFE_MESSAGE_CLASSES`, `hasSafeMessage`, `databaseCodes` só olha um nível) |
 | 27 | CartDrawer e CheckoutModal ainda formatam valores de item a partir de reais em float (`unitTotalCents / 100`, `toFixed`) e o `CartContext` gera `unitTotalCents` fracionado quando o preço vem em reais (`price * 100` sem arredondar) | P3 | — (sem Vitest no front) | — | `src/components/cart/CartDrawer.jsx` (itens); `src/context/CartContext.jsx:69-75` |
 | 28 | Newsletter do Footer mostra confirmação de inscrição mas não grava nem envia nada (o `handleNewsletter` só limpa o campo e exibe o toast) | P3 | — (sem Vitest no front) | — | `src/components/Footer.jsx:10-16` |
 
-Em aberto: 2 bugs, 0 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
+Em aberto: 3 bugs, 2 testes em `known-bugs` (alguns bugs têm mais de um gêmeo).
 
 ## Corrigidos
 
