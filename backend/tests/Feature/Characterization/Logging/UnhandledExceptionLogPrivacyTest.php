@@ -149,7 +149,7 @@ class UnhandledExceptionLogPrivacyTest extends CharacterizationTestCase
 
     public function test_job_da_fila_que_falha_loga_e_grava_failed_jobs_sem_dados_pessoais(): void
     {
-        // O failed_jobs segue o DB_CONNECTION do ambiente (pgsql/mariadb no CI): aqui fica no SQLite do teste.
+        // O failed_jobs segue o DB_CONNECTION do ambiente (mariadb no CI): aqui fica no SQLite do teste.
         config(['queue.default' => 'database', 'queue.failed.database' => 'sqlite']);
         $this->app->forgetInstance('queue.failer');
         M47FailingJob::dispatch();

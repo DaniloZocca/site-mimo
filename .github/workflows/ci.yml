@@ -14,44 +14,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # M-45: o banco de produção (Hostinger) é MariaDB; o CI usa a mesma versão. A suíte inclui o grupo `concurrency`
+  # (dois processos PHP disputando o mesmo pedido). Os nomes dos checks não levam a versão do banco: trocar o
+  # MariaDB é mudar só `matrix.mariadb`, sem mexer na regra de proteção da main.
   backend:
-    name: backend (${{ matrix.php }})
+    name: backend (mariadb, php ${{ matrix.php }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        # Laravel 13 (M-35): composer.json pede 8.3 ou 8.4. Testa os dois, já que a
-        # hospedagem ainda não foi escolhida. O setup-php instala a última versão de cada ramo (M-42: precisa
-        # ser 8.3.36+ / 8.4.27+, senão o composer install recusa).
+        # Laravel 13 (M-35): composer.json pede 8.3 ou 8.4; a Hostinger roda 8.4. O setup-php instala a última versão
+        # de cada ramo (M-42: precisa ser 8.3.36+ / 8.4.27+, senão o composer install recusa).
         php: ['8.3', '8.4']
+        # Versão exata da Hostinger (SELECT VERSION() = 11.8.9-MariaDB-log)
+        mariadb: ['11.8.9']
     defaults:
       run:
         working-directory: backend
 
     services:
-      postgres:
-        image: postgres:16
+      mariadb:
+        image: mariadb:${{ matrix.mariadb }}
         env:
-          POSTGRES_USER: mimoo
-          POSTGRES_PASSWORD: mimoo
-          POSTGRES_DB: mimoo_test
+          MARIADB_USER: mimoo
+          MARIADB_PASSWORD: mimoo
+          MARIADB_DATABASE: mimoo_test
+          MARIADB_ROOT_PASSWORD: mimoo
         ports:
-          - 5432:5432
+          - 3306:3306
         options: >-
-          --health-cmd "pg_isready -U mimoo -d mimoo_test"
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
           --health-interval 5s
           --health-timeout 5s
-          --health-retries 10
+          --health-retries 20
 
     # Banco descartável do CI: nada aqui é segredo. Sem .env; tudo por variável de ambiente.
     env:
-      DB_CONNECTION: pgsql
+      DB_CONNECTION: mariadb
       DB_HOST: 127.0.0.1
-      DB_PORT: 5432
+      DB_PORT: 3306
       DB_DATABASE: mimoo_test
       DB_USERNAME: mimoo
       DB_PASSWORD: mimoo
+      MARIADB_VERSION: ${{ matrix.mariadb }}
 
     steps:
       - uses: actions/checkout@v6
@@ -59,7 +65,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: pdo_pgsql, pdo_sqlite, sqlite3, intl, zip, gd, bcmath
+          extensions: pdo_mysql, pdo_sqlite, sqlite3, intl, zip, gd, bcmath, sodium
           coverage: none
           tools: composer:v2
 
@@ -88,82 +94,18 @@ jobs:
       - name: Pint (formatação)
         run: vendor/bin/pint --test
 
-      - name: Migrations no Postgres
-        run: php artisan migrate:fresh --force
-
-      # vendor/bin/phpunit e não `php artisan test`: sem .env o artisan marca os testes como "warning".
-      # O grupo known-bugs (falha de propósito) fica fora pelo phpunit.xml.
-      - name: PHPUnit
-        run: vendor/bin/phpunit
-
-  # M-45: o banco de produção (Hostinger) é MariaDB 11.8.9; mesma versão aqui. A suíte inclui o grupo
-  # `concurrency` (dois processos PHP disputando o mesmo pedido), que só roda neste job.
-  backend-mariadb:
-    name: backend (mariadb 11.8.9)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: backend
-
-    services:
-      mariadb:
-        image: mariadb:11.8.9
-        env:
-          MARIADB_USER: mimoo
-          MARIADB_PASSWORD: mimoo
-          MARIADB_DATABASE: mimoo_test
-          MARIADB_ROOT_PASSWORD: mimoo
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "healthcheck.sh --connect --innodb_initialized"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-
-    # Banco descartável do CI: nada aqui é segredo. Sem .env; tudo por variável de ambiente.
-    env:
-      DB_CONNECTION: mariadb
-      DB_HOST: 127.0.0.1
-      DB_PORT: 3306
-      DB_DATABASE: mimoo_test
-      DB_USERNAME: mimoo
-      DB_PASSWORD: mimoo
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: pdo_mysql, pdo_sqlite, sqlite3, intl, zip, gd, bcmath, sodium
-          coverage: none
-          tools: composer:v2
-
-      - name: Pasta de cache do Composer
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache do Composer
-        uses: actions/cache@v5
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-8.4-${{ hashFiles('backend/composer.lock') }}
-          restore-keys: composer-8.4-
-
-      - name: composer install
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: APP_KEY descartável
-        run: echo "APP_KEY=base64:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
-
+      # Reprova se o serviço subir com outra versão (ex.: a tag da imagem mudar de sentido)
       - name: Versão do MariaDB
-        run: php -r '$p = new PDO("mysql:host=127.0.0.1;port=3306;dbname=mimoo_test", "mimoo", "mimoo"); echo $p->query("SELECT VERSION()")->fetchColumn(), PHP_EOL;'
+        run: |
+          php -r '$p = new PDO("mysql:host=127.0.0.1;port=3306;dbname=mimoo_test", "mimoo", "mimoo");
+            $v = $p->query("SELECT VERSION()")->fetchColumn(); echo $v, PHP_EOL;
+            exit(str_starts_with($v, getenv("MARIADB_VERSION")."-MariaDB") ? 0 : 1);'
 
       - name: Migrations no MariaDB
         run: php artisan migrate:fresh --force
 
+      # vendor/bin/phpunit e não `php artisan test`: sem .env o artisan marca os testes como "warning".
+      # O grupo known-bugs (falha de propósito) fica fora pelo phpunit.xml.
       - name: PHPUnit
         run: vendor/bin/phpunit
 
