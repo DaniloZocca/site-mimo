@@ -11,6 +11,11 @@ servidor nem ao `.env`.
 - **Antes da virada para produção (fase 3) a M-51 precisa estar na `producao`**: ela tira a simulação de PIX do
   código de produção.
 
+**Como ler este roteiro.** Cada passo diz o resultado **esperado** e, nos críticos (DNS, SSL, migrations, link do
+`public_html`, cron, webhook e virada), **se der errado, faça X**. Cada fase termina com **Voltar atrás**: como
+desfazer o que a fase fez. Se um passo falhar e o "se der errado" não resolver, pare ali e mande na thread a saída
+do comando (sem senhas nem tokens).
+
 Nos comandos, `<usuário>` é o seu usuário da Hostinger (o que aparece em `/home/<usuário>` no SSH) e
 `PHP=/opt/alt/php84/usr/bin/php` (conferido no M-45). Na Hostinger o comando `composer` é a **versão 1**: use
 sempre `composer2`, rodado com o PHP 8.4: `$PHP $(which composer2) ...`.
@@ -22,7 +27,7 @@ Estrutura no servidor:
 ~/site-mimo/backend/.env                   .env de produção (chmod 600; nunca no Git)
 ~/domains/api.mimoolab.com.br/public_html  -> link para ~/site-mimo/backend/public
 ~/domains/mimoolab.com.br/public_html      loja (o Web App publica aqui)
-~/backups/                                 backups locais (7 dias)
+~/backups/diario/ e ~/backups/semanal/     backups locais (7 diários + 4 semanais)
 ~/bin/rclone                               envio dos backups para fora do servidor
 ```
 
@@ -30,9 +35,13 @@ Estrutura no servidor:
 
 ## Fase 0 — Contas e DNS (antes de tudo)
 
-1. **DNS na Hostinger.** No Registro.br, em `mimoolab.com.br` → DNS → "Alterar servidores DNS", troque pelos
-   servidores que o hPanel mostra em Domínios (normalmente `ns1.dns-parking.com` e `ns2.dns-parking.com`).
-   Propagação: até 24 h. Conferir: `nslookup -type=ns mimoolab.com.br` no PowerShell.
+1. **DNS na Hostinger.** **Antes**, anote (print) os servidores DNS que o Registro.br mostra hoje: são o "voltar
+   atrás". No Registro.br, em `mimoolab.com.br` → DNS → "Alterar servidores DNS", troque pelos servidores que o
+   hPanel mostra em Domínios (normalmente `ns1.dns-parking.com` e `ns2.dns-parking.com`). Propagação: até 24 h.
+   - Esperado: `nslookup -type=ns mimoolab.com.br` no PowerShell mostra os dois servidores da Hostinger.
+   - Se der errado: depois de 24 h ainda aparecem os antigos → confira no Registro.br se a troca foi salva (ele
+     mostra "em transição") e se os nomes estão idênticos aos do hPanel. O Registro.br recusa a troca ("servidor
+     não responde pelo domínio") → no hPanel, adicione o domínio em Domínios antes e tente de novo depois de 1 h.
 2. **Resend** (conta contato.mimoolab@gmail.com): Domains → Add domain → `mimoolab.com.br`. Copie para o DNS do
    hPanel cada registro que o Resend mostrar (DKIM `resend._domainkey`, MX e SPF do subdomínio `send`). Acrescente
    um DMARC: TXT `_dmarc` = `v=DMARC1; p=none;`. Espere o Resend marcar "Verified". Crie uma API key com
@@ -45,6 +54,10 @@ Estrutura no servidor:
    `mimoo:check-production` reprova (M-41).
 6. **Gerenciador de senhas** (ex.: Bitwarden): guarde ali o `.env` inteiro, a senha do banco, a do admin, a API
    key do Resend e a senha do backup. Nada disso vai para o Git, para o chat ou para o Drive.
+
+**Voltar atrás (fase 0):** no Registro.br, recoloque os servidores DNS anotados no item 1 (propaga em até 24 h).
+No Resend, apague o domínio; no DNS, os registros `resend._domainkey`, `send` e `_dmarc`. As contas do Mercado Pago
+e do Melhor Envio podem ficar: sem as credenciais no `.env`, nada é cobrado.
 
 ## Fase 1 — Infraestrutura
 
@@ -62,8 +75,21 @@ Estrutura no servidor:
    Se `mimoolab.com.br` já existir como site (foi usado nos testes do M-45), a Hostinger pede para removê-lo
    antes. Para onde apontar o domínio no ensaio, veja a fase 2 ("Loja fechada").
 3. Segurança → SSL: o certificado gratuito sai sozinho depois do DNS, para os dois sites. Ligue **Forçar HTTPS**
-   nos dois. `www.mimoolab.com.br` redireciona para `https://mimoolab.com.br` pelo `public/.htaccess` da loja.
-4. **CDN desligada na API:** Sites → `api.mimoolab.com.br` → Desempenho → CDN → **Desativar**. Desligue também
+   nos dois.
+   - Esperado: `https://api.mimoolab.com.br` e `https://mimoolab.com.br` abrem com cadeado, sem aviso.
+   - Se der errado: o SSL fica "pendente" mais de 1 h depois de o DNS propagar → Segurança → SSL → **Reinstalar**
+     no site; confira que `nslookup api.mimoolab.com.br` aponta para o IP do hPanel. Aviso de certificado em
+     `www` → instale o SSL também para `www.mimoolab.com.br` (o hPanel lista os dois).
+4. **`www` → sem `www` pelo hPanel.** Não dá para confirmar que o Web App respeita um `.htaccess` dentro do build,
+   então a loja não tem `.htaccess` (M-53): o redirecionamento é feito no hPanel. Domínios → `mimoolab.com.br` →
+   **Redirecionamentos** (ou "Redirecionar domínio") → de `www.mimoolab.com.br` para `https://mimoolab.com.br`,
+   tipo **301 (permanente)**, guardando o caminho se a opção existir. A API aceita (CORS) só a origem exata da loja,
+   então a loja não pode funcionar em `www`.
+   - Esperado: `curl.exe -sI https://www.mimoolab.com.br/` → `301` e `location: https://mimoolab.com.br/`.
+   - Se der errado: `200` em `www` → o redirecionamento não foi salvo, ou o `www` está apontado como "alias" do
+     Web App (remova o alias e crie o redirecionamento). Sem a opção no hPanel → peça ao suporte da Hostinger o
+     redirecionamento 301 de `www` para o domínio sem `www`.
+5. **CDN desligada na API:** Sites → `api.mimoolab.com.br` → Desempenho → CDN → **Desativar**. Desligue também
    qualquer cache do servidor (Cache Manager/LiteSpeed) no `api.`. Na loja a CDN pode ficar ligada.
    Motivo: a API não confia em proxy; atrás da CDN todos os clientes teriam o IP da CDN e os limites por IP
    (checkout, rastreio, login) valeriam para a loja inteira; e o filtro da CDN pode barrar o webhook.
@@ -105,65 +131,108 @@ chmod 600 .env
 nano .env
 ```
 
-Troque/acrescente estas linhas (valores entre `< >` vêm do gerenciador de senhas; não cole segredos em lugar
-nenhum além do `.env`):
+Abra o `.env` e deixe **cada chave** como abaixo. O modelo tem todas as chaves do `backend/.env.example` (o teste
+`EnvModelDocTest` reprova o PR que acrescentar uma chave lá sem trazê-la para cá) e as que só a produção usa. Nenhum
+valor aqui é segredo: onde há `<...>`, o comentário da linha diz de onde vem o valor. Segredos vêm do gerenciador
+de senhas e só existem no `.env` do servidor. Deixe cada segredo **entre aspas simples**, como no modelo (`'...'`):
+sem elas, um espaço ou um `#` na senha corta o valor ou quebra a leitura do arquivo. Se o gerenciador gerar uma
+senha com aspas simples (`'`), gere outra.
 
+<!-- modelo-env:inicio -->
 ```dotenv
-APP_NAME="MIMOO LAB"
-APP_ENV=staging                 # fase 2 (ensaio). Na fase 3: production
-APP_DEBUG=false
-APP_URL=https://api.mimoolab.com.br
-FRONTEND_URL=https://mimoolab.com.br        # no ensaio pelo domínio temporário: o endereço temporário
-APP_LOCALE=pt_BR
-APP_FALLBACK_LOCALE=pt_BR
+# --- Aplicação ---
+APP_NAME="MIMOO LAB"                          # fixo
+APP_ENV=staging                               # fase 2 (ensaio) = staging; fase 3 (virada) = production
+APP_KEY=                                      # deixe vazio: o "artisan key:generate" do 1.5 preenche; depois copie para o gerenciador
+APP_DEBUG=false                               # fixo: true mostraria código e configuração ao visitante
+APP_TIMEZONE=UTC                              # fixo (o banco e os logs usam UTC)
+APP_URL=https://api.mimoolab.com.br           # fixo: endereço da API
+FRONTEND_URL=https://mimoolab.com.br          # endereço da loja; no ensaio pelo domínio temporário: o endereço temporário (https://)
+APP_LOCALE=pt_BR                              # fixo
+APP_FALLBACK_LOCALE=pt_BR                     # fixo
+APP_FAKER_LOCALE=pt_BR                        # fixo (só afeta dados de teste)
+APP_MAINTENANCE_DRIVER=file                   # fixo: o "artisan down" do deploy.sh grava em storage/framework
+APP_MAINTENANCE_STORE=database                # fixo (só vale com o driver cache)
+BCRYPT_ROUNDS=12                              # fixo
 
-LOG_CHANNEL=stack
-LOG_STACK=daily
-LOG_DAILY_DAYS=14
-LOG_LEVEL=info
+# --- Logs ---
+LOG_CHANNEL=stack                             # fixo
+LOG_STACK=daily                               # fixo: um arquivo por dia
+LOG_DAILY_DAYS=14                             # fixo: guarda 14 dias de log
+LOG_DEPRECATIONS_CHANNEL=null                 # fixo
+LOG_LEVEL=info                                # fixo
 
-DB_CONNECTION=mariadb
-DB_HOST=localhost
-DB_PORT=3306
-DB_DATABASE=<nome do banco>
-DB_USERNAME=<usuário do banco>
-DB_PASSWORD=<senha do banco>
+# --- Banco (hPanel → Bancos de dados, passo 1.2) ---
+DB_CONNECTION=mariadb                         # fixo
+DB_HOST=localhost                             # fixo na Hostinger
+DB_PORT=3306                                  # fixo
+DB_DATABASE=<nome do banco>                   # hPanel → Bancos de dados (ex.: u123456789_mimoo)
+DB_USERNAME=<usuário do banco>                # hPanel → Bancos de dados
+DB_PASSWORD='<senha do banco>'                # SEGREDO: gerenciador de senhas (criada no 1.2)
 
-SESSION_DRIVER=database
-SESSION_DOMAIN=.mimoolab.com.br
-SESSION_SECURE_COOKIE=true
-SESSION_SAME_SITE=lax
-CORS_ALLOWED_ORIGINS=https://mimoolab.com.br   # no ensaio pelo domínio temporário: o endereço temporário
+# --- Sessão, cookies e CORS ---
+SESSION_DRIVER=database                       # fixo
+SESSION_LIFETIME=120                          # fixo (minutos)
+SESSION_ENCRYPT=false                         # fixo
+SESSION_PATH=/                                # fixo
+SESSION_DOMAIN=.mimoolab.com.br               # fixo: loja e API dividem o cookie do login de cliente
+SESSION_SECURE_COOKIE=true                    # fixo: cookie só por HTTPS
+SESSION_SAME_SITE=lax                         # fixo
+CORS_ALLOWED_ORIGINS=https://mimoolab.com.br  # endereço da loja; no ensaio pelo domínio temporário: o endereço temporário (https://)
 
-QUEUE_CONNECTION=database
-CACHE_STORE=database
+# --- Infraestrutura (sem Redis, Memcached, S3 nem broadcast na Hostinger) ---
+BROADCAST_CONNECTION=log                      # fixo (não usado)
+FILESYSTEM_DISK=local                         # fixo: imagens em storage/app/public
+QUEUE_CONNECTION=database                     # fixo: o cron do 1.7 processa a fila
+CACHE_STORE=database                          # fixo
+CACHE_PREFIX=                                 # fixo (vazio)
+MEMCACHED_HOST=127.0.0.1                      # fixo (não usado)
+REDIS_CLIENT=phpredis                         # fixo (não usado)
+REDIS_HOST=127.0.0.1                          # fixo (não usado)
+REDIS_PASSWORD=null                           # fixo (não usado)
+REDIS_PORT=6379                               # fixo (não usado)
+AWS_ACCESS_KEY_ID=                            # vazio (não usado)
+AWS_SECRET_ACCESS_KEY=                        # vazio (não usado)
+AWS_DEFAULT_REGION=us-east-1                  # fixo (não usado)
+AWS_BUCKET=                                   # vazio (não usado)
+AWS_USE_PATH_STYLE_ENDPOINT=false             # fixo (não usado)
 
-MAIL_MAILER=smtp
-MAIL_HOST=smtp.resend.com
-MAIL_PORT=465
-MAIL_ENCRYPTION=ssl
-MAIL_USERNAME=resend
-MAIL_PASSWORD=<API key do Resend>
-MAIL_FROM_ADDRESS=pedidos@mimoolab.com.br
-MAIL_FROM_NAME="MIMOO LAB"
-MAIL_REPLY_TO_ADDRESS=contato.mimoolab@gmail.com
-MAIL_REPLY_TO_NAME="MIMOO LAB"
+# --- E-mail (Resend, fase 0 item 2) ---
+MAIL_MAILER=smtp                              # fixo
+MAIL_HOST=smtp.resend.com                     # fixo
+MAIL_PORT=465                                 # fixo
+MAIL_ENCRYPTION=ssl                           # fixo
+MAIL_USERNAME=resend                          # fixo (é a palavra "resend" mesmo)
+MAIL_PASSWORD='<API key do Resend>'           # SEGREDO: Resend → API Keys (Sending access), guardada no gerenciador
+MAIL_FROM_ADDRESS=pedidos@mimoolab.com.br     # fixo (domínio verificado no Resend)
+MAIL_FROM_NAME="MIMOO LAB"                    # fixo
+MAIL_REPLY_TO_ADDRESS=contato.mimoolab@gmail.com  # fixo: as respostas dos clientes chegam aqui
+MAIL_REPLY_TO_NAME="MIMOO LAB"                # fixo
 
-MERCADOPAGO_ACCESS_TOKEN=<Access Token de TESTE>      # fase 3: de produção
-MERCADOPAGO_PUBLIC_KEY=<Public Key de TESTE>          # fase 3: de produção
-MERCADOPAGO_WEBHOOK_SECRET=<assinatura do webhook de teste>   # fase 3: a do webhook de produção
+# --- Mercado Pago (fase 0 item 3) ---
+MERCADOPAGO_ACCESS_TOKEN='<Access Token>'     # SEGREDO: Suas integrações → credenciais de TESTE (fase 2) / de PRODUÇÃO (fase 3)
+MERCADOPAGO_PUBLIC_KEY=<Public Key>           # Suas integrações → a de TESTE (fase 2) / a de PRODUÇÃO (fase 3); a mesma da loja
+MERCADOPAGO_WEBHOOK_SECRET='<assinatura>'     # SEGREDO: Webhooks → assinatura secreta do modo teste (fase 2) / produção (fase 3)
+MERCADOPAGO_BASE_URL=https://api.mercadopago.com  # fixo
 
-MELHOR_ENVIO_URL=https://sandbox.melhorenvio.com.br   # fase 3: https://melhorenvio.com.br
-MELHOR_ENVIO_TOKEN=<token do sandbox>                 # fase 3: de produção
-SHIPPING_ORIGIN_CEP=<CEP de onde a loja despacha, só números>
+# --- Melhor Envio (fase 0 item 4) ---
+MELHOR_ENVIO_URL=https://sandbox.melhorenvio.com.br  # fase 2; fase 3: https://melhorenvio.com.br
+MELHOR_ENVIO_TOKEN='<token>'                  # SEGREDO: Melhor Envio → token do sandbox (fase 2) / de produção (fase 3)
+SHIPPING_ORIGIN_CEP=<CEP>                     # CEP de onde a loja despacha, só números (dado da loja)
 
-LOJA_RAZAO_SOCIAL="<razão social>"
-LOJA_CNPJ=<CNPJ>
-LOJA_CIDADE_UF="<Cidade / UF>"
+# --- Dados da loja (fase 0 item 5; Política de Privacidade e rodapé dos e-mails) ---
+LOJA_RAZAO_SOCIAL="<razão social>"            # cartão CNPJ da loja
+LOJA_CNPJ=<CNPJ>                              # cartão CNPJ da loja
+LOJA_CIDADE_UF="<Cidade / UF>"                # cartão CNPJ da loja
 
-ADMIN_EMAIL=<e-mail do admin do painel>
-ADMIN_PASSWORD=<senha forte>          # apagar depois do passo 1.5
+# --- Admin do painel (só durante o 1.5) ---
+ADMIN_EMAIL=<e-mail do admin do painel>       # o e-mail com que você vai entrar no /admin
+ADMIN_PASSWORD='<senha forte>'                # SEGREDO: gerenciador; APAGUE esta linha logo depois do seeder (1.5)
+
+# --- Vite (sobra do Laravel; a loja não usa este arquivo) ---
+VITE_APP_NAME="${APP_NAME}"                   # fixo
 ```
+<!-- modelo-env:fim -->
 
 Sobre `SESSION_DOMAIN` e `CORS_ALLOWED_ORIGINS` no ensaio pelo domínio temporário: o login de cliente só
 funciona com loja e API sob o mesmo domínio. No domínio temporário o cadastro/login dá 419 (o
@@ -184,6 +253,11 @@ $PHP artisan config:cache && $PHP artisan route:cache && $PHP artisan view:cache
 $PHP artisan mimoo:check-production
 ```
 
+- Esperado no `migrate --force`: uma linha `DONE` por migration, sem erro.
+- Se der errado no `migrate`: `Access denied` ou `Unknown database` → confira `DB_DATABASE`, `DB_USERNAME` e
+  `DB_PASSWORD` no `.env` contra o hPanel (o usuário precisa estar ligado ao banco, com todos os privilégios). Erro
+  no meio das migrations → `$PHP artisan migrate:status` mostra onde parou; como o banco ainda está vazio, corrija e
+  rode `$PHP artisan migrate:fresh --force` (**só aqui**, na instalação: apaga tudo). Mande a saída na thread.
 - **Nunca** rode `db:seed` sem `--class`: o seeder completo cria produtos de demonstração.
 - Copie a `APP_KEY` que o `key:generate` gravou no `.env` para o gerenciador de senhas.
 - No ensaio o `mimoo:check-production` reprova o `APP_ENV`, o token de teste do Mercado Pago e o Melhor Envio do
@@ -197,6 +271,14 @@ rm -r ~/domains/api.mimoolab.com.br/public_html
 ln -s ~/site-mimo/backend/public ~/domains/api.mimoolab.com.br/public_html
 ```
 
+- Esperado: `ls -la ~/domains/api.mimoolab.com.br/` mostra `public_html -> /home/<usuário>/site-mimo/backend/public`
+  e `https://api.mimoolab.com.br/up` responde 200.
+- Se der errado: `403`/`404` → confira o link com `ls -la` (o destino precisa existir); recrie com
+  `rm ~/domains/api.mimoolab.com.br/public_html` (apaga só o link) e o `ln -s` de novo. Página padrão da Hostinger
+  → o `rm -r` não rodou e a pasta antiga continua lá. `500` → `tail -50 ~/site-mimo/backend/storage/logs/laravel-*.log`
+  e mande o `error_ref` na thread.
+- Voltar atrás: `rm ~/domains/api.mimoolab.com.br/public_html && mkdir ~/domains/api.mimoolab.com.br/public_html`.
+
 ### 1.7 Cron (fila de e-mails)
 
 hPanel → Avançado → Cron Jobs → **Personalizado**, a cada minuto (`* * * * *`):
@@ -205,8 +287,12 @@ hPanel → Avançado → Cron Jobs → **Personalizado**, a cada minuto (`* * * 
 /opt/alt/php84/usr/bin/php /home/<usuário>/site-mimo/backend/artisan schedule:run >> /dev/null 2>&1
 ```
 
-Conferir depois de 2 minutos: `$PHP artisan schedule:list` mostra o `queue:work` e o `mimoo:check-production`
-mostra "Fila: nenhum job parado".
+- Esperado, depois de 2 minutos: `$PHP artisan schedule:list` mostra o `queue:work` e o `mimoo:check-production`
+  não reclama de job parado.
+- Se der errado: job parado ou e-mail que não sai → rode a mesma linha do cron à mão no SSH (sem o `>> /dev/null`)
+  e veja o erro; confira o caminho absoluto `/home/<usuário>/...` (o cron não entende `~`) e o PHP
+  `/opt/alt/php84/usr/bin/php`. O hPanel mostra a saída do cron em Cron Jobs → "Ver saída", se existir.
+- Voltar atrás: apague o cron no hPanel; os e-mails ficam na fila (tabela `jobs`) e saem quando ele voltar.
 
 ### 1.8 OPcache e `expose_php`
 
@@ -225,7 +311,7 @@ mostra "Fila: nenhum job parado".
 | Teste | Comando | Esperado |
 |---|---|---|
 | API no ar | `curl.exe -sI https://api.mimoolab.com.br/up` | `HTTP/1.1 200` (ou `HTTP/2 200`), `strict-transport-security`, **sem** `x-powered-by`, **sem** `server: hcdn`, **sem** `x-hcdn-*` e **sem** `x-litespeed-cache` |
-| Arquivos com ponto | `curl.exe -s -o NUL -w "%{http_code}" https://api.mimoolab.com.br/.user.ini` e o mesmo com `/.env` e `/.htaccess` | `403` ou `404` nos três |
+| Arquivos com ponto | `curl.exe -s -o NUL -w "%{http_code}" https://api.mimoolab.com.br/.user.ini` e o mesmo com `/.env`, `/.htaccess` e `/.git/config` | `403` ou `404` nos quatro (se algum der `200`, tire a API do ar com `$PHP artisan down` e mande na thread) |
 | CORS da loja | `curl.exe -sI -H "Origin: https://mimoolab.com.br" https://api.mimoolab.com.br/api/products` | `access-control-allow-origin: https://mimoolab.com.br` |
 | CORS de outro site | o mesmo com `-H "Origin: https://exemplo.com"` | sem `access-control-allow-origin` |
 | Painel | abrir `https://api.mimoolab.com.br/admin` | tela de login; o admin entra |
@@ -239,8 +325,13 @@ echo '<?php header("Content-Type: text/plain"); echo $_SERVER["REMOTE_ADDR"];' >
 ```
 
 Abra `https://api.mimoolab.com.br/ip-check.php` e compare com o seu IP (pesquise "qual é meu ip"). Precisam ser
-iguais. **Apague em seguida:** `rm ~/site-mimo/backend/public/ip-check.php`. Se for diferente, a CDN (ou um
-proxy) está na frente da API: não siga para a fase 2.
+iguais. **Apague em seguida:** `rm ~/site-mimo/backend/public/ip-check.php` (o `deploy.sh` recusa rodar com esse
+arquivo lá). Se for diferente, a CDN (ou um proxy) está na frente da API: não siga para a fase 2.
+
+**Voltar atrás (fase 1):** nada está aberto ao público ainda. Para recomeçar do zero: apague o cron (1.7), desfaça
+o link (1.6), apague o banco e o usuário no hPanel (1.2), `rm -rf ~/site-mimo` no SSH, remova a deploy key no
+GitHub (Settings → Deploy keys) e apague os dois sites no hPanel. O `.env` guardado no gerenciador de senhas
+permite refazer o 1.4 sem gerar segredos novos (a `APP_KEY` tem de ser a mesma se o banco for mantido).
 
 ## Fase 2 — Ensaio com credenciais de teste (loja fechada)
 
@@ -264,8 +355,10 @@ Para cada item: o que fazer → o que conferir. Com algum item falhando, não si
 
 1. **Webhook teste B** — Mercado Pago → Webhooks (modo teste) → Simular notificação, evento `payment`, na URL da API
    → a resposta mostrada é **422** "Falha na verificação reversa do pagamento" (a assinatura passou e a API foi
-   consultar um pagamento inventado). `401` = assinatura secreta errada no `.env`; `403` sem corpo do Laravel = bloqueio
-   da Hostinger (me mande o que apareceu).
+   consultar um pagamento inventado). Se der errado: `401` = assinatura secreta errada no `.env` (confira que é a
+   do modo **teste** e rode `$PHP artisan config:cache`); `403` sem corpo do Laravel = bloqueio da Hostinger ou
+   CDN ligada no `api.` (refaça o 1.1 item 5 e mande na thread o que apareceu); `503` = API em manutenção
+   (`$PHP artisan up`); `500` = mande o `error_ref` do log.
 2. **PIX** com um comprador de teste do Mercado Pago → pedido aprovado vira "Na fila" no painel e o e-mail
    "pedido confirmado" chega em até ~1 min, com Reply-To para contato.mimoolab@gmail.com.
 3. **Cartão de teste aprovado** (resposta na hora) e um **recusado** (mensagem de erro na loja, pedido pendente).
@@ -286,6 +379,10 @@ Para cada item: o que fazer → o que conferir. Com algum item falhando, não si
 10. **Monitoramento**: `$PHP artisan down` → o alerta do UptimeRobot chega nos dois e-mails em até ~5 min →
     `$PHP artisan up` → chega o aviso de volta.
 11. **Atualização**: avance a `producao` com qualquer mudança pequena e rode o `deploy.sh` (seção "Atualizar").
+    Em `staging` o `mimoo:check-production` reprova de propósito (APP_ENV e credenciais de teste), então o deploy
+    termina com "ERRO no passo: mimoo:check-production" e a API **fica em manutenção**: é o comportamento certo.
+    Confira que só esses itens aparecem e tire da manutenção à mão: `$PHP artisan up`. Na produção isso não
+    acontece: o check passa e o script sai da manutenção sozinho.
 
 No fim do ensaio, limpe os dados de teste (ainda não há nada real):
 
@@ -299,6 +396,10 @@ $PHP artisan config:cache
 ```
 
 e recadastre o catálogo pelo painel. As imagens de teste em `storage/app/public/products` podem ser apagadas.
+
+**Voltar atrás (fase 2):** a loja segue fechada (senha ou domínio temporário) e só há dados de teste. Se o ensaio
+reprovar num item, corrija e repita o item; para descartar tudo, use a limpeza acima. Os backups de teste no Google
+Drive podem ser apagados (`~/bin/rclone purge mimoo-backup-crypt:` apaga só a pasta criptografada).
 
 ## Fase 3 — Virar produção
 
@@ -314,19 +415,36 @@ Pré-requisito: **M-51 na `producao`** (sem simulação de PIX no código de pro
    $PHP artisan mimoo:check-production
    ```
    Precisa terminar com **"Configuração de produção ok."** (cole a saída na thread).
+   Se der errado: o check lista só os **nomes** das chaves com problema; corrija no `.env`, rode `config:cache` e o
+   check de novo. Não siga para o item 2 com o check reprovado.
 2. **Loja com a chave pública de PRODUÇÃO:** no Web App, troque a variável de build
    `VITE_MERCADOPAGO_PUBLIC_KEY` pela **Public Key de produção** e publique de novo (Redeploy). Chave de teste na
    loja com token de produção na API = cartão falhando. Confira na loja que o formulário de cartão abre e
    reconhece a bandeira de um cartão real (sem pagar).
-3. **Consultas só leitura** de "Antes do deploy" no `docs/coordenacao.md`
-   (`produtos-sem-cor-ou-tamanho.sql`, `m-29-pecas-sem-preco.sql`) e correção no painel do que aparecer.
+   Se der errado: o formulário não abre ou dá "public key inválida" → a variável foi trocada mas não houve
+   Redeploy, ou a chave é de outra aplicação; confira no Mercado Pago e publique de novo.
+3. **Consultas só leitura** no phpMyAdmin, depois de recadastrar o catálogo:
+   `/mnt/project-files/consultas/produtos-sem-cor-ou-tamanho.sql` (produto sem cor/tamanho vinculado dá 422 no
+   checkout, M-03) e `docs/consultas/m-29-pecas-sem-preco.sql` (peça/tamanho abaixo de R$ 0,01 dá 422, M-29).
+   Esperado: nenhuma linha. Se aparecer alguma, corrija o produto no painel antes de abrir.
 4. Se o ensaio foi no domínio temporário (opção 2): ligue `mimoolab.com.br` ao Web App da loja, espere o SSL e
    repita os testes da conta de cliente (fase 2, item 6) e do `www` (1.9).
 5. **Compra real pequena**: o produto mais barato, pago com PIX por você → "Na fila" no painel e e-mail de
    confirmação. Depois, **estorno** pelo painel do Mercado Pago e o pedido tratado como no
    `docs/runbook-liberar-pedido-em-revisao.md` / cancelamento manual (pedido pago não se cancela pelo painel).
    Uma compra com cartão real pequena prova o item 2.
+   Se der errado: pedido fica "Aguardando pagamento" depois do PIX pago → o webhook de **produção** não chegou ou
+   foi recusado: Mercado Pago → Webhooks (modo produção) → histórico de notificações mostra o código da resposta
+   (401 = `MERCADOPAGO_WEBHOOK_SECRET` ainda é o de teste). Pedido em "Pagamento em revisão" → siga o
+   `docs/runbook-liberar-pedido-em-revisao.md`. Não abra a loja até uma compra real chegar em "Na fila".
 6. Tire a senha da loja (opção 1). **Loja aberta.**
+
+**Voltar atrás (fase 3):** feche a loja de novo e pare a API sem perder nada:
+1. `$PHP artisan down --retry=60` (a loja não consegue criar pedido; o Mercado Pago reenvia os webhooks depois).
+2. Recoloque a senha da loja (opção 1) ou tire `mimoolab.com.br` do Web App (opção 2).
+3. **Não** volte o `.env` para as credenciais de teste se já houver pedido real: os pagamentos reais precisam do
+   token de produção para serem conferidos. Pedidos reais pagos são tratados um a um (estorno pelo Mercado Pago).
+4. Corrija, rode `$PHP artisan mimoo:check-production` e `$PHP artisan up`.
 
 ## Fase 4 — Rotina
 
@@ -337,20 +455,30 @@ Pré-requisito: **M-51 na `producao`** (sem simulação de PIX no código de pro
    ```bash
    bash ~/site-mimo/deploy/hostinger/deploy.sh
    ```
-   O script mostra a versão no ar e a que vai entrar, pede confirmação, põe a API em manutenção (o webhook recebe
-   503 e o Mercado Pago reenvia), atualiza o código só por avanço (fast-forward), roda `composer2 install
-   --no-dev`, `migrate --force`, refaz os caches, reinicia o worker, sai da manutenção e roda o
-   `mimoo:check-production`. Se um passo falhar, a API fica em manutenção e o script mostra como voltar.
-3. Não edite arquivos do repositório no servidor: o script recusa rodar com o `git status` sujo.
+   O script recusa rodar se o clone não estiver na branch `producao` ou se houver arquivo alterado ou novo no
+   repositório (`git status`), sem mexer em nada. Depois mostra a versão no ar e a que vai entrar, pede
+   confirmação, põe a API em manutenção (o webhook recebe 503 e o Mercado Pago reenvia), atualiza o código só por
+   avanço (fast-forward), roda `composer2 install --no-dev`, `migrate --force`, refaz os caches, roda o
+   `mimoo:check-production`, reinicia o worker e **só então** sai da manutenção. Os arquivos que ele gera
+   (caches com a configuração) ficam só para o seu usuário (`umask 077`).
+   - Esperado: termina com `Deploy ok: <commit> <mensagem>`.
+   - Se der errado: o script mostra `ERRO no passo: <passo>`, deixa a API **em manutenção** e imprime os comandos
+     para voltar (rodar de novo depois de corrigir, ou voltar para a versão anterior). Ele nunca sai da
+     manutenção sozinho depois de um erro, nem com o check reprovado.
+3. Não edite arquivos do repositório no servidor e apague os arquivos de teste (`opcache-check.php`,
+   `ip-check.php`) depois de usar: o script recusa rodar com o `git status` sujo.
 
-### Voltar uma versão
+### Voltar atrás (fase 4): voltar uma versão
 
 ```bash
 bash ~/site-mimo/deploy/hostinger/deploy.sh <commit anterior>   # o deploy.sh mostra qual era
 ```
 
-Migration nova não é desfeita por isso: só com `artisan migrate:rollback`, se o PR daquela versão disser que é
-seguro. Na loja, o Web App tem o histórico de deploys para republicar o anterior.
+Só aceita um commit que já esteve na `producao`. Migration nova não é desfeita por isso: se a versão que falhou
+trouxe migration, leia o PR dela antes de voltar. Se ele disser que o `migrate:rollback` é seguro, rode
+`$PHP artisan migrate:rollback --step=<n.º de migrations novas>` **antes** de voltar o código; se não disser, volte
+só o código e mande na thread. Na loja, o Web App tem o histórico de deploys para republicar o anterior (ou faça
+um PR revertendo na `producao`).
 
 ### Backup fora do servidor (diário, criptografado)
 
@@ -370,7 +498,9 @@ Instalação, uma vez:
    `mimoo-gdrive:mimoo-backups`, criptografar nomes = `standard`, senha e "salt" **gerados pelo gerenciador de
    senhas e guardados nele** (sem eles o backup não abre). Copie o arquivo de configuração para o servidor
    (`rclone config file` mostra onde está) em `~/.config/rclone/rclone.conf` e rode
-   `chmod 600 ~/.config/rclone/rclone.conf`.
+   `chmod 600 ~/.config/rclone/rclone.conf`. Depois **apague o `rclone.conf` do PC**: ele tem o acesso ao Google
+   Drive e a senha do backup só disfarçada (dá para revelar). Para restaurar, refaça os dois remotos no PC com os
+   dados do gerenciador e apague o arquivo de novo no fim.
 3. **Senha do banco para o dump**, em `~/.my.cnf`:
    ```
    [client]
@@ -380,24 +510,28 @@ Instalação, uma vez:
    ```
    `chmod 600 ~/.my.cnf`
 4. **Nome do banco** em `~/.mimoo-backup.conf` (`chmod 600`): `DB_NAME="<nome do banco>"`.
-5. Teste: `bash ~/site-mimo/deploy/hostinger/backup.sh` → termina com "fim"; `~/bin/rclone ls mimoo-backup-crypt:diario/`
-   lista os dois arquivos.
+5. Teste: `bash ~/site-mimo/deploy/hostinger/backup.sh` → uma linha `... ok backup ...`;
+   `~/bin/rclone ls mimoo-backup-crypt:diario/` lista os dois arquivos.
 6. Cron Personalizado, todo dia (o horário do cron da Hostinger é o do servidor; confira com `date` e ajuste para
    cair de madrugada no Brasil):
    ```
    0 6 * * * bash /home/<usuário>/site-mimo/deploy/hostinger/backup.sh >> /home/<usuário>/backups/backup.log 2>&1
    ```
 
-O script guarda o banco (`mariadb-dump --single-transaction`) e as imagens dos produtos, 7 dias no servidor e, fora
-dele, 7 diários + 4 semanais (domingo). O backup tem dados pessoais (LGPD): só sai do servidor criptografado. Olhe o
-`~/backups/backup.log` uma vez por semana (ou ponha uma URL do healthchecks.io em `HEALTHCHECK_URL` no
-`~/.mimoo-backup.conf` para ser avisado se ele parar).
+O script guarda o banco (`mariadb-dump --single-transaction`) e as imagens dos produtos: 7 diários + 4 semanais
+(domingo) no servidor (`~/backups/diario/` e `~/backups/semanal/`) e fora dele. O backup tem dados pessoais (LGPD):
+só sai do servidor criptografado. Cada execução escreve **uma linha** no `~/backups/backup.log`:
+`<data> ok backup banco=... imagens=... semanal=sim|nao ping=...` ou `<data> ERRO backup passo="..." ...`, com a
+mensagem da ferramenta em `~/backups/ultimo-erro.txt`. Se só o envio falhar, o backup local do dia fica. Olhe o log
+uma vez por semana (ou ponha uma URL do healthchecks.io em `HEALTHCHECK_URL` no `~/.mimoo-backup.conf` para ser
+avisado se ele parar).
 
 **Plano B** (rclone não roda): os backups da própria Hostinger (Arquivos → Backups) continuam; uma vez por semana
 baixe o do banco pelo hPanel para o PC, guarde num disco criptografado (BitLocker) e apague os antigos.
 
 **Restaurar**: baixar com `rclone copy mimoo-backup-crypt:diario/<arquivo> .`, `gunzip`, importar no banco
-(`mariadb <banco> < arquivo.sql`) e descompactar as imagens em `storage/app/public`.
+(`mariadb <banco> < arquivo.sql`) e descompactar as imagens em `storage/app/public`. O `.sql` tem dados pessoais de
+clientes: **apague** o `.sql` e o `.sql.gz` baixados assim que a importação terminar (também no teste do ensaio).
 
 ### Monitoramento de disponibilidade
 

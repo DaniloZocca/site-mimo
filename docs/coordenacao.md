@@ -123,7 +123,8 @@ Status: `concluído` · `em merge` (PR aberto, pronto) · `a fazer` · `aguardan
 | M-49 | `ShippingCalculationService.php:99` grava no log o corpo inteiro da resposta do Melhor Envio quando a API responde erro (`{$response->body()}`): se o corpo repetir o CEP ou dados do envio, vão para o log. Registrar só o status HTTP e um código/campo seguro. Pedido do Zocca no M-47. Feito: os dois logs de falha do Melhor Envio (status sem sucesso e exceção do cliente HTTP, que é o caminho real por causa do `retry`) gravam só `error_ref`, `http_status` e `location` (+ classe/frames no da exceção), sem corpo nem mensagem. Teste: `ShippingErrorLogPrivacyTest` | B | checkout | M-47 | concluído | #57 |
 | M-50 | Roteiro de deploy completo na Hostinger (loja em `mimoolab.com.br`, API e painel em `api.mimoolab.com.br`): sites, DNS e SSL, `.env` de produção, instalação, admin, cron do `schedule:run` com `/opt/alt/php84/usr/bin/php`, OPcache, CDN desligada na API, `expose_php`, credenciais e webhook do Mercado Pago (teste B), e-mail pelo Resend, backup fora do servidor, monitoramento e checklist do ensaio. Plano aprovado em 2026-11-10: `/mnt/project-files/planos/m-50-deploy-hostinger.md`. Roteiro: `docs/deploy-hostinger.md`; scripts `deploy/hostinger/deploy.sh` (branch `producao`, `composer2`) e `backup.sh` (rclone crypt no Google Drive da loja); `mimoo:check-production` reprova token do Mercado Pago vazio/de exemplo/de teste, segredo do webhook vazio, Melhor Envio do sandbox, `MAIL_MAILER` `log`/`array`, remetente de exemplo e `FRONTEND_URL` sem https (avisa token do Melhor Envio vazio); `MAIL_REPLY_TO_ADDRESS` (Reply-To global); `.htaccess` da API sem `X-Powered-By` e sem servir arquivos com ponto, e da loja com `www` → sem `www` | D | stack | M-45 | concluída | #59 |
 | M-51 | **Antes da virada para produção (fase 3 do `docs/deploy-hostinger.md`).** `MercadoPagoService` simula o PIX (QR falso, `Log::info`) quando o Access Token está vazio ou contém `TEST-000000`, também em produção (regra 10 do `CLAUDE.md`). Tirar a simulação fora de `local`/`testing` (em produção sem token: erro tratado, sem pedido com PIX falso), com teste. O `mimoo:check-production` já reprova o token vazio desde o M-50. Pedido do Zocca no M-50 | C | checkout | M-50 | concluída (simulação só em `local`/`testing`, token ausente vira o 502 de falha de gateway no PIX e no cartão) | #60 |
-| M-52 | Webhook com Access Token do Mercado Pago vazio ou de exemplo (`TEST-000000`) ainda consultava a API (`getPayment()` sem autorização, 401, 422 e reenvio): fora de `local`/`testing` agora lança `PaymentGatewayNotConfiguredException` antes da chamada e responde o mesmo 422 (o Mercado Pago reenvia; nenhum pedido muda). Achado no fim da M-51 | C | checkout | M-51 | em revisão (plano aprovado em 2026-11-10: `/mnt/project-files/planos/m-52-webhook-sem-token.md`; mantém o 422 e a chamada em `local`/`testing`) | PR da M-52 |
+| M-52 | Webhook com Access Token do Mercado Pago vazio ou de exemplo (`TEST-000000`) ainda consultava a API (`getPayment()` sem autorização, 401, 422 e reenvio): fora de `local`/`testing` agora lança `PaymentGatewayNotConfiguredException` antes da chamada e responde o mesmo 422 (o Mercado Pago reenvia; nenhum pedido muda). Achado no fim da M-51 | C | checkout | M-51 | concluída (mantém o 422 e a chamada em `local`/`testing`) | #61 |
+| M-53 | Lacunas do deploy achadas na conferência da M-50: `deploy.sh` roda o `mimoo:check-production` **antes** do `artisan up` e, em qualquer falha (inclusive do check), mantém a manutenção, mostra o passo e os comandos de voltar atrás e sai ≠ 0; `umask 077`; recusa fora da branch `producao` ou com árvore suja. `backup.sh` com 7 diários + 4 semanais também no servidor e uma linha de log. Job de CI `scripts de deploy` (`bash -n`, `shellcheck`, testes dos dois scripts). Loja sem `public/.htaccess` (`www` → sem `www` pelo hPanel). Roteiro com "Voltar atrás" por fase e "se der errado" nos passos críticos; modelo de `.env` com todas as chaves (teste `EnvModelDocTest`); teste do `.git`; Reply-To testado nos e-mails reais de pedido e de conta. Revisão da M-47 pelo payments-security-reviewer no PR | D | stack | M-50 | em revisão | #62 |
 
 ## Decisões pendentes
 
@@ -161,93 +162,6 @@ Registradas para o Zocca decidir. Até lá, vale o comportamento atual ou o mais
 
 ## Antes do deploy
 
-- **Roteiro completo na Hostinger: `docs/deploy-hostinger.md` (M-50)**, com o `.env` de produção, a ordem de instalação,
-  o ensaio em `staging` e a virada. Os itens abaixo continuam valendo e estão incorporados nele. A M-51 precisa estar na
-  `producao` antes da virada.
-- Banco MariaDB (M-45, Hostinger): `.env` com `DB_CONNECTION=mariadb` e os dados do banco do hPanel (`DB_HOST`,
-  `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`), sem `DB_COLLATION`. Banco novo: `php artisan migrate --force`.
-  O `mimoo:check-production` reprova se o banco não for MariaDB 10.6+ (a Hostinger tem 11.8.9), se a sessão não
-  estiver em `READ COMMITTED` com espera por trava de 10 s, se `FOUND_ROWS` estiver desligado ou se alguma coluna de
-  token/e-mail não estiver em `utf8mb4_bin`. O cron do `schedule:run` usa o PHP do terminal: conferir que é 8.3/8.4
-  (`php -v` no SSH) com `intl`, `bcmath`, `sodium`, `pdo_mysql` e `zip`. Webhook de teste do Mercado Pago precisa
-  passar pelo firewall da Hostinger e receber 200.
-- Rodar `/mnt/project-files/consultas/produtos-sem-cor-ou-tamanho.sql` (só leitura) na produção e corrigir no
-  painel os produtos sem cor/tamanho vinculados; depois do M-03 eles passam a dar 422 no checkout.
-- Rodar `docs/consultas/m-29-pecas-sem-preco.sql` (só leitura; pode ser antes do deploy) e corrigir no painel as
-  peças/tamanhos que ficam abaixo de R$ 0,01; depois do M-29 essas combinações dão 422 no checkout.
-- `.env` de produção com `ADMIN_EMAIL`/`ADMIN_PASSWORD` (M-01), `MERCADOPAGO_WEBHOOK_SECRET`, `APP_ENV=production`,
-  `APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`; trocar a senha do admin também no servidor publicado.
-- `.env` de produção com `CORS_ALLOWED_ORIGINS` = domínio do frontend publicado (M-05; sem ela a API só aceita as
-  origens de desenvolvimento) e `APP_URL` em `https://`. Depois de `php artisan config:cache`, rodar
-  `php artisan mimoo:check-production`: precisa terminar com "Configuração de produção ok." (código 0).
-- Build do front com `VITE_API_URL` = endereço da API publicada, sem `/api` no final (M-07; ex.:
-  `VITE_API_URL=https://api.dominio.com.br npm run build`). Sem ela, o site publicado chama `http://localhost:8000`.
-- E-mails ao cliente (M-04): `.env` de produção com `MAIL_MAILER` e os dados do SMTP, e um `php artisan queue:work`
-  rodando sempre (a fila é `database`; sem worker os e-mails ficam parados na tabela `jobs`). `QUEUE_CONNECTION=sync`
-  reprova o `mimoo:check-production` (M-32). Até o Zocca confirmar a hospedagem, valem as duas variantes:
-  - **VPS / servidor próprio:** supervisor mantendo `php artisan queue:work --tries=3 --sleep=3` (ex.: arquivo
-    `/etc/supervisor/conf.d/mimoo-worker.conf` com `command=php /caminho/backend/artisan queue:work --tries=3 --sleep=3`,
-    `autostart=true`, `autorestart=true`, `user=<usuário do site>`), e `php artisan queue:restart` a cada deploy;
-  - **hospedagem sem processo permanente (Hostinger, M-45):** cron a cada minuto chamando o agendador,
-    `* * * * * cd /caminho/backend && php artisan schedule:run >> /dev/null 2>&1`; o agendador (`routes/console.php`)
-    sobe `queue:work --stop-when-empty --max-time=50 --tries=3` sem dois workers juntos. E-mails saem em até ~1 min.
-  Depois do deploy, o `mimoo:check-production` mostra se há job parado há mais de 5 min e quantos jobs falharam. Se usar
-  `php artisan event:cache`, rodar de novo a cada deploy. PIX (webhook) e cartão aprovado (M-08) mandam o e-mail de
-  confirmação; "Iniciar Impressão" e "Expedir Pedido" do painel mandam os e-mails de impressão e de envio (M-10). O botão "Acompanhar" dos e-mails usa `FRONTEND_URL` (M-27, abaixo).
-- `.env` de produção com `FRONTEND_URL` = endereço da loja publicada, em `https://` e sem barra no final (M-27; ex.:
-  `FRONTEND_URL=https://www.dominio.com.br`). Sem ela, o botão "Acompanhar" dos e-mails aponta para `http://localhost:5173`.
-- PHP do servidor (M-42): **8.3.36 ou mais novo no ramo 8.3, ou 8.4.27 ou mais novo** (correção da PHP2Shell,
-  CVE-2026-109618 e CVE-2026-109619, de 21/10/2026; as versões anteriores permitem invadir o servidor sem login). Vale
-  para o PHP do site (FPM) e para o do terminal (fila, cron e `artisan`): conferir no painel da hospedagem e com
-  `php -v`. Com PHP anterior, o `composer install` recusa e o `mimoo:check-production` avisa. Se a hospedagem diz que o
-  pacote dela tem a correção com outro número (Ubuntu/Debian fazem isso), conferir no changelog e, só nesse caso, usar
-  `composer install --ignore-platform-req=php`. Depois de atualizar o PHP, `php artisan queue:restart`. Enquanto a
-  hospedagem não atualizar, contorno parcial no `php.ini`: `session.upload_progress.enabled=0`.
-- Laravel 13 (M-35; antes, Laravel 12 pelo M-23): o servidor precisa da versão de PHP do item acima (o CI testa 8.3 e
-  8.4). No deploy, dentro de `backend/`, nesta ordem: `composer install --no-dev --optimize-autoloader`,
-  `php artisan optimize:clear`, `php artisan migrate --force` (o M-35 não traz migration), `php artisan config:cache`,
-  `php artisan queue:restart` (o worker antigo ainda tem a versão anterior do Laravel carregada) e
-  `php artisan mimoo:check-production`, que precisa terminar com "Configuração de produção ok.". A sessão passou a ser
-  gravada em JSON: se já houver alguém logado (painel ou conta de cliente) quando o M-35 entrar no ar, a pessoa
-  precisa entrar de novo. O cache do frete mudou de chave (`shipping_rate:v2:`), então nenhuma cotação antiga é lida.
-- Conta de cliente (M-26 a): `php artisan migrate --force` cria `customers` e `customer_password_reset_tokens`. Loja e API
-  no mesmo domínio (ex.: loja `https://mimoolab.com.br`, API `https://api.mimoolab.com.br`), porque o login usa cookie.
-  No `.env` da API: `SESSION_DOMAIN=.mimoolab.com.br` (com o ponto, para a loja ler o cookie `XSRF-TOKEN`; vazio se a API
-  for servida em `https://mimoolab.com.br/api`), `SESSION_SECURE_COOKIE=true`, `SESSION_SAME_SITE=lax` (o padrão),
-  `CORS_ALLOWED_ORIGINS` com o endereço exato da loja (nunca `*`: o CORS agora aceita cookie) e `FRONTEND_URL` (os links
-  dos e-mails de conta abrem a loja). O cadastro só vale com SMTP e worker da fila funcionando (os e-mails de
-  confirmação e de nova senha vão pela fila `database`, como os de pedido). Com loja e API em
-  endereços diferentes e `SESSION_DOMAIN` errado, o `mimoo:check-production` avisa (todo login daria 419). Verificar
-  depois do deploy do (b) (o (a) sozinho não tem tela): criar uma conta de teste com um e-mail seu, conferir que
-  "Confirme seu e-mail na MIMOO LAB" chega em até 1 min, abrir o link (abre a loja, que confirma com você logado),
-  pedir "Esqueci minha senha" e conferir o segundo e-mail; se algum não chegar, `php artisan mimoo:check-production`
-  mostra job parado ou falhado.
-- Cadastro neutro (M-44): depois do deploy da conta de cliente, cadastrar de novo um e-mail que já tem conta e conferir
-  que a tela mostra a mesma mensagem de um cadastro novo e que chega à caixa da conta o aviso "🐮 Alguém tentou criar
-  uma conta com seu e-mail" (vai pela fila, como os outros e-mails de conta). Depois do cadastro ninguém sai logado: a
-  pessoa entra pela aba "Entrar".
-- Hospedagem (decidida em 2026-11-03: loja no Cloudflare Pages; API, fila, cron e Postgres numa VM Oracle Cloud Always
-  Free em São Paulo; detalhes em `/mnt/project-files/planos/deploy-gratuito.md`):
-  - criar a conta Oracle (região São Paulo), passar para Pay As You Go e ligar um alerta de orçamento;
-  - instalar nginx, PHP-FPM (com `pdo_pgsql`, `intl`, `mbstring`, `bcmath`, `curl`, `zip`, `gd`; versão do item do
-    M-42), Postgres 16, Composer e supervisor;
-  - `queue:work` sempre ligado (supervisor/systemd) e crontab `* * * * * php artisan schedule:run`;
-  - backup diário do Postgres para fora da VM (ex.: Object Storage grátis da Oracle ou R2 da Cloudflare) e um teste de
-    restauração;
-  - Cloudflare: zona `mimoolab.com.br`, Pages com `VITE_API_URL` e `NODE_VERSION=22`, registro `api` com proxy, SSL
-    Full (strict) + Origin Certificate;
-  - Resend: verificar o domínio (registros DNS na Cloudflare);
-  - webhook do Mercado Pago apontando para `https://api.mimoolab.com.br/...` (depois do DNS).
-  Não mudam: `.env` do servidor (`ADMIN_*`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL` sem barra,
-  `SESSION_DOMAIN=.mimoolab.com.br`, `QUEUE_CONNECTION=database`, `MAIL_*`), build, comandos do backend,
-  `mimoo:check-production` e as consultas SQL.
-- Páginas legais (M-41): antes do `npm run build`, preencher `src/config/loja.js` (razão social, CNPJ, endereço,
-  encarregado, serviço de e-mail, hospedagem e data da publicação; o que ficar vazio aparece na página como
-  "[a preencher: …]"). No `.env` da API: `LOJA_RAZAO_SOCIAL`, `LOJA_CNPJ` e, se quiser no rodapé dos e-mails,
-  `LOJA_CIDADE_UF` (sem razão social e CNPJ o `mimoo:check-production` reprova). Publicar as páginas junto ou antes da
-  conta de cliente (M-26 b). Endereços para cadastrar onde pedirem a política (Mercado Pago, Google):
-  `FRONTEND_URL/?pagina=privacidade` e `FRONTEND_URL/?pagina=termos`. Pedido de exclusão de conta:
-  `docs/runbook-excluir-conta-cliente.md`.
-- Build do front com Vite 6 (M-34): Node `^18`, `^20` ou `>=22` (o `engines` do Vite 6.4.4); usar Node 22, o mesmo do CI
-  (o 18 já não recebe correção). O build roda onde o `npm run build` for executado (não há deploy automático ligado ao
-  repositório): conferir `node -v` nessa máquina antes do build e rodar `npm ci` depois do pull.
+Tudo o que precisa ser feito antes e durante o deploy está em **`docs/deploy-hostinger.md`** (roteiro das fases 0 a
+4, com o `.env` de produção, a instalação, o ensaio em `staging`, a virada e a rotina). Não repita passos aqui: tarefa
+que criar um passo novo de deploy atualiza o roteiro.
