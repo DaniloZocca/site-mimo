@@ -1,10 +1,18 @@
 name: CI
 
+# Gatilho sem `paths`/`paths-ignore` de propósito (M-56): a proteção da main exige os 4 checks em TODO PR, inclusive
+# os só de documentação; com filtro de caminho o PR ficaria em "Expected — Waiting for status to be reported" para
+# sempre. Se um dia for preciso pular trabalho, o pulo vai dentro dos passos, nunca no gatilho: num job de matriz
+# com `if:` falso o GitHub reporta um só check com o nome sem expandir e os dois `backend (mariadb, php 8.x)`
+# continuariam pendentes.
+# `workflow_dispatch`: se uma execução travar sem começar (aconteceu no #64), Actions → CI → Run workflow na branch
+# do PR roda tudo de novo no mesmo commit, e os checks contam para a proteção da main.
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
