@@ -20,9 +20,14 @@ Fontes do backlog: `docs/known-bugs.md` (bugs #N), `RELATORIO_SEGURANCA_MIMOO.md
 - Merge (decisão do Zocca em 2026-10-07): o Claude pode mergear quando o PR estiver pronto (CI verde no
   último commit, sem conflito, comentários resolvidos, saídas coladas). "CI verde" = os checks do workflow
   `CI` (`.github/workflows/ci.yml`) verdes no último commit do PR, atualizado com a `main`.
-  **Suspenso (Zocca, 2026-10-08):** até o Zocca ativar a proteção da `main` com os checks obrigatórios,
-  nenhum merge é do Claude: abrir o PR, deixar pronto e avisar na thread. Depois do merge, avisar na thread
-  o que entrou e o que fazer antes do deploy.
+  A suspensão de 2026-10-08 acabou: a proteção da `main` está ativa (Zocca, 2026-11-11). O ruleset tem
+  como alvo a branch padrão, está Active e não tem bypass. Ele exige PR e os 4 checks `frontend`,
+  `backend (mariadb, php 8.3)`, `backend (mariadb, php 8.4)` e `scripts de deploy` verdes, com a branch
+  atualizada. Sem esses checks o GitHub recusa o merge, para o Claude e para o Zocca. Mesmo assim, PR de
+  classe C ou D só se mergeia com o OK do Zocca no plano e com a revisão do `payments-security-reviewer`
+  colada quando tocar dinheiro ou dados pessoais. Check travado em "Expected — Waiting for status to be
+  reported": rodar o `CI` à mão pela branch do PR (Actions → CI → Run workflow, M-56). Nunca contornar a
+  proteção. Depois do merge, avisar na thread o que entrou e o que fazer antes do deploy.
 - O PR da tarefa atualiza a própria linha da tabela abaixo (status e PR) e, se corrigir bug, `docs/known-bugs.md`.
   Conflito nesses dois arquivos se resolve mergeando a `main` e mantendo as duas linhas.
 
