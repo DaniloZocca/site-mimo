@@ -24,8 +24,9 @@ Fontes do backlog: `docs/known-bugs.md` (bugs #N), `RELATORIO_SEGURANCA_MIMOO.md
   como alvo a branch padrão, está Active e não tem bypass. Ele exige PR e os 4 checks `frontend`,
   `backend (mariadb, php 8.3)`, `backend (mariadb, php 8.4)` e `scripts de deploy` verdes, com a branch
   atualizada. Sem esses checks o GitHub recusa o merge, para o Claude e para o Zocca. Mesmo assim, PR de
-  classe C ou D só se mergeia com o OK do Zocca no plano e com a revisão do `payments-security-reviewer`
-  colada quando tocar dinheiro ou dados pessoais. Check travado em "Expected — Waiting for status to be
+  classe C ou D só se mergeia com o OK do Zocca no PR final (não basta o OK do plano), com a revisão do
+  `payments-security-reviewer` colada quando tocar dinheiro ou dados pessoais. Classes A e B: o Claude pode
+  mergear quando o PR estiver pronto. Check travado em "Expected — Waiting for status to be
   reported": rodar o `CI` à mão pela branch do PR (Actions → CI → Run workflow, M-56). Nunca contornar a
   proteção. Depois do merge, avisar na thread o que entrou e o que fazer antes do deploy.
 - O PR da tarefa atualiza a própria linha da tabela abaixo (status e PR) e, se corrigir bug, `docs/known-bugs.md`.
