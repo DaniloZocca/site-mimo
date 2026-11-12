@@ -2,14 +2,14 @@
 // Preencha antes do `npm run build` de produção. Campo vazio aparece na página como "[a preencher: …]".
 // Nunca coloque dado inventado aqui. Os dados do rodapé dos e-mails ficam no .env da API (LOJA_*).
 export const LOJA = {
-  razaoSocial: '',
-  cnpj: '',
+  razaoSocial: '69432423 Lucas Ruiz Schmidt Gallo',
+  cnpj: '69.432.423/0001-87',
   endereco: '',
   emailContato: 'contato.mimoolab@gmail.com',
   emailPrivacidade: 'contato.mimoolab@gmail.com',
   encarregado: '',
-  servicoEmail: '',
-  hospedagem: '',
+  servicoEmail: 'Resend',
+  hospedagem: 'Hostinger',
   atualizadoEm: '',
 };
 
