@@ -35,41 +35,52 @@ Estrutura no servidor:
 
 ## Fase 0 — Contas e DNS (antes de tudo)
 
-1. **DNS fica no Registro.br** (decisão do Zocca em 2026-11-11: os servidores DNS **não** foram trocados para os
-   da Hostinger). Todo registro deste roteiro é criado na zona do Registro.br: `registro.br` → `mimoolab.com.br` →
-   DNS → **Editar zona** (se pedir, ative o "modo avançado"; ele mantém os registros que já existem). O hPanel não
-   edita esta zona: quando a Hostinger mostrar "aponte o domínio" ou uma lista de registros, copie os valores para
-   o Registro.br. Antes de mexer, tire um print da zona: é o "voltar atrás".
-   - **API:** `api` → registro **A** com o IP do site `api.mimoolab.com.br` no hPanel (Sites → Detalhes / Painel
-     do site → "Endereço IP"). Feito em 2026-11-11.
+1. **DNS na Hostinger.** O `mimoolab.com.br` usa os servidores DNS da Hostinger (`cosmos.dns-parking.com` e
+   `nova.dns-parking.com`), não os do Registro.br: **todo registro deste roteiro é criado no hPanel** (Domínios →
+   `mimoolab.com.br` → **DNS / Nameservers**, ou Sites → o site → DNS). O Registro.br só guarda a indicação dos
+   servidores DNS; não crie registros lá (a zona do Registro.br não é consultada). Há **duas zonas** no hPanel:
+   - **`api.mimoolab.com.br`** (a do site do backend). O `@` desta zona é o próprio `api.mimoolab.com.br`.
+   - **`mimoolab.com.br`** (raiz, `www`, Resend). Hoje ela existe por causa de um **site PHP/HTML vazio e
+     provisório**, criado só para a zona existir até a loja ser publicada. Não apague esse site antes da virada
+     da loja para o Web App (1.1 item 2 e fase 3 item 4: exportar a zona antes).
+   - Antes de mexer em qualquer zona: hPanel → DNS → **Exportar** (baixa a zona num arquivo). É o "voltar atrás":
+     guarde o arquivo no gerenciador de senhas ou no PC.
+   - **API:** na zona `api.mimoolab.com.br`, o `@` tem de ser um registro **A** com o IP do servidor (Sites →
+     `api.mimoolab.com.br` → Detalhes / Painel do site → "Endereço IP"). **Não** pode ser `ALIAS` ou `CNAME` para
+     `*.cdn.hstgr.net`: isso é a CDN da Hostinger ligada, e ela precisa ficar desligada na API (1.1 item 5).
    - **Loja** (`mimoolab.com.br` e `www`): só quando o Web App da loja for ligado ao domínio (fase 2, opção 1, ou
-     fase 3, item 4). Use **exatamente** os registros que a Hostinger mostrar ao conectar o domínio no Web App
-     (em geral um A na raiz `@` e um A ou CNAME em `www`). Não reutilize o IP da API sem conferir: o Web App pode
-     estar em outro servidor.
-   - Um só registro A por nome. Se a zona tiver outro A, ou um **AAAA** (IPv6) apontando para outro lugar, em `api`,
-     na raiz ou em `www`, apague-o: senão parte dos acessos (e a validação do SSL) cai no endereço errado. Se houver
-     registro **CAA**, apague-o também (a Hostinger pede isso para o SSL gratuito).
-   - Esperado: `nslookup api.mimoolab.com.br` no PowerShell mostra o IP do hPanel (propagação: minutos, até 24 h).
-   - Se der errado: aparece outro IP ou "não encontrado" depois de 24 h → confira na zona do Registro.br o nome
-     (`api`, sem o domínio repetido), o tipo (A) e o IP, e se a alteração foi salva.
-   - **Consequências de ficar no Registro.br** (conferido em 2026-11-11 na documentação da Hostinger):
-     - **SSL gratuito funciona**: a Hostinger aceita domínio apontado por registro A para o IP da hospedagem; o
-       certificado sai sozinho depois que o A propaga (1.1 item 3).
-     - **CDN da Hostinger não funciona**: ela exige os servidores DNS da Hostinger (troca o A da raiz por endereços
-       da CDN e o `www` por um CNAME dela). Na API isso é o que queremos (CDN desligada, 1.1 item 5). Na loja fica
-       sem CDN: o site é estático e pequeno, então só perde um pouco de velocidade para visitantes longe do servidor.
-       Se um dia quiser CDN na loja, é preciso trocar os servidores DNS para os da Hostinger e recriar nela todos
-       os registros da zona (Resend, `api`): isso vira uma tarefa própria.
-     - E-mail (Resend) e qualquer outro registro continuam sendo editados só no Registro.br.
-2. **Resend** (conta contato.mimoolab@gmail.com): Domains → Add domain → `mimoolab.com.br`. Crie **na zona do
-   Registro.br** cada registro que o Resend mostrar (DKIM: TXT `resend._domainkey`; MX e TXT do SPF no subdomínio
-   `send`), copiando nome, tipo, valor e, no MX, a prioridade. No Registro.br o nome vai sem o domínio
-   (`resend._domainkey`, `send`), porque ele completa com `.mimoolab.com.br`. Acrescente um DMARC: TXT `_dmarc` =
-   `v=DMARC1; p=none;`. Espere o Resend marcar "Verified". Crie uma API key com permissão **Sending access** (ela é
-   a senha do SMTP).
-   - Esperado: `nslookup -type=txt resend._domainkey.mimoolab.com.br` mostra o valor `p=...` do Resend e o domínio
-     fica "Verified".
-   - Se der errado: "Failed"/"Pending" depois de 1 h → compare na zona do Registro.br o nome (o erro comum é
+     fase 3, item 4). Com os servidores DNS da Hostinger, o hPanel cria ou troca esses registros sozinho ao ligar o
+     domínio; confira depois na zona que a raiz `@` e o `www` apontam para o que o Web App indicou. Não reutilize o
+     IP da API sem conferir: o Web App pode estar em outro servidor.
+   - Um só registro A por nome. Se a zona tiver outro A, ou um **AAAA** (IPv6) apontando para outro lugar, no `@` da
+     API, na raiz ou em `www`, apague-o: senão parte dos acessos (e a validação do SSL) cai no endereço errado. Se
+     houver registro **CAA**, apague-o também (a Hostinger pede isso para o SSL gratuito).
+   - Esperado: `nslookup api.mimoolab.com.br` no PowerShell mostra o IP do servidor (do hPanel), não um endereço da
+     CDN; `nslookup -type=ns mimoolab.com.br` mostra `cosmos.dns-parking.com` e `nova.dns-parking.com`.
+   - Se der errado: aparece outro IP ou "não encontrado" → confira no hPanel, na zona `api.mimoolab.com.br`, o
+     nome (`@`), o tipo (A, não ALIAS/CNAME) e o IP, e se a alteração foi salva (propagação: minutos, até 24 h).
+     Servidores DNS diferentes dos dois acima → alguém trocou no Registro.br: pare e avise o Zocca.
+2. **Resend** (conta contato.mimoolab@gmail.com): domínio `mimoolab.com.br` **Verified** (informado pelo Zocca em
+   2026-11-12), região **São Paulo (`sa-east-1`)**, rastreamento de abertura e de clique **desligados**, recebimento
+   (inbound) **desligado**. Registros na zona **`mimoolab.com.br`** do hPanel (o hPanel completa o nome com
+   `.mimoolab.com.br`):
+
+   | Tipo | Nome | Valor |
+   |---|---|---|
+   | TXT | `resend._domainkey` | a chave DKIM `p=...` que o Resend mostra |
+   | CNAME | `send` | `send.forge.rmta.net` |
+   | CNAME | `rsend` | `rsend-sae1.forge.rmta.net` |
+   | TXT | `_dmarc` | `v=DMARC1; p=none;` |
+
+   A API key (permissão **Sending access**; é a senha do SMTP) está no Bitwarden e vai para o `.env` de produção
+   (`MAIL_PASSWORD`, 1.4) pela mão do Zocca.
+   - **Não há MX na raiz**: `pedidos@mimoolab.com.br` (remetente) **não recebe** respostas. Por isso todo e-mail
+     da loja sai com Reply-To (`MAIL_REPLY_TO_ADDRESS`, 1.4) para um endereço que tenha caixa de entrada. **Qual
+     endereço é decisão do Zocca, ainda pendente** (candidato: contato.mimoolab@gmail.com; ver "Decisões
+     pendentes" no `docs/coordenacao.md`). Sem ele definido, não siga para a fase 2.
+   - Esperado: `nslookup -type=txt resend._domainkey.mimoolab.com.br` mostra o valor `p=...` do Resend,
+     `nslookup -type=cname send.mimoolab.com.br` mostra `send.forge.rmta.net` e o domínio segue "Verified".
+   - Se der errado: "Failed"/"Pending" → compare no hPanel o nome (o erro comum é
      `resend._domainkey.mimoolab.com.br.mimoolab.com.br`, com o domínio repetido) e o valor inteiro (sem aspas a
      mais nem espaço no fim); depois clique em "Verify" de novo no Resend.
 3. **Mercado Pago** (conta da loja): em Suas integrações → sua aplicação, anote as credenciais de **teste** e as
@@ -81,10 +92,10 @@ Estrutura no servidor:
 6. **Gerenciador de senhas** (ex.: Bitwarden): guarde ali o `.env` inteiro, a senha do banco, a do admin, a API
    key do Resend e a senha do backup. Nada disso vai para o Git, para o chat ou para o Drive.
 
-**Voltar atrás (fase 0):** na zona do Registro.br, apague o A de `api` (ou volte a zona ao print do item 1;
-propaga em até 24 h). No Resend, apague o domínio; na zona do Registro.br, os registros `resend._domainkey`,
-`send` e `_dmarc`. As contas do Mercado Pago
-e do Melhor Envio podem ficar: sem as credenciais no `.env`, nada é cobrado.
+**Voltar atrás (fase 0):** no hPanel → DNS → **Importar** o arquivo exportado no item 1 (ou recrie os registros à
+mão a partir dele; propaga em até 24 h). No Resend, apague o domínio; na zona `mimoolab.com.br` do hPanel, os
+registros `resend._domainkey`, `send`, `rsend` e `_dmarc`. As contas do Mercado Pago e do Melhor Envio podem ficar:
+sem as credenciais no `.env`, nada é cobrado.
 
 ## Fase 1 — Infraestrutura
 
@@ -99,17 +110,25 @@ e do Melhor Envio podem ficar: sem as credenciais no `.env`, nada é cobrado.
    VITE_API_URL=https://api.mimoolab.com.br
    VITE_MERCADOPAGO_PUBLIC_KEY=<Public Key de TESTE>
    ```
-   Se `mimoolab.com.br` já existir como site (foi usado nos testes do M-45), a Hostinger pede para removê-lo
-   antes. Para onde apontar o domínio no ensaio, veja a fase 2 ("Loja fechada"). Ao ligar o domínio ao Web App, a
-   Hostinger mostra os registros para `mimoolab.com.br` e `www`: crie-os na zona do Registro.br (fase 0, item 1).
-3. Segurança → SSL: o certificado gratuito sai sozinho depois que o registro A do Registro.br propaga, para os
-   dois sites (não precisa dos servidores DNS da Hostinger). Ligue **Forçar HTTPS** nos dois. A loja só ganha
+   Para onde apontar o domínio no ensaio, veja a fase 2 ("Loja fechada"). Se o ensaio for pelo domínio
+   temporário (opção 2), crie o Web App sem ligar `mimoolab.com.br` e deixe o site provisório onde está.
+   **Antes de ligar `mimoolab.com.br` ao Web App** (opção 1 ou fase 3, item 4) a Hostinger pede para remover o
+   site PHP/HTML provisório que hoje segura a zona `mimoolab.com.br` (fase 0, item 1). Nessa hora:
+   1. hPanel → DNS da zona `mimoolab.com.br` → **Exportar** e guarde o arquivo (tem os 4 registros do Resend);
+   2. remova o site provisório e ligue `mimoolab.com.br` ao Web App (o hPanel ajusta a raiz `@` e o `www`);
+   3. abra a zona `mimoolab.com.br` de novo e confira que `resend._domainkey`, `send`, `rsend` e `_dmarc` continuam
+      lá com os mesmos valores (tabela da fase 0, item 2) e que o Resend segue "Verified".
+   - Se der errado: a zona sumiu ou perdeu registros → hPanel → DNS → **Importar** o arquivo do passo 1 (ou recrie
+     só os que faltam a partir dele) e clique em "Verify" no Resend. Até isso, os e-mails da loja podem falhar ou
+     cair no spam.
+3. Segurança → SSL: o certificado gratuito sai sozinho depois que o DNS do hPanel propaga, para os dois sites.
+   Ligue **Forçar HTTPS** nos dois. A loja só ganha
    certificado quando `mimoolab.com.br` e `www` estiverem apontados para ela.
    - Esperado: `https://api.mimoolab.com.br` e `https://mimoolab.com.br` abrem com cadeado, sem aviso.
    - Se der errado: o SSL fica "pendente" mais de 1 h depois de o DNS propagar → Segurança → SSL → **Reinstalar**
-     no site; confira que `nslookup api.mimoolab.com.br` aponta para o IP do hPanel e que a zona do Registro.br não
+     no site; confira que `nslookup api.mimoolab.com.br` aponta para o IP do servidor e que a zona do hPanel não
      tem outro A, um AAAA para outro lugar nem um CAA nesse nome (fase 0, item 1). Aviso de certificado em
-     `www` → confira que `www` está na zona do Registro.br com o registro que a Hostinger indicou e instale o SSL
+     `www` → confira que `www` está na zona `mimoolab.com.br` do hPanel apontando para o Web App e instale o SSL
      também para `www.mimoolab.com.br` (o hPanel lista os dois).
 4. **`www` → sem `www` pelo hPanel.** Não dá para confirmar que o Web App respeita um `.htaccess` dentro do build,
    então a loja não tem `.htaccess` (M-53): o redirecionamento é feito no hPanel. Domínios → `mimoolab.com.br` →
@@ -117,16 +136,20 @@ e do Melhor Envio podem ficar: sem as credenciais no `.env`, nada é cobrado.
    tipo **301 (permanente)**, guardando o caminho se a opção existir. A API aceita (CORS) só a origem exata da loja,
    então a loja não pode funcionar em `www`.
    - Esperado: `curl.exe -sI https://www.mimoolab.com.br/` → `301` e `location: https://mimoolab.com.br/`.
-   - O `www` precisa estar na zona do Registro.br apontando para a Hostinger (fase 0, item 1), senão o redirecionamento
+   - O `www` precisa estar na zona `mimoolab.com.br` do hPanel apontando para a Hostinger (fase 0, item 1), senão o redirecionamento
      do hPanel nunca é alcançado.
    - Se der errado: `200` em `www` → o redirecionamento não foi salvo, ou o `www` está apontado como "alias" do
      Web App (remova o alias e crie o redirecionamento). Sem a opção no hPanel → peça ao suporte da Hostinger o
      redirecionamento 301 de `www` para o domínio sem `www`.
-5. **CDN desligada na API:** com o DNS no Registro.br a CDN da Hostinger não consegue ser ligada (ela exige os
-   servidores DNS da Hostinger), mas confira: Sites → `api.mimoolab.com.br` → Desempenho → CDN deve estar
-   **desativada** (se aparecer ativa, desative). Desligue também qualquer cache do servidor (Cache Manager/LiteSpeed)
-   no `api.`. A loja também fica sem CDN (fase 0, item 1); a prova de que nada está na frente da API é o teste do
-   IP real no 1.9.
+5. **CDN desligada na API.** Com os servidores DNS da Hostinger a CDN pode ser ligada, e ela já esteve ligada no
+   `api.` (o `@` da zona virou `ALIAS` para `*.cdn.hstgr.net`). Ela precisa ficar **desligada** no `api.`:
+   - Sites → `api.mimoolab.com.br` → Desempenho → **CDN** → desativada (se aparecer ativa, desative).
+   - **Checagem do DNS:** hPanel → DNS da zona `api.mimoolab.com.br` → o `@` é um registro **A** com o IP do
+     servidor (Sites → Detalhes → "Endereço IP"). Se ainda for `ALIAS`/`CNAME` para `*.cdn.hstgr.net` depois de
+     desligar a CDN, apague-o e crie o A com o IP. Esperado: `nslookup api.mimoolab.com.br` mostra o IP do servidor.
+   - Desligue também qualquer cache do servidor (Cache Manager/LiteSpeed) no `api.`.
+   - A prova de que nada está na frente da API é o teste do IP real e dos cabeçalhos no 1.9 (sem `server: hcdn`).
+   - Na loja a CDN é opcional (site estático, não mexe nos limites da API); este roteiro não depende dela.
    Motivo: a API não confia em proxy; atrás da CDN todos os clientes teriam o IP da CDN e os limites por IP
    (checkout, rastreio, login) valeriam para a loja inteira; e o filtro da CDN pode barrar o webhook.
 
@@ -242,7 +265,7 @@ MAIL_USERNAME=resend                          # fixo (é a palavra "resend" mesm
 MAIL_PASSWORD='<API key do Resend>'           # SEGREDO: Resend → API Keys (Sending access), guardada no gerenciador
 MAIL_FROM_ADDRESS=pedidos@mimoolab.com.br     # fixo (domínio verificado no Resend)
 MAIL_FROM_NAME="MIMOO LAB"                    # fixo
-MAIL_REPLY_TO_ADDRESS=contato.mimoolab@gmail.com  # fixo: as respostas dos clientes chegam aqui
+MAIL_REPLY_TO_ADDRESS=<e-mail com caixa de entrada>  # A DEFINIR pelo Zocca (candidato: contato.mimoolab@gmail.com): as respostas dos clientes chegam aqui (o remetente pedidos@ não recebe, fase 0 item 2)
 MAIL_REPLY_TO_NAME="MIMOO LAB"                # fixo
 
 # --- Mercado Pago (fase 0 item 3) ---
@@ -378,7 +401,7 @@ para "Pagamento em revisão" (a API só libera pagamento real em produção); po
 
 - **Opção 1 — senha na loja.** Se o site da loja tiver Avançado → **Proteger pasta com senha** (ou "Password
   Protect Directories"), proteja o `public_html` da loja. `mimoolab.com.br` já pode apontar para a loja (registros da raiz e do `www`
-  na zona do Registro.br, fase 0 item 1).
+  na zona `mimoolab.com.br` do hPanel, fase 0 item 1; antes, exporte a zona e confira o Resend como no 1.1 item 2).
 - **Opção 2 — domínio temporário.** Se o Web App não tiver essa opção, faça o ensaio no **domínio temporário** que
   o hPanel mostra para a loja (Sites → Detalhes) e só ligue `mimoolab.com.br` à loja na virada (fase 3). No
   ensaio, `FRONTEND_URL` e `CORS_ALLOWED_ORIGINS` recebem o endereço temporário (com `https://`) e a conta de
@@ -397,7 +420,8 @@ Para cada item: o que fazer → o que conferir. Com algum item falhando, não si
    CDN ligada no `api.` (refaça o 1.1 item 5 e mande na thread o que apareceu); `503` = API em manutenção
    (`$PHP artisan up`); `500` = mande o `error_ref` do log.
 2. **PIX** com um comprador de teste do Mercado Pago → pedido aprovado vira "Na fila" no painel e o e-mail
-   "pedido confirmado" chega em até ~1 min, com Reply-To para contato.mimoolab@gmail.com.
+   "pedido confirmado" chega em até ~1 min, com Reply-To para o endereço definido no `MAIL_REPLY_TO_ADDRESS` (fase 0, item 2). Responda esse e-mail e
+   confira que a resposta chega na caixa desse endereço.
 3. **Cartão de teste aprovado** (resposta na hora) e um **recusado** (mensagem de erro na loja, pedido pendente).
 4. **Painel**: iniciar impressão → acabamento → expedir com código de rastreio → entregue. Chegam os e-mails de
    impressão e de envio.
@@ -464,8 +488,9 @@ Pré-requisito: **M-51 na `producao`** (sem simulação de PIX no código de pro
    `/mnt/project-files/consultas/produtos-sem-cor-ou-tamanho.sql` (produto sem cor/tamanho vinculado dá 422 no
    checkout, M-03) e `docs/consultas/m-29-pecas-sem-preco.sql` (peça/tamanho abaixo de R$ 0,01 dá 422, M-29).
    Esperado: nenhuma linha. Se aparecer alguma, corrija o produto no painel antes de abrir.
-4. Se o ensaio foi no domínio temporário (opção 2): ligue `mimoolab.com.br` ao Web App da loja, crie na zona do
-   Registro.br os registros de `mimoolab.com.br` e `www` que a Hostinger mostrar (fase 0, item 1), espere o SSL e
+4. Se o ensaio foi no domínio temporário (opção 2): **exporte a zona `mimoolab.com.br`**, remova o site
+   provisório, ligue `mimoolab.com.br` ao Web App da loja e confira os 4 registros do Resend (1.1 item 2: se
+   sumirem, reimporte), confira a raiz e o `www` na zona do hPanel (fase 0, item 1), espere o SSL e
    repita os testes da conta de cliente (fase 2, item 6) e do `www` (1.9).
 5. **Compra real pequena**: o produto mais barato, pago com PIX por você → "Na fila" no painel e e-mail de
    confirmação. Depois, **estorno** pelo painel do Mercado Pago e o pedido tratado como no
