@@ -237,7 +237,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                 <div className="bg-mimoo-purple-tint p-3 rounded-2xl border border-purple-200 flex items-center gap-2.5">
                   <span className="text-xl">🌱</span>
                   <div className="text-xs font-fredoka">
-                    <strong className="block text-mimoo-dark">{selectedMaterial?.name || 'PLA'} Sob Encomenda</strong>
+                    <strong className="block text-mimoo-dark">{selectedMaterial?.name || 'PLA'} Premium</strong>
                     <span className="text-slate-500 font-normal">Manufatura sob demanda</span>
                   </div>
                 </div>
