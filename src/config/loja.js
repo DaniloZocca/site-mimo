@@ -4,7 +4,7 @@
 export const LOJA = {
   razaoSocial: '69432423 Lucas Ruiz Schmidt Gallo',
   cnpj: '69.432.423/0001-87',
-  endereco: '',
+  endereco: 'Rua Tiradentes, 848, Sala 21 e 22 – Centro, Piracicaba/SP – CEP 13400-760',
   emailContato: 'contato.mimoolab@gmail.com',
   emailPrivacidade: 'contato.mimoolab@gmail.com',
   encarregado: '',

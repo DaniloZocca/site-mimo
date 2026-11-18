@@ -20,7 +20,7 @@ export const FAQSection = () => {
           </h2>
 
           <p className="font-nunito text-slate-500 text-sm sm:text-base">
-            Tudo o que você precisa saber sobre tempos de produção, filamentos ecológicos e cuidados.
+            Tudo o que você precisa saber sobre tempos de produção, filamentos e cuidados.
           </p>
         </div>
 

@@ -43,7 +43,7 @@ export const Hero = () => {
 
             {/* Subheading */}
             <p className="font-nunito text-base sm:text-lg text-slate-600 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Decoração, suportes geek e peças colecionáveis fabricadas em <strong>filamento PLA ecológico</strong> com alta definição. Escolha sua cor favorita e veja sua encomenda nascer na impressora!
+              Decoração, suportes geek e peças colecionáveis fabricadas em <strong>filamento PLA premium</strong> com alta definição. Escolha sua cor favorita e veja sua encomenda nascer na impressora!
             </p>
 
             {/* Highlight Badges Row */}
@@ -53,7 +53,7 @@ export const Hero = () => {
                 Tempo de Impressão Transparente
               </span>
               <span className="badge-chunky bg-mimoo-mint-light text-emerald-800 border-emerald-400 flex items-center gap-1">
-                🌱 100% PLA Biodegradável
+                🌱 PLA de Origem Vegetal
               </span>
               <span className="badge-chunky bg-mimoo-pink-light text-pink-700 border-pink-300 flex items-center gap-1">
                 🎨 8+ Cores Pastel & Seda
