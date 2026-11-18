@@ -20,6 +20,11 @@ Nos comandos, `<usuário>` é o seu usuário da Hostinger (o que aparece em `/ho
 `PHP=/opt/alt/php84/usr/bin/php` (conferido no M-45). Na Hostinger o comando `composer` é a **versão 1**: use
 sempre `composer2`, rodado com o PHP 8.4: `$PHP $(which composer2) ...`.
 
+O PHP da Hostinger desliga `proc_open`, `exec` e `symlink` (entre outras; M-62). Por isso: o composer roda com
+`--no-scripts` e os dois comandos que os scripts chamariam vão à mão (`package:discover` e `filament:upgrade`);
+o link das fotos é criado com `ln -s` (o `artisan storage:link` falha); e os agendamentos rodam dentro do próprio
+`schedule:run` (um `Schedule::command` não rodaria lá, e o `schedule:run` ainda imprimiria `DONE`).
+
 Estrutura no servidor:
 
 ```
@@ -301,16 +306,23 @@ funciona com loja e API sob o mesmo domínio. No domínio temporário o cadastro
 ```bash
 cd ~/site-mimo/backend
 PHP=/opt/alt/php84/usr/bin/php
-$PHP $(which composer2) install --no-dev --optimize-autoloader --no-interaction
+(umask 022 && $PHP $(which composer2) install --no-dev --optimize-autoloader --no-interaction --no-scripts)
+(umask 022 && $PHP artisan package:discover --ansi && $PHP artisan filament:upgrade)
 $PHP artisan key:generate --force
 $PHP artisan migrate --force
 $PHP artisan db:seed --class=AdminUserSeeder --force     # antes do config:cache (o seeder lê o .env direto)
 nano .env                                                 # apague a linha ADMIN_PASSWORD
-$PHP artisan storage:link
+ln -s ~/site-mimo/backend/storage/app/public ~/site-mimo/backend/public/storage   # no lugar do storage:link
 $PHP artisan config:cache && $PHP artisan route:cache && $PHP artisan view:cache
 $PHP artisan mimoo:check-production
 ```
 
+- Esperado no composer: termina sem erro (com `--no-scripts` ele não chama o `artisan`). Sem o `--no-scripts` ele
+  para em `The Process class relies on proc_open`: os pacotes ficam instalados e basta rodar a linha seguinte
+  (`package:discover` e `filament:upgrade`).
+- Esperado no `filament:upgrade`: `Successfully upgraded!`.
+- Esperado no `ln -s`: `ls -la ~/site-mimo/backend/public/storage` mostra `-> /home/<usuário>/site-mimo/backend/storage/app/public`.
+  O `mimoo:check-production` avisa se o link faltar ou apontar para outro lugar.
 - Esperado no `migrate --force`: uma linha `DONE` por migration, sem erro.
 - Se der errado no `migrate`: `Access denied` ou `Unknown database` → confira `DB_DATABASE`, `DB_USERNAME` e
   `DB_PASSWORD` no `.env` contra o hPanel (o usuário precisa estar ligado ao banco, com todos os privilégios). Erro
@@ -345,8 +357,11 @@ hPanel → Avançado → Cron Jobs → **Personalizado**, a cada minuto (`* * * 
 /opt/alt/php84/usr/bin/php /home/<usuário>/site-mimo/backend/artisan schedule:run >> /dev/null 2>&1
 ```
 
-- Esperado, depois de 2 minutos: `$PHP artisan schedule:list` mostra o `queue:work` e o `mimoo:check-production`
-  não reclama de job parado.
+- Esperado: `$PHP artisan schedule:list` mostra `limpeza-failed-jobs` (todo dia) e `fila` (todo minuto). Os dois
+  rodam dentro do próprio `schedule:run`, sem processo filho (o PHP da Hostinger não tem `proc_open`; M-62).
+- Esperado, depois de 2 minutos: o `mimoo:check-production` não reclama de job parado e
+  `grep -c "Erro não tratado" ~/site-mimo/backend/storage/logs/laravel-$(date +%F).log` não aumenta de um minuto
+  para o outro.
 - Se der errado: job parado ou e-mail que não sai → rode a mesma linha do cron à mão no SSH (sem o `>> /dev/null`)
   e veja o erro; confira o caminho absoluto `/home/<usuário>/...` (o cron não entende `~`) e o PHP
   `/opt/alt/php84/usr/bin/php`. O hPanel mostra a saída do cron em Cron Jobs → "Ver saída", se existir.
@@ -520,7 +535,8 @@ Pré-requisito: **M-51 na `producao`** (sem simulação de PIX no código de pro
    O script recusa rodar se o clone não estiver na branch `producao` ou se houver arquivo alterado ou novo no
    repositório (`git status`), sem mexer em nada. Depois mostra a versão no ar e a que vai entrar, pede
    confirmação, põe a API em manutenção (o webhook recebe 503 e o Mercado Pago reenvia), atualiza o código só por
-   avanço (fast-forward), roda `composer2 install --no-dev`, `migrate --force`, refaz os caches, roda o
+   avanço (fast-forward), roda `composer2 install --no-dev --no-scripts`, apaga os caches que o composer apagaria,
+   roda `package:discover` e `filament:upgrade` (o PHP da Hostinger não tem `proc_open`; M-62), `migrate --force`, refaz os caches, roda o
    `mimoo:check-production`, reinicia o worker e **só então** sai da manutenção. Os arquivos que ele gera
    (caches com a configuração) ficam só para o seu usuário (`umask 077`).
    - Esperado: termina com `Deploy ok: <commit> <mensagem>`.

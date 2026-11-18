@@ -30,6 +30,7 @@ if [ "$1" = "-r" ]; then exit 0; fi
 if [ "$(basename "$1")" = "composer2" ]; then
     if [ "$2" = "--version" ]; then echo "Composer version 2.8.12 2025-09-19 13:41:59"; exit 0; fi
     echo "composer $2" >> "$CALLS"
+    echo "composer-args ${*:2}" >> "$CALLS"
     mkdir -p backend-public-filament && echo "/* asset */" > backend-public-filament/app.css
     [ "${FAIL_ON:-}" = "composer" ] && exit 1
     exit 0
@@ -37,6 +38,11 @@ fi
 if [ "$1" = "artisan" ]; then
     echo "artisan $2" >> "$CALLS"
     if [ "$2" = "config:cache" ]; then echo "<?php return [];" > bootstrap-cache-config.php; fi
+    # M-62: registra se os caches que o post-autoload-dump do Laravel apagaria ainda existem no package:discover
+    if [ "$2" = "package:discover" ]; then
+        for f in config services packages; do [ -e "bootstrap/cache/$f.php" ] && echo "cache-velho $f" >> "$CALLS"; done
+    fi
+    if [ "$2" = "filament:upgrade" ]; then mkdir -p backend-public-filament && echo "/* painel */" > backend-public-filament/filament.css; fi
     [ "${FAIL_ON:-}" = "$2" ] && { echo "falha simulada em $2" >&2; exit 1; }
     exit 0
 fi
@@ -53,10 +59,13 @@ new_repo() {
     git -C "$WORK/dev" checkout --quiet -b producao
     mkdir -p "$WORK/dev/backend/public"
     echo "v1" > "$WORK/dev/backend/public/app.css"
-    printf 'bootstrap-cache-config.php\nbackend-public-filament/\n' > "$WORK/dev/backend/.gitignore"
+    printf 'bootstrap-cache-config.php\nbackend-public-filament/\nbootstrap/cache/*.php\n' > "$WORK/dev/backend/.gitignore"
     git -C "$WORK/dev" add -A && git -C "$WORK/dev" commit --quiet -m "v1"
     git -C "$WORK/dev" push --quiet origin producao
     git clone --quiet -b producao "$WORK/origin.git" "$WORK/app"
+    # Caches da versão anterior, como no servidor
+    mkdir -p "$WORK/app/backend/bootstrap/cache"
+    for f in config services packages; do echo "<?php return [];" > "$WORK/app/backend/bootstrap/cache/$f.php"; done
     V1="$(git -C "$WORK/app" rev-parse HEAD)"
     echo "v2" > "$WORK/dev/backend/public/app.css"
     git -C "$WORK/dev" commit --quiet -am "v2"
@@ -97,6 +106,16 @@ FAIL_ON="composer" run_deploy
     && ok "composer falha: sem migrate, sem up, passo mostrado" || not_ok "composer falha: sem migrate, sem up" "$OUTPUT"
 
 new_repo
+FAIL_ON="package:discover" run_deploy
+{ [ "$CODE" -ne 0 ] && ! called "artisan up" && ! called "artisan migrate" && [[ "$OUTPUT" == *"CONTINUA EM MANUTENÇÃO"* ]]; } \
+    && ok "package:discover falha: sem migrate, sem up, segue em manutenção" || not_ok "package:discover falha" "$OUTPUT"
+
+new_repo
+FAIL_ON="filament:upgrade" run_deploy
+{ [ "$CODE" -ne 0 ] && ! called "artisan up" && ! called "artisan migrate" && [[ "$OUTPUT" == *"ERRO no passo: Pacotes do Laravel"* ]]; } \
+    && ok "filament:upgrade falha: sem migrate, sem up, passo mostrado" || not_ok "filament:upgrade falha" "$OUTPUT"
+
+new_repo
 FAIL_ON="migrate" run_deploy
 { [ "$CODE" -ne 0 ] && ! called "artisan up" && ! called "artisan config:cache" && [[ "$OUTPUT" == *"ERRO no passo: Migrations"* ]]; } \
     && ok "migrate falha: sem caches, sem up, passo mostrado" || not_ok "migrate falha: sem caches, sem up" "$OUTPUT"
@@ -113,6 +132,17 @@ run_deploy
     && ok "sucesso: sai com 0 e 'artisan up' é o último comando" || not_ok "sucesso: up por último" "$OUTPUT"
 [ "$(line_of "artisan mimoo:check-production")" -lt "$(line_of "artisan up")" ] \
     && ok "sucesso: check roda antes do up" || not_ok "sucesso: check antes do up" "$(cat "$CALLS")"
+# M-62: composer sem scripts (o PHP da Hostinger não tem proc_open) e, depois dele, o que os scripts fariam
+grep -q -- "^composer-args install .*--no-scripts" "$CALLS" \
+    && ok "composer roda com --no-scripts" || not_ok "composer com --no-scripts" "$(cat "$CALLS")"
+{ [ "$(line_of "composer install")" -lt "$(line_of "artisan package:discover")" ] \
+    && [ "$(line_of "artisan package:discover")" -lt "$(line_of "artisan filament:upgrade")" ] \
+    && [ "$(line_of "artisan filament:upgrade")" -lt "$(line_of "artisan migrate")" ]; } \
+    && ok "ordem: composer → package:discover → filament:upgrade → migrate" || not_ok "ordem do composer e dos scripts" "$(cat "$CALLS")"
+! grep -q "^cache-velho" "$CALLS" \
+    && ok "caches config/services/packages apagados antes do package:discover" || not_ok "caches apagados" "$(cat "$CALLS")"
+[ "$(stat -c %a "$WORK/app/backend/backend-public-filament/filament.css")" = "644" ] \
+    && ok "asset publicado pelo filament:upgrade fica 644" || not_ok "asset do filament:upgrade 644" "$(stat -c %a "$WORK/app/backend/backend-public-filament/filament.css")"
 [ "$(git -C "$WORK/app" rev-parse HEAD)" = "$V2" ] && ok "sucesso: código avançou para origin/producao" || not_ok "sucesso: código avançou"
 [ "$(git -C "$WORK/app" symbolic-ref --short HEAD)" = "producao" ] && ok "sucesso: clone segue na branch producao" || not_ok "sucesso: segue na producao"
 [ "$(stat -c %a "$WORK/app/backend/bootstrap-cache-config.php")" = "600" ] \

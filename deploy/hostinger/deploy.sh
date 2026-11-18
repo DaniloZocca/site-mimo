@@ -124,7 +124,16 @@ else
 fi
 
 step "Dependências (composer2, sem pacotes de desenvolvimento)"
-(trap - ERR; umask 022 && "$PHP" "$COMPOSER" install --no-dev --optimize-autoloader --no-interaction --no-progress)
+# M-62: o PHP da Hostinger desliga proc_open, e os scripts do composer.json ("@php artisan ...") rodam como processo
+# filho: o install quebraria no post-autoload-dump. Por isso --no-scripts e, em seguida, o que os scripts fariam:
+# apagar os 3 caches que o ComposerScripts::postAutoloadDump do Laravel apaga (senão as migrations rodariam com a
+# configuração em cache da versão anterior), package:discover e filament:upgrade (publica o CSS/JS do painel em
+# public/, por isso também com umask 022). Os dois artisan rodam dentro do próprio processo.
+(trap - ERR; umask 022 && "$PHP" "$COMPOSER" install --no-dev --optimize-autoloader --no-interaction --no-progress --no-scripts)
+rm -f bootstrap/cache/config.php bootstrap/cache/services.php bootstrap/cache/packages.php
+
+step "Pacotes do Laravel e assets do painel (package:discover, filament:upgrade)"
+(trap - ERR; umask 022 && "$PHP" artisan package:discover --ansi && "$PHP" artisan filament:upgrade)
 
 step "Migrations"
 "$PHP" artisan migrate --force
