@@ -78,8 +78,14 @@ class FixStoragePermissionsCommand extends Command
         $publicStoragePath = public_path('storage');
 
         if (! file_exists($publicStoragePath)) {
-            Artisan::call('storage:link');
-            $this->line('   [+] Symlink criado com sucesso via <fg=green>php artisan storage:link</>');
+            // M-62: na Hostinger o PHP desliga symlink e exec, e o storage:link quebraria; o link é criado no shell
+            if (! function_exists('symlink')) {
+                $this->warn('   [!] Este PHP não cria links (symlink desligado). Crie no terminal:');
+                $this->line('       ln -s '.storage_path('app/public').' '.$publicStoragePath);
+            } else {
+                Artisan::call('storage:link');
+                $this->line('   [+] Symlink criado com sucesso via <fg=green>php artisan storage:link</>');
+            }
         } else {
             $this->line('   [✓] Symlink ativo e apontando corretamente para o storage público.');
         }
