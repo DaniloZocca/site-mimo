@@ -67,6 +67,10 @@ class CheckProductionServicesTest extends CharacterizationTestCase
                 ['mail.default' => 'array'],
                 'MAIL_MAILER é "array"',
             ],
+            'e-mail por sendmail (precisa de proc_open, desligado na Hostinger)' => [
+                ['mail.default' => 'sendmail'],
+                'MAIL_MAILER é "sendmail"',
+            ],
             'remetente de exemplo' => [
                 ['mail.from.address' => 'hello@example.com'],
                 'MAIL_FROM_ADDRESS vazio ou de exemplo',

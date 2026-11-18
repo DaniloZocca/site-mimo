@@ -6,6 +6,9 @@ namespace App\Console\Commands;
 
 use App\Support\DatabaseSettings;
 use Illuminate\Console\Command;
+use Illuminate\Console\Scheduling\CallbackEvent;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -27,7 +30,7 @@ class CheckProductionConfigCommand extends Command
 
     protected $signature = 'mimoo:check-production';
 
-    protected $description = 'Falha se a configuração não estiver pronta para produção (APP_ENV, APP_DEBUG, CORS, cookie de sessão, HTTPS, fila, dados da loja, Mercado Pago, Melhor Envio, e-mail, banco).';
+    protected $description = 'Falha se a configuração não estiver pronta para produção (APP_ENV, APP_DEBUG, CORS, cookie de sessão, HTTPS, fila, dados da loja, Mercado Pago, Melhor Envio, e-mail, banco, agendador, link das fotos).';
 
     public function handle(): int
     {
@@ -78,10 +81,17 @@ class CheckProductionConfigCommand extends Command
         // e a espera por trava. Valem por sessão, então são conferidas na conexão que a loja usa.
         $problems = [...$problems, ...$this->databaseProblems()];
 
-        // Avisos (não reprovam): PHP sem a correção de segurança, login de cliente com cookie, sinais de worker
-        // parado e jobs que falharam
+        // M-62: agendamento que sobe processo filho não roda sem proc_open (Hostinger)
+        $problems = [
+            ...$problems,
+            ...self::schedulerProblems(app(Schedule::class)->events(), function_exists('proc_open')),
+        ];
+
+        // Avisos (não reprovam): PHP sem a correção de segurança, link das fotos, login de cliente com cookie,
+        // sinais de worker parado e jobs que falharam
         $warnings = [
             ...array_filter([self::phpVersionWarning(PHP_VERSION)]),
+            ...array_filter([self::publicStorageWarning(public_path('storage'), storage_path('app/public'))]),
             ...$this->servicesWarnings(),
             ...$this->accountCookieWarnings(),
             ...$this->queueWarnings($connection),
@@ -132,6 +142,10 @@ class CheckProductionConfigCommand extends Command
 
         if (in_array((string) config('mail.default'), ['log', 'array'], true)) {
             $problems[] = 'MAIL_MAILER é "'.config('mail.default').'": nenhum e-mail chegaria ao cliente. Use MAIL_MAILER=smtp com os dados do Resend.';
+        }
+
+        if ((string) config('mail.default') === 'sendmail') {
+            $problems[] = 'MAIL_MAILER é "sendmail": ele precisa de proc_open, que a Hostinger desliga, e nenhum e-mail sairia (M-62). Use MAIL_MAILER=smtp com os dados do Resend.';
         }
 
         $from = strtolower(trim((string) config('mail.from.address')));
@@ -228,6 +242,46 @@ class CheckProductionConfigCommand extends Command
         return in_array($driver, ['mariadb', 'mysql'], true)
             ? []
             : ["Banco {$driver}: a produção é MariaDB (M-45); as checagens do banco não rodaram."];
+    }
+
+    /**
+     * M-62: o PHP da Hostinger desliga proc_open. Sem ele, todo agendamento que sobe um processo filho
+     * (`Schedule::command`, `exec`, `job` fora da fila) não roda, e o `schedule:run` ainda imprime DONE.
+     *
+     * @param  iterable<Event>  $events
+     * @return list<string>
+     */
+    public static function schedulerProblems(iterable $events, bool $procOpenAvailable): array
+    {
+        if ($procOpenAvailable) {
+            return [];
+        }
+
+        $problems = [];
+        foreach ($events as $event) {
+            if (! $event instanceof CallbackEvent) {
+                $problems[] = 'Agendamento "'.$event->getSummaryForDisplay().'" precisa de proc_open, que o PHP '
+                    .'deste servidor desliga: ele nunca rodaria. Use Schedule::call() com Artisan::call() em routes/console.php (M-62).';
+            }
+        }
+
+        return $problems;
+    }
+
+    /**
+     * M-62: sem o link public/storage as fotos dos produtos dão 404. Na Hostinger o `storage:link` não funciona
+     * (symlink desligado no PHP): o link é criado com `ln -s` (docs/deploy-hostinger.md, 1.5). Aviso, não
+     * reprovação: as fotos não impedem o checkout e o link é do servidor, não da configuração.
+     */
+    public static function publicStorageWarning(string $link, string $target): ?string
+    {
+        if (is_link($link) && realpath($link) !== false && realpath($link) === realpath($target)) {
+            return null;
+        }
+
+        return 'Link public/storage ausente ou apontando para outro lugar: as fotos dos produtos dariam 404. '
+            .'Na Hostinger crie com: ln -s ~/site-mimo/backend/storage/app/public ~/site-mimo/backend/public/storage '
+            .'(o artisan storage:link não funciona lá).';
     }
 
     /**
