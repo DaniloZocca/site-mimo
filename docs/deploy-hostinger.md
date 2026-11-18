@@ -75,9 +75,8 @@ Estrutura no servidor:
    A API key (permissão **Sending access**; é a senha do SMTP) está no Bitwarden e vai para o `.env` de produção
    (`MAIL_PASSWORD`, 1.4) pela mão do Zocca.
    - **Não há MX na raiz**: `pedidos@mimoolab.com.br` (remetente) **não recebe** respostas. Por isso todo e-mail
-     da loja sai com Reply-To (`MAIL_REPLY_TO_ADDRESS`, 1.4) para um endereço que tenha caixa de entrada. **Qual
-     endereço é decisão do Zocca, ainda pendente** (candidato: contato.mimoolab@gmail.com; ver "Decisões
-     pendentes" no `docs/coordenacao.md`). Sem ele definido, não siga para a fase 2.
+     da loja sai com Reply-To (`MAIL_REPLY_TO_ADDRESS`, 1.4) para um endereço que tenha caixa de entrada:
+     **contato.mimoolab@gmail.com** (decisão do Zocca em 2026-11-11, M-58).
    - Esperado: `nslookup -type=txt resend._domainkey.mimoolab.com.br` mostra o valor `p=...` do Resend,
      `nslookup -type=cname send.mimoolab.com.br` mostra `send.forge.rmta.net` e o domínio segue "Verified".
    - Se der errado: "Failed"/"Pending" → compare no hPanel o nome (o erro comum é
@@ -265,7 +264,7 @@ MAIL_USERNAME=resend                          # fixo (é a palavra "resend" mesm
 MAIL_PASSWORD='<API key do Resend>'           # SEGREDO: Resend → API Keys (Sending access), guardada no gerenciador
 MAIL_FROM_ADDRESS=pedidos@mimoolab.com.br     # fixo (domínio verificado no Resend)
 MAIL_FROM_NAME="MIMOO LAB"                    # fixo
-MAIL_REPLY_TO_ADDRESS=<e-mail com caixa de entrada>  # A DEFINIR pelo Zocca (candidato: contato.mimoolab@gmail.com): as respostas dos clientes chegam aqui (o remetente pedidos@ não recebe, fase 0 item 2)
+MAIL_REPLY_TO_ADDRESS=contato.mimoolab@gmail.com  # fixo (decisão do Zocca, M-58): as respostas dos clientes chegam aqui (o remetente pedidos@ não recebe, fase 0 item 2)
 MAIL_REPLY_TO_NAME="MIMOO LAB"                # fixo
 
 # --- Mercado Pago (fase 0 item 3) ---
