@@ -18,7 +18,7 @@ enum MaterialType: string implements HasLabel, HasColor, HasDescription
     public function label(): string
     {
         return match ($this) {
-            self::PLA => 'PLA Premium (Atóxico e Biodegradável)',
+            self::PLA => 'PLA Premium (Biodegradável em Compostagem Industrial)',
             self::PETG => 'PETG Resistente (Uso Externo & Térmico)',
             self::ABS => 'ABS Industrial (Alta Resistência Mecânica)',
             self::TPU => 'TPU Flexível (Emborrachado & Maleável)',
@@ -38,7 +38,7 @@ enum MaterialType: string implements HasLabel, HasColor, HasDescription
     public function technicalDescription(): string
     {
         return match ($this) {
-            self::PLA => 'Polímero de origem vegetal (amido de milho). Ideal para decoração, vasos e action figures.',
+            self::PLA => 'Polímero de origem vegetal, biodegradável em compostagem industrial. Ideal para decoração, vasos e action figures.',
             self::PETG => 'Alta resistência ao impacto e raios UV. Ideal para peças funcionais, suportes e uso automotivo.',
             self::ABS => 'Resiste a temperaturas de até 90°C. Acabamento rígido e excelente durabilidade mecânica.',
             self::TPU => 'Filamento elastômero flexível. Resistente a torção, impactos e absorção de choque.',

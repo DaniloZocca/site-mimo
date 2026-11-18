@@ -35,6 +35,7 @@ Na dúvida entre dois tamanhos, escolha o menor — exceto se tocar pagamento, q
 8. CPF, e-mail, telefone, tokens e segredos nunca vão para logs, exceções ou respostas.
 9. `OrderItem` é snapshot imutável: não recalcule pedidos antigos a partir de `Product`.
 10. Nada de atalhos de teste em código de produção (ex.: IDs `SIM_`/`TEST_` que simulam pagamento aprovado). Simulação vive em testes com `Http::fake()`/mocks.
+11. Nenhuma alegação ambiental ou de saúde no site, nos e-mails ou na API sem comprovação documentada; o PLA é "biodegradável em compostagem industrial", nunca "100%", "ecológico", "sustentável", "atóxico" ou "energia limpa/renovável" (M-59; o `ContentClaimsTest` reprova as formas proibidas) (risco de propaganda enganosa, art. 37 do CDC).
 
 ## Como trabalhar neste repo
 - Leia os arquivos envolvidos e o padrão existente mais próximo antes de editar.

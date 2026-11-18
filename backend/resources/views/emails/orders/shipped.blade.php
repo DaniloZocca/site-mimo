@@ -81,7 +81,7 @@
               ✨ Dicas de Cuidado com sua Peça 3D:
             </strong>
             <ul style="margin: 0; padding-left: 18px; font-size: 11px; color: #6D28D9; line-height: 1.6;">
-              <li>Fabricada em <strong>PLA biodegradável</strong> de alta qualidade.</li>
+              <li>Fabricada em <strong>PLA</strong> de alta qualidade, biodegradável em compostagem industrial.</li>
               <li>Evite exposição direta e prolongada ao sol intenso ou temperaturas acima de 55°C.</li>
               <li>Para limpeza, utilize apenas um pano macio levemente umedecido em água.</li>
             </ul>

@@ -17,7 +17,7 @@
       </h1>
       
       <p style="margin: 0; font-size: 13px; color: #52525B; line-height: 1.6; max-width: 480px;">
-        Olá, {{ explode(' ', trim($order->customer_name ?: 'Cliente'))[0] }}! Nossa equipe técnica acabou de carregar o filamento ecológico e a impressora 3D já está fatiando a sua encomenda <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong>.
+        Olá, {{ explode(' ', trim($order->customer_name ?: 'Cliente'))[0] }}! Nossa equipe técnica acabou de carregar o filamento e a impressora 3D já está fatiando a sua encomenda <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong>.
       </p>
     </td>
   </tr>

@@ -102,7 +102,7 @@ export const FAQS = [
   },
   {
     question: 'O material PLA é resistente e seguro?',
-    answer: 'Sim! Utilizamos filamento PLA (Ácido Polilático) de grau premium, um termoplástico biodegradável de origem vegetal (amido de milho e cana-de-açúcar). É totalmente atóxico, seguro para ambientes familiares, não tem cheiro e possui alta resistência mecânica para uso decorativo e funcional diário.'
+    answer: 'Sim! Utilizamos filamento PLA (Ácido Polilático) de grau premium, um termoplástico de origem vegetal, biodegradável em compostagem industrial. Não tem cheiro e possui alta resistência mecânica para uso decorativo e funcional diário.'
   },
   {
     question: 'Posso acompanhar a fabricação da minha peça em tempo real?',
@@ -118,6 +118,6 @@ export const PRINT_FARM_TICKERS = [
   '🐮 Impressora #02 acabou de iniciar: Vasinho Mimoo em Lilás Pastel para Curitiba/PR',
   '✨ Impressora #05 imprimindo: Dragão de Cristal Articulado (Camada 820/1200) para Belo Horizonte/MG',
   '💖 Pedido #8492 de Fernanda O. está a 68% de conclusão na máquina!',
-  '🌱 100% de energia limpa e filamento PLA biodegradável em todas as impressões hoje',
+  '🌱 Filamento PLA de origem vegetal em todas as impressões hoje',
   '🚀 Envio expresso realizado para 14 clientes felizes esta tarde!'
 ];

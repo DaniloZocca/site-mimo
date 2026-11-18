@@ -44,8 +44,8 @@ export const Footer = () => {
                 🌱
               </div>
               <div className="text-xs font-fredoka">
-                <strong className="block text-mimoo-dark">100% Biodegradável</strong>
-                <span className="text-slate-500">Filamento PLA de milho & cana</span>
+                <strong className="block text-mimoo-dark">Compostável na Indústria</strong>
+                <span className="text-slate-500">Filamento PLA de origem vegetal</span>
               </div>
             </div>
 
@@ -97,7 +97,7 @@ export const Footer = () => {
             </div>
 
             <p className="text-xs sm:text-sm text-slate-600 font-nunito leading-relaxed">
-              Transformando filamentos ecológicos e ideias criativas em peças colecionáveis, decorativas e funcionais. Cada criação é impressa exclusivamente para você com muito carinho e precisão.
+              Transformando filamento PLA e ideias criativas em peças colecionáveis, decorativas e funcionais. Cada criação é impressa exclusivamente para você com muito carinho e precisão.
             </p>
 
             <div className="pt-2 flex items-center gap-2 text-xs font-fredoka font-bold text-slate-700">
@@ -214,7 +214,7 @@ export const Footer = () => {
 
         {/* Bottom Copyright & Payment Methods */}
         <div className="mt-12 pt-6 border-t-2 border-mimoo-dark/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 font-nunito">
-          <p>© 2026 MIMOO LAB Impressão 3D. Todos os direitos reservados. Feito com amor e PLA sustentável. 🐮💖</p>
+          <p>© 2026 MIMOO LAB Impressão 3D. Todos os direitos reservados. Feito com amor e PLA. 🐮💖</p>
           
           <div className="flex items-center gap-2 font-fredoka font-bold text-[11px] text-slate-700">
             <span className="bg-slate-100 px-2 py-0.5 rounded border">PIX (10% OFF)</span>

@@ -21,7 +21,7 @@ export const normalizeCartItem = (payload, fallbackQty = 1) => {
   const rawMaterial = payload.material || payload.selectedMaterial || product.materials?.[0] || {
     id: 'pla',
     name: 'PLA',
-    full_name: 'PLA Premium (Atóxico e Biodegradável)',
+    full_name: 'PLA Premium (Biodegradável em Compostagem Industrial)',
   };
   const material = {
     id: String(rawMaterial.id || 'pla').toLowerCase(),

@@ -25,7 +25,7 @@ class ProductSeeder extends Seeder
             [
                 'title' => 'Mascote Vaquinha Articulada 3D',
                 'slug' => 'mascote-vaquinha-articulada-3d',
-                'description' => 'A adorável vaquinha mascote da MIMOO LAB com articulações móveis nas patinhas e cabeça, impressa em camadas ultrafinas de PLA biodegradável de altíssima precisão.',
+                'description' => 'A adorável vaquinha mascote da MIMOO LAB com articulações móveis nas patinhas e cabeça, impressa em camadas ultrafinas de PLA de altíssima precisão.',
                 'base_price_cents' => 4990, // R$ 49,90
                 'weight_grams' => 120,
                 'estimated_print_time_hours' => 4.5,

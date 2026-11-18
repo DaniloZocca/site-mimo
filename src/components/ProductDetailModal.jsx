@@ -19,8 +19,8 @@ const DEFAULT_MATERIALS = [
   {
     id: 'pla',
     name: 'PLA',
-    full_name: 'PLA Premium (Atóxico e Biodegradável)',
-    description: 'Polímero de origem vegetal (amido de milho). Ideal para decoração e colecionáveis.',
+    full_name: 'PLA Premium (Biodegradável em Compostagem Industrial)',
+    description: 'Polímero de origem vegetal, biodegradável em compostagem industrial. Ideal para decoração e colecionáveis.',
   },
   {
     id: 'petg',
@@ -237,7 +237,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                 <div className="bg-mimoo-purple-tint p-3 rounded-2xl border border-purple-200 flex items-center gap-2.5">
                   <span className="text-xl">🌱</span>
                   <div className="text-xs font-fredoka">
-                    <strong className="block text-mimoo-dark">{selectedMaterial?.name || 'PLA'} Sustentável</strong>
+                    <strong className="block text-mimoo-dark">{selectedMaterial?.name || 'PLA'} Sob Encomenda</strong>
                     <span className="text-slate-500 font-normal">Manufatura sob demanda</span>
                   </div>
                 </div>
@@ -600,10 +600,10 @@ const ProductDetailContent = ({ selectedProduct }) => {
                     </span>
                   </div>
                   <strong className="text-mimoo-dark block text-sm font-fredoka">
-                    {selectedMaterial?.full_name || selectedMaterial?.name || 'PLA Premium (Atóxico e Biodegradável)'}
+                    {selectedMaterial?.full_name || selectedMaterial?.name || 'PLA Premium (Biodegradável em Compostagem Industrial)'}
                   </strong>
                   <p className="text-xs text-slate-600 font-nunito leading-relaxed">
-                    {selectedMaterial?.description || 'Polímero ecológico derivado de amido vegetal, perfeito para acabamentos ricos em detalhes e cores vibrantes.'}
+                    {selectedMaterial?.description || 'Polímero de origem vegetal, biodegradável em compostagem industrial, perfeito para acabamentos ricos em detalhes e cores vibrantes.'}
                   </p>
                 </div>
 
@@ -655,7 +655,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                     <>
                       <li className="flex items-start gap-2">
                         <span className="text-mimoo-pink font-bold flex-shrink-0">🌸</span>
-                        <span>Peça fabricada em polímero técnico ecológico: resistente e durável para decoração e colecionismo.</span>
+                        <span>Peça fabricada em polímero técnico: resistente e durável para decoração e colecionismo.</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-mimoo-pink font-bold flex-shrink-0">🌸</span>
