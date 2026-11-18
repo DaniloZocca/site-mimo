@@ -27,7 +27,7 @@ class OrderItemFactory extends Factory
             'product_title_snapshot' => 'Dragão Articulado',
             'color_name_snapshot' => 'Roxo MIMOO',
             'size_name_snapshot' => 'Tamanho Padrão',
-            'material_name_snapshot' => 'PLA Premium (Atóxico e Biodegradável)',
+            'material_name_snapshot' => 'PLA Premium (Biodegradável em Compostagem Industrial)',
             'unit_price_cents' => 5000,
             'quantity' => 1,
         ];

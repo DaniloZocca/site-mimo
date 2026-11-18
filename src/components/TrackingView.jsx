@@ -273,7 +273,7 @@ export const TrackingView = () => {
                 O Ciclo de Vida da sua Encomenda Sob Demanda
               </h3>
               <p className="text-xs font-nunito text-slate-500">
-                Do filamento ecológico direto para o aconchego da sua casa.
+                Do filamento PLA direto para o aconchego da sua casa.
               </p>
             </div>
 
@@ -299,7 +299,7 @@ export const TrackingView = () => {
                   Extrusão na Fazenda 3D
                 </h4>
                 <p className="text-xs font-nunito text-slate-600 leading-relaxed">
-                  A peça é construída camada por camada (0.16mm a 0.20mm) com PLA biodegradável durante várias horas.
+                  A peça é construída camada por camada (0.16mm a 0.20mm) com PLA (biodegradável em compostagem industrial) durante várias horas.
                 </p>
               </div>
 

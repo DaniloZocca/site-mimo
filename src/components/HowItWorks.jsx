@@ -59,7 +59,7 @@ export const HowItWorks = () => {
           </h2>
 
           <p className="font-nunito text-slate-600 text-sm sm:text-base">
-            Diferente de estoques convencionais, criamos cada item <strong>exclusivamente para você</strong>. Isso garante zero desperdício de plástico e acabamento perfeito!
+            Diferente de estoques convencionais, criamos cada item <strong>exclusivamente para você</strong>. Isso evita estoque parado e garante acabamento perfeito!
           </p>
         </div>
 
@@ -114,7 +114,7 @@ export const HowItWorks = () => {
                 Por que a Impressão Sob Demanda é o Futuro?
               </h4>
               <p className="font-nunito text-xs sm:text-sm text-purple-100 max-w-xl mt-1">
-                Zero estoques acumulados e plástico jogado fora. Cada grama de filamento PLA é aquecida e moldada com destino certo: alegrar o seu dia!
+                Nada de estoque parado. Cada grama de filamento PLA é aquecida e moldada com destino certo: alegrar o seu dia!
               </p>
             </div>
           </div>
