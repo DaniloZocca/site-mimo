@@ -196,7 +196,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                 <img 
                   src={activeImage} 
                   alt={selectedProduct.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
                 
                 {/* Top Badge */}
