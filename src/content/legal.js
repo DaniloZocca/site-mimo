@@ -20,7 +20,7 @@ export const LEGAL_PAGES = {
         title: '🐮 Quem cuida dos seus dados',
         paragraphs: [
           '{{razaoSocial}}, CNPJ {{cnpj}}, {{endereco}} ("MIMOO LAB").',
-          'Fale com a gente sobre privacidade pelo e-mail **{{emailPrivacidade}}**. Encarregado de dados: {{encarregado}}.',
+          'Fale com a gente sobre privacidade pelo e-mail **{{emailPrivacidade}}**: ele é o nosso canal para tudo sobre os seus dados. Como somos um agente de tratamento de pequeno porte, não indicamos um encarregado de dados (Resolução CD/ANPD nº 2/2022, art. 11), e esse e-mail faz esse papel.',
         ],
       },
       {
