@@ -114,7 +114,7 @@ export const Hero = () => {
                   <img 
                     src={featured ? featured.image : "/assets/hero_showcase.jpg"} 
                     alt={featured ? featured.name : "MIMOO LAB Impressão 3D Studio"}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = '/assets/products/cow_planter.jpg';
