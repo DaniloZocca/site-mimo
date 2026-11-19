@@ -386,7 +386,7 @@ hPanel → Avançado → Cron Jobs → **Personalizado**, a cada minuto (`* * * 
 | API no ar | `curl.exe -sI https://api.mimoolab.com.br/up` | `HTTP/1.1 200` (ou `HTTP/2 200`), `strict-transport-security`, **sem** `x-powered-by`, **sem** `server: hcdn`, **sem** `x-hcdn-*` e **sem** `x-litespeed-cache` |
 | Arquivos com ponto | `curl.exe -s -o NUL -w "%{http_code}" https://api.mimoolab.com.br/.user.ini` e o mesmo com `/.env`, `/.htaccess` e `/.git/config` | `403` ou `404` nos quatro (se algum der `200`, tire a API do ar com `$PHP artisan down` e mande na thread) |
 | CORS da loja | `curl.exe -sI -H "Origin: https://mimoolab.com.br" https://api.mimoolab.com.br/api/products` | `access-control-allow-origin: https://mimoolab.com.br` |
-| CORS de outro site | o mesmo com `-H "Origin: https://exemplo.com"` | sem `access-control-allow-origin` |
+| CORS de outro site | o mesmo com `-H "Origin: https://exemplo.com"` | `access-control-allow-origin` **nem** `*` **nem** `https://exemplo.com` (com uma origem só configurada, a API sempre devolve `https://mimoolab.com.br`, e o navegador do outro site recusa a resposta) |
 | Painel | abrir `https://api.mimoolab.com.br/admin` | tela de login; o admin entra |
 | Imagens | cadastrar um produto com foto no painel e abrir a foto | abre em `https://api.mimoolab.com.br/storage/products/...` |
 | `www` | `curl.exe -sI https://www.mimoolab.com.br/` | `301` para `https://mimoolab.com.br/` |
@@ -479,6 +479,10 @@ Drive podem ser apagados (`~/bin/rclone purge mimoo-backup-crypt:` apaga só a p
 ## Fase 3 — Virar produção
 
 Pré-requisito: **M-51 na `producao`** (sem simulação de PIX no código de produção).
+
+Pré-requisito: **data da publicação das páginas legais na `producao`** (M-63): um PR preenche `atualizadoEm` em
+`src/config/loja.js` com a data da virada (hoje a Política e os Termos mostram "[a preencher: data da publicação]").
+Sem ele, não publique a loja no item 2.
 
 1. **`.env` da API** com as credenciais de **produção**:
    `APP_ENV=production`, `MERCADOPAGO_ACCESS_TOKEN`/`MERCADOPAGO_PUBLIC_KEY` de produção,

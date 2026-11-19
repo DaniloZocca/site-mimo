@@ -1,5 +1,6 @@
 // Dados da loja usados na Política de Privacidade e nos Termos de Uso (M-41).
 // Preencha antes do `npm run build` de produção. Campo vazio aparece na página como "[a preencher: …]".
+// `atualizadoEm` fica vazio até a virada para produção (fase 3 do docs/deploy-hostinger.md).
 // Nunca coloque dado inventado aqui. Os dados do rodapé dos e-mails ficam no .env da API (LOJA_*).
 export const LOJA = {
   razaoSocial: '69432423 Lucas Ruiz Schmidt Gallo',
@@ -7,7 +8,6 @@ export const LOJA = {
   endereco: 'Rua Tiradentes, 848, Sala 21 e 22 – Centro, Piracicaba/SP – CEP 13400-760',
   emailContato: 'contato.mimoolab@gmail.com',
   emailPrivacidade: 'contato.mimoolab@gmail.com',
-  encarregado: '',
   servicoEmail: 'Resend',
   hospedagem: 'Hostinger',
   atualizadoEm: '',
@@ -20,7 +20,6 @@ export const LOJA_CAMPOS = {
   endereco: 'endereço completo',
   emailContato: 'e-mail de contato',
   emailPrivacidade: 'e-mail de privacidade',
-  encarregado: 'encarregado de dados',
   servicoEmail: 'serviço de envio de e-mails',
   hospedagem: 'hospedagem',
   atualizadoEm: 'data da publicação',
