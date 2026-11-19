@@ -450,39 +450,48 @@ const ProductDetailContent = ({ selectedProduct }) => {
                 )}
 
                 {/* Quantity and CTA Buttons (no celular fica fixo no rodapé do modal enquanto rola) */}
-                <div className="sticky -bottom-4 z-10 -mx-4 px-4 py-3 bg-white border-t border-slate-200 sm:static sm:z-auto sm:mx-0 sm:px-0 sm:py-0 sm:pt-2 sm:bg-transparent sm:border-0 flex items-center gap-3">
-                  {/* Quantity Pill */}
-                  <div className="flex items-center rounded-2xl border-2 border-mimoo-dark bg-white shadow-chunky-sm p-1">
+                <div className="sticky -bottom-4 z-10 -mx-4 px-4 py-3 bg-white border-t border-slate-200 sm:static sm:z-auto sm:mx-0 sm:px-0 sm:py-0 sm:pt-2 sm:bg-transparent sm:border-0">
+                  <div className="flex items-center gap-3">
+                    {/* Quantity Pill */}
+                    <div className="flex items-center rounded-2xl border-2 border-mimoo-dark bg-white shadow-chunky-sm p-1">
+                      <button
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        className="w-8 h-8 rounded-xl font-fredoka font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center text-base"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center font-fredoka font-bold text-sm text-mimoo-dark">
+                        {quantity}
+                      </span>
+                      <button
+                        onClick={() => setQuantity(quantity + 1)}
+                        className="w-8 h-8 rounded-xl font-fredoka font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center text-base"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Chunky Add to Cart Button */}
                     <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-8 h-8 rounded-xl font-fredoka font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center text-base"
+                      onClick={handleAddToCart}
+                      disabled={!selectedColor}
+                      className="flex-1 btn-chunky-purple py-3.5 px-6 text-sm sm:text-base flex items-center justify-center gap-2 shadow-chunky font-fredoka font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      -
-                    </button>
-                    <span className="w-8 text-center font-fredoka font-bold text-sm text-mimoo-dark">
-                      {quantity}
-                    </span>
-                    <button
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="w-8 h-8 rounded-xl font-fredoka font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center text-base"
-                    >
-                      +
+                      <ShoppingBag className="w-5 h-5" />
+                      <span>Adicionar à Sacola • {pricing.totalCartaoFormatted}</span>
                     </button>
                   </div>
 
-                  {/* Chunky Add to Cart Button */}
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={!selectedColor}
-                    className="flex-1 btn-chunky-purple py-3.5 px-6 text-sm sm:text-base flex items-center justify-center gap-2 shadow-chunky font-fredoka font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ShoppingBag className="w-5 h-5" />
-                    <span>Adicionar à Sacola • {pricing.totalCartaoFormatted}</span>
-                  </button>
+                  {/* No celular o aviso fica na barra fixa, junto do botão desabilitado */}
+                  {!selectedColor && (
+                    <p role="status" className="sm:hidden mt-2 text-xs font-nunito font-semibold text-mimoo-pink">
+                      {noColorsForMaterial ? 'Sem cores disponíveis neste material' : 'Escolha uma cor para adicionar à sacola'}
+                    </p>
+                  )}
                 </div>
 
                 {!selectedColor && (
-                  <p role="status" className="text-xs font-nunito font-semibold text-mimoo-pink">
+                  <p role="status" className="hidden sm:block text-xs font-nunito font-semibold text-mimoo-pink">
                     {noColorsForMaterial ? 'Sem cores disponíveis neste material' : 'Escolha uma cor para adicionar à sacola'}
                   </p>
                 )}
