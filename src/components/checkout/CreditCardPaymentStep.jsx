@@ -155,7 +155,7 @@ export const CreditCardPaymentStep = ({
     setIsBrickReady(true);
   }, [clearReadyTimer]);
 
-  // Remonta o Brick do zero (nova key) e recomeça o prazo
+  // Remonta o Brick do zero (nova key e novo container, para um create() antigo ainda pendente não cair no novo) e recomeça o prazo
   const handleRetry = () => {
     setLoadTimedOut(false);
     setSdkRenderError(null);
@@ -190,18 +190,18 @@ export const CreditCardPaymentStep = ({
 
       {/* Alertas de Recusa ou Falha */}
       {(errorMessage || loadErrorMessage) && (
-        <div className="p-4 rounded-2xl bg-pink-50 border-2 border-pink-300 text-pink-900 text-xs font-nunito flex items-start gap-3 animate-in shake">
+        <div role="alert" className="p-4 rounded-2xl bg-pink-50 border-2 border-pink-300 text-pink-900 text-xs font-nunito flex items-start gap-3 animate-in shake">
           <AlertCircle className="w-5 h-5 flex-shrink-0 text-pink-600 mt-0.5" />
           <div className="space-y-0.5">
             <strong className="block font-fredoka font-bold text-sm">
               {errorMessage ? 'Não foi possível autorizar o cartão' : 'Não conseguimos carregar o formulário do cartão'}
             </strong>
             <p className="leading-snug">{errorMessage || loadErrorMessage}</p>
-            {!errorMessage && loadTimedOut && (
+            {!errorMessage && (loadTimedOut || (sdkRenderError && !isBrickReady)) && (
               <button
                 type="button"
                 onClick={handleRetry}
-                className="mt-2 px-4 py-2.5 rounded-2xl border-2 border-mimoo-dark bg-white font-fredoka font-bold text-xs text-mimoo-dark shadow-chunky-sm hover:bg-slate-100 transition-all flex items-center gap-1.5"
+                className="mt-3 px-4 py-2.5 rounded-2xl border-2 border-mimoo-dark bg-white font-fredoka font-bold text-xs text-mimoo-dark shadow-chunky-sm hover:bg-slate-100 transition-all flex items-center gap-1.5"
               >
                 Tentar de novo
               </button>
@@ -233,6 +233,7 @@ export const CreditCardPaymentStep = ({
       >
         <CardPayment
           key={brickKey}
+          id={`cardPaymentBrick_container_${brickKey}`}
           initialization={initialization}
           customization={BRICK_CUSTOMIZATION}
           onSubmit={handleCardSubmit}
