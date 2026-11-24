@@ -20,7 +20,6 @@ import { OrderSearchForm } from './tracking/OrderSearchForm';
 import { ManufacturingStepper } from './tracking/ManufacturingStepper';
 import { OrderSummaryCard } from './tracking/OrderSummaryCard';
 import { ProductionTimelineLogs } from './tracking/ProductionTimelineLogs';
-import { ShareTrackingCard } from './tracking/ShareTrackingCard';
 
 export const TrackingView = () => {
   const { setActiveTab } = useShop();
@@ -170,13 +169,12 @@ export const TrackingView = () => {
           {/* 1. Stepper Visual da Produção Fabril 3D */}
           <ManufacturingStepper currentStatus={order.status} />
 
-          {/* 2. Grid de 2 Colunas: Resumo + Compartilhamento e Diário da Oficina */}
+          {/* 2. Grid de 2 Colunas: Resumo e Diário da Oficina */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* Coluna 1 (Esquerda - 7 Colunas): Detalhes da Encomenda & Compartilhamento */}
+            {/* Coluna 1 (Esquerda - 7 Colunas): Detalhes da Encomenda */}
             <div className="lg:col-span-7 space-y-6">
               <OrderSummaryCard order={order} />
-              <ShareTrackingCard trackingToken={order.trackingToken} orderNumber={order.orderNumber} />
             </div>
 
             {/* Coluna 2 (Direita - 5 Colunas): Linha do Tempo de Logs da Oficina */}
