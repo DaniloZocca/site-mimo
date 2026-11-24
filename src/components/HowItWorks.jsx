@@ -36,7 +36,7 @@ export const HowItWorks = () => {
       desc: 'Sua peça é protegida em papel de seda especial, ganha adesivos colecionáveis da vaquinha e vai direto para a transportadora!',
       icon: Gift,
       color: 'bg-mimoo-mint-light text-emerald-800 border-emerald-400',
-      badge: 'Rastreio em Tempo Real'
+      badge: 'Código de Rastreio'
     }
   ];
 

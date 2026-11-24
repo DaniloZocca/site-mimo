@@ -23,7 +23,7 @@ export const LiveFarmTicker = () => {
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>
           <span className="text-[11px] font-bold text-mimoo-yellow uppercase tracking-wider hidden sm:inline">
-            Fazenda 3D ao Vivo:
+            Fazenda 3D Mimoo:
           </span>
         </div>
 

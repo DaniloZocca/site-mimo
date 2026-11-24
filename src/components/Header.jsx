@@ -134,7 +134,7 @@ export const Header = () => {
                   ? 'bg-mimoo-yellow text-mimoo-dark shadow-chunky-sm' 
                   : 'bg-white text-slate-700 hover:bg-mimoo-yellow-light shadow-chunky-sm'
               }`}
-              title="Acompanhe sua fabricação em tempo real"
+              title="Acompanhe cada etapa da sua encomenda"
             >
               <Truck className="w-4 h-4 text-mimoo-purple" />
               <span>Rastrear 3D</span>
