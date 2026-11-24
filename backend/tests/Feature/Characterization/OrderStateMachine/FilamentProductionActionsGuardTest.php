@@ -98,7 +98,7 @@ class FilamentProductionActionsGuardTest extends CharacterizationTestCase
         Livewire::test(ListOrders::class)
             ->callTableAction('startPrinting', $order)
             ->assertHasNoTableActionErrors()
-            ->assertNotified('Extrusão 3D Iniciada!');
+            ->assertNotified('Impressão 3D Iniciada!');
 
         $this->assertSame(OrderStatus::PRINTING, $order->fresh()->status);
         $this->assertStatusChangeLog($order, 'in_queue', 'printing', 'Impressão 3D iniciada na fazenda de manufatura.');

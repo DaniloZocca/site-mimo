@@ -225,7 +225,7 @@ class OrderResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Iniciar Fabricação 3D na Fazenda')
                     ->modalDescription('Confirmar que a impressora 3D foi abastecida com o filamento correto e o fatiamento foi disparado?')
-                    ->modalSubmitActionLabel('Sim, iniciar extrusão')
+                    ->modalSubmitActionLabel('Sim, iniciar impressão')
                     ->action(function (Order $record): void {
                         $notes = 'Impressão 3D iniciada na fazenda de manufatura.';
                         if (! self::applyPanelTransition($record, OrderStatus::IN_QUEUE, OrderStatus::PRINTING, $notes)) {
@@ -233,7 +233,7 @@ class OrderResource extends Resource
                         }
 
                         Notification::make()
-                            ->title('Extrusão 3D Iniciada!')
+                            ->title('Impressão 3D Iniciada!')
                             ->body("A encomenda {$record->order_number} entrou em processo de impressão.")
                             ->success()
                             ->send();
