@@ -32,9 +32,9 @@ Estrutura no servidor:
 ~/site-mimo/backend/.env                   .env de produção (chmod 600; nunca no Git)
 ~/domains/api.mimoolab.com.br/public_html  -> link para ~/site-mimo/backend/public
 ~/domains/mimoolab.com.br/public_html      loja (o Web App publica aqui)
-~/backups/diario/ e ~/backups/semanal/     backups locais (7 diários + 4 semanais)
-~/bin/rclone                               envio dos backups para fora do servidor
 ```
+
+Backup: só o diário da própria Hostinger (hPanel), decisão do Zocca em 2026-11-24 (fase 4, "Backup").
 
 ---
 
@@ -90,11 +90,19 @@ Estrutura no servidor:
 3. **Mercado Pago** (conta da loja): em Suas integrações → sua aplicação, anote as credenciais de **teste** e as
    de **produção** (Public Key e Access Token). Webhooks: URL `https://api.mimoolab.com.br/api/webhooks/mercadopago`,
    evento **Pagamentos**, no modo teste e no modo produção; anote a **assinatura secreta** de cada um.
+   - **Chave PIX cadastrada** na conta Mercado Pago dona das credenciais (app do Mercado Pago → Pix → Minhas
+     chaves). Sem ela o Mercado Pago não gera o QR Code, **nem com as credenciais de teste**: responde o erro
+     `13253` "Collector user without key enabled for QR render" e a loja mostra que o PIX falhou (achado no ensaio
+     de 2026-11-20).
+   - **Public Key e Access Token do mesmo par**: copie os dois da **mesma tela** de credenciais (a de teste ou a de
+     produção da mesma aplicação), e se renovar um, renove e copie os dois. Com chaves de pares diferentes o cartão
+     falha com o erro `2006` "Card Token not found" (o token do cartão é criado com a Public Key da loja e o
+     pagamento é feito com o Access Token da API; achado no ensaio de 2026-11-24).
 4. **Melhor Envio** (conta da loja): token do **sandbox** (ensaio) e de **produção** (virada).
 5. **Dados da loja:** razão social, CNPJ, cidade/UF (`.env` e `src/config/loja.js`). Sem eles o
    `mimoo:check-production` reprova (M-41).
 6. **Gerenciador de senhas** (ex.: Bitwarden): guarde ali o `.env` inteiro, a senha do banco, a do admin, a API
-   key do Resend e a senha do backup. Nada disso vai para o Git, para o chat ou para o Drive.
+   key do Resend. Nada disso vai para o Git, para o chat ou para o Drive.
 
 **Voltar atrás (fase 0):** no hPanel → DNS → **Importar** o arquivo exportado no item 1 (ou recrie os registros à
 mão a partir dele; propaga em até 24 h). No Resend, apague o domínio; na zona `mimoolab.com.br` do hPanel, os
@@ -161,6 +169,19 @@ sem as credenciais no `.env`, nada é cobrado.
 
 hPanel → Bancos de dados → Gerenciamento → novo banco e novo usuário com senha forte (gerada pelo gerenciador).
 Anote nome do banco, usuário e senha.
+
+**Consultas no banco (pelo SSH).** No ensaio, o banco `u294647749_mimoolab` não apareceu em Bancos de dados de
+nenhum site do hPanel (nem o botão do phpMyAdmin). As consultas deste roteiro rodam então pelo SSH (1.3), com o
+usuário e o banco do `.env`:
+
+```bash
+mysql -u u294647749_mimoo -p u294647749_mimoolab -e "SELECT order_number, shipping_price_source FROM orders ORDER BY created_at DESC LIMIT 5;"
+```
+
+Quando aparecer `Enter password:`, cole a senha do banco (gerenciador de senhas, a mesma do `DB_PASSWORD`): nada
+aparece na tela enquanto você cola; depois aperte Enter. Nunca ponha a senha na própria linha (`-p<senha>`): ela
+ficaria no histórico do shell. Use só consultas `SELECT`. Se o phpMyAdmin aparecer no hPanel, a aba **SQL** dele
+serve do mesmo jeito.
 
 ### 1.3 SSH, ferramentas e código
 
@@ -281,7 +302,7 @@ MERCADOPAGO_BASE_URL=https://api.mercadopago.com  # fixo
 # --- Melhor Envio (fase 0 item 4) ---
 MELHOR_ENVIO_URL=https://sandbox.melhorenvio.com.br  # fase 2; fase 3: https://melhorenvio.com.br
 MELHOR_ENVIO_TOKEN='<token>'                  # SEGREDO: Melhor Envio → token do sandbox (fase 2) / de produção (fase 3)
-SHIPPING_ORIGIN_CEP=<CEP>                     # CEP de onde a loja despacha, só números (dado da loja)
+SHIPPING_ORIGIN_CEP=13400760                  # fixo: CEP de onde a loja despacha (Rua Tiradentes, Piracicaba/SP), só números
 
 # --- Dados da loja (fase 0 item 5; Política de Privacidade e rodapé dos e-mails) ---
 LOJA_RAZAO_SOCIAL="<razão social>"            # cartão CNPJ da loja
@@ -386,7 +407,7 @@ hPanel → Avançado → Cron Jobs → **Personalizado**, a cada minuto (`* * * 
 | API no ar | `curl.exe -sI https://api.mimoolab.com.br/up` | `HTTP/1.1 200` (ou `HTTP/2 200`), `strict-transport-security`, **sem** `x-powered-by`, **sem** `server: hcdn`, **sem** `x-hcdn-*` e **sem** `x-litespeed-cache` |
 | Arquivos com ponto | `curl.exe -s -o NUL -w "%{http_code}" https://api.mimoolab.com.br/.user.ini` e o mesmo com `/.env`, `/.htaccess` e `/.git/config` | `403` ou `404` nos quatro (se algum der `200`, tire a API do ar com `$PHP artisan down` e mande na thread) |
 | CORS da loja | `curl.exe -sI -H "Origin: https://mimoolab.com.br" https://api.mimoolab.com.br/api/products` | `access-control-allow-origin: https://mimoolab.com.br` |
-| CORS de outro site | o mesmo com `-H "Origin: https://exemplo.com"` | `access-control-allow-origin` **nem** `*` **nem** `https://exemplo.com` (com uma origem só configurada, a API sempre devolve `https://mimoolab.com.br`, e o navegador do outro site recusa a resposta) |
+| CORS de outro site | o mesmo com `-H "Origin: https://exemplo.com"` | `access-control-allow-origin: https://mimoolab.com.br` (a origem da loja, **não** `*` nem `https://exemplo.com`). Com uma origem só no `CORS_ALLOWED_ORIGINS`, a API sempre devolve essa origem, seja qual for o site que perguntou, e o navegador do outro site recusa a resposta porque o endereço não é o dele. No ensaio pelo domínio temporário, aparece o endereço temporário nos dois testes. Errado é aparecer `*` ou `https://exemplo.com` |
 | Painel | abrir `https://api.mimoolab.com.br/admin` | tela de login; o admin entra |
 | Imagens | cadastrar um produto com foto no painel e abrir a foto | abre em `https://api.mimoolab.com.br/storage/products/...` |
 | `www` | `curl.exe -sI https://www.mimoolab.com.br/` | `301` para `https://mimoolab.com.br/` |
@@ -433,26 +454,33 @@ Para cada item: o que fazer → o que conferir. Com algum item falhando, não si
    do modo **teste** e rode `$PHP artisan config:cache`); `403` sem corpo do Laravel = bloqueio da Hostinger ou
    CDN ligada no `api.` (refaça o 1.1 item 5 e mande na thread o que apareceu); `503` = API em manutenção
    (`$PHP artisan up`); `500` = mande o `error_ref` do log.
-2. **PIX** com um comprador de teste do Mercado Pago → pedido aprovado vira "Na fila" no painel e o e-mail
+2. **PIX** com um comprador de teste → pedido aprovado vira "Na fila" no painel e o e-mail
    "pedido confirmado" chega em até ~1 min, com Reply-To para o endereço definido no `MAIL_REPLY_TO_ADDRESS` (fase 0, item 2). Responda esse e-mail e
    confira que a resposta chega na caixa desse endereço.
+   - E-mail do comprador: use um **e-mail real de outra pessoa** (não o da conta Mercado Pago). Com as credenciais de
+     teste da conta real, o e-mail de um usuário de teste (`test_user...@testuser.com`) é recusado com o erro
+     `4390` "Payer email forbidden", e o da própria conta também (não dá para comprar de si mesmo).
+   - Erro `13253` = a conta não tem chave PIX (fase 0, item 3).
 3. **Cartão de teste aprovado** (resposta na hora) e um **recusado** (mensagem de erro na loja, pedido pendente).
+   Erro `2006` "Card Token not found" = Public Key da loja e Access Token da API de pares diferentes (fase 0,
+   item 3): confira as duas na mesma tela de credenciais, troque a que estiver errada (na loja, com Redeploy; na
+   API, com `$PHP artisan config:cache`).
 4. **Painel**: iniciar impressão → acabamento → expedir com código de rastreio → entregue. Chegam os e-mails de
    impressão e de envio.
 5. **Rastreio** na loja pelo número do pedido + CPF, e pelo botão "Acompanhar" do e-mail (abre a loja).
 6. **Conta de cliente** (só com loja e API em `mimoolab.com.br`): cadastro, e-mail de confirmação, link abre a
    loja e confirma, "Meus pedidos", "Esqueci minha senha"; cadastrar de novo o mesmo e-mail mostra a mesma
    mensagem e chega o aviso "Alguém tentou criar uma conta com seu e-mail" (M-44).
-7. **Frete**: no phpMyAdmin, `SELECT order_number, shipping_price_source FROM orders ORDER BY created_at DESC LIMIT 1;`
+7. **Frete**: pelo SSH (consulta do 1.2), `SELECT order_number, shipping_price_source FROM orders ORDER BY created_at DESC LIMIT 1;`
    mostra `melhor_envio` (não `fallback`).
 8. **Log sem dados pessoais**: `grep -c "@" ~/site-mimo/backend/storage/logs/laravel-*.log` não deve achar
    e-mail de cliente (só o que você mesmo digitou em teste, se algum); erro inesperado aparece com `error_ref`.
-9. **Backup**: instale o rclone e rode o backup uma vez (seção "Backup" abaixo); confira os arquivos no Google
-   Drive (com nomes embaralhados, é a criptografia) e **restaure** no MariaDB local
-   (`docs/ambiente-local-mariadb.md`): `rclone copy mimoo-backup-crypt:diario/<arquivo> .` no PC, `gunzip` e
-   importar. Só há dados de teste nesta fase.
-10. **Monitoramento**: `$PHP artisan down` → o alerta do UptimeRobot chega nos dois e-mails em até ~5 min →
-    `$PHP artisan up` → chega o aviso de volta.
+9. **Backup**: confira o backup da Hostinger como na fase 4 ("Backup"): na aba **Restaurar e baixar** aparece o
+   banco `u294647749_mimoolab`, com um backup do dia ou do anterior (no ensaio: diário, o último em 24/11 às 03:34).
+   **Não clique em restaurar.**
+10. **Monitoramento**: monitores como na fase 4 ("Monitoramento"), o da API em `/api/products`. `$PHP artisan down`
+    → em até ~10 min o monitor da API fica **Down** e o alerta chega nos dois e-mails → `$PHP artisan up` → chega
+    o aviso de volta. (O `/up` não serve para este teste: ele responde 200 mesmo em manutenção.)
 11. **Atualização**: avance a `producao` com qualquer mudança pequena e rode o `deploy.sh` (seção "Atualizar").
     Em `staging` o `mimoo:check-production` reprova de propósito (APP_ENV e credenciais de teste), então o deploy
     termina com "ERRO no passo: mimoo:check-production" e a API **fica em manutenção**: é o comportamento certo.
@@ -473,8 +501,8 @@ $PHP artisan config:cache
 e recadastre o catálogo pelo painel. As imagens de teste em `storage/app/public/products` podem ser apagadas.
 
 **Voltar atrás (fase 2):** a loja segue fechada (senha ou domínio temporário) e só há dados de teste. Se o ensaio
-reprovar num item, corrija e repita o item; para descartar tudo, use a limpeza acima. Os backups de teste no Google
-Drive podem ser apagados (`~/bin/rclone purge mimoo-backup-crypt:` apaga só a pasta criptografada).
+reprovar num item, corrija e repita o item; para descartar tudo, use a limpeza acima. Os backups da Hostinger com
+dados de teste saem sozinhos com o tempo (não precisa apagar).
 
 ## Fase 3 — Virar produção
 
@@ -488,6 +516,10 @@ Sem ele, não publique a loja no item 2.
    `APP_ENV=production`, `MERCADOPAGO_ACCESS_TOKEN`/`MERCADOPAGO_PUBLIC_KEY` de produção,
    `MERCADOPAGO_WEBHOOK_SECRET` do webhook de **produção**, `MELHOR_ENVIO_URL=https://melhorenvio.com.br`,
    `MELHOR_ENVIO_TOKEN` de produção; `FRONTEND_URL` e `CORS_ALLOWED_ORIGINS` = `https://mimoolab.com.br`.
+   Public Key e Access Token de produção copiados da **mesma tela** de credenciais (fase 0, item 3; senão o
+   cartão falha com `2006`). **Confira de novo a chave PIX** depois da troca da conta do Mercado Pago do CPF para o
+   CNPJ: a conta que vale é a dona das credenciais de produção, e sem chave PIX nela o PIX falha com `13253` (fase 0,
+   item 3).
    Depois:
    ```bash
    $PHP artisan config:cache
@@ -502,7 +534,7 @@ Sem ele, não publique a loja no item 2.
    reconhece a bandeira de um cartão real (sem pagar).
    Se der errado: o formulário não abre ou dá "public key inválida" → a variável foi trocada mas não houve
    Redeploy, ou a chave é de outra aplicação; confira no Mercado Pago e publique de novo.
-3. **Consultas só leitura** no phpMyAdmin, depois de recadastrar o catálogo:
+3. **Consultas só leitura** pelo SSH (1.2) ou no phpMyAdmin, depois de recadastrar o catálogo:
    `/mnt/project-files/consultas/produtos-sem-cor-ou-tamanho.sql` (produto sem cor/tamanho vinculado dá 422 no
    checkout, M-03) e `docs/consultas/m-29-pecas-sem-preco.sql` (peça/tamanho abaixo de R$ 0,01 dá 422, M-29).
    Esperado: nenhuma linha. Se aparecer alguma, corrija o produto no painel antes de abrir.
@@ -562,66 +594,50 @@ trouxe migration, leia o PR dela antes de voltar. Se ele disser que o `migrate:r
 só o código e mande na thread. Na loja, o Web App tem o histórico de deploys para republicar o anterior (ou faça
 um PR revertendo na `producao`).
 
-### Backup fora do servidor (diário, criptografado)
+### Backup (só o da Hostinger)
 
-Instalação, uma vez:
+**Decisão do Zocca (2026-11-24):** o backup é só o **diário automático da Hostinger**. Não há cópia fora da
+Hostinger (rclone + Google Drive): o risco de perder os backups junto com a conta ou o servidor foi aceito. Por
+isso o roteiro não tem mais script nem cron de backup (o `deploy/hostinger/backup.sh` saiu do repositório na M-73).
+O `rclone` que tenha sobrado em `~/bin/rclone` não atrapalha; para tirar: `rm ~/bin/rclone`.
 
-1. **rclone no servidor**:
-   ```bash
-   mkdir -p ~/bin ~/backups && cd ~/bin
-   curl -fsSLO https://downloads.rclone.org/rclone-current-linux-amd64.zip
-   unzip -j rclone-current-linux-amd64.zip '*/rclone' && rm rclone-current-linux-amd64.zip
-   chmod 700 rclone && ./rclone version
-   ```
-   Se o download ou o `rclone version` falhar (compartilhado bloqueando), vá para o **plano B** abaixo.
-2. **Remotos** (no seu PC, com o rclone para Windows, porque o Google pede login no navegador):
-   `rclone config` → `n` → nome `mimoo-gdrive` → tipo `drive` → escopo `drive.file` → login na conta
-   contato.mimoolab@gmail.com (com 2FA). Depois outro remoto: nome `mimoo-backup-crypt`, tipo `crypt`, remoto
-   `mimoo-gdrive:mimoo-backups`, criptografar nomes = `standard`, senha e "salt" **gerados pelo gerenciador de
-   senhas e guardados nele** (sem eles o backup não abre). Copie o arquivo de configuração para o servidor
-   (`rclone config file` mostra onde está) em `~/.config/rclone/rclone.conf` e rode
-   `chmod 600 ~/.config/rclone/rclone.conf`. Depois **apague o `rclone.conf` do PC**: ele tem o acesso ao Google
-   Drive e a senha do backup só disfarçada (dá para revelar). Para restaurar, refaça os dois remotos no PC com os
-   dados do gerenciador e apague o arquivo de novo no fim.
-3. **Senha do banco para o dump**, em `~/.my.cnf`:
-   ```
-   [client]
-   user=<usuário do banco>
-   password=<senha do banco>
-   host=localhost
-   ```
-   `chmod 600 ~/.my.cnf`
-4. **Nome do banco** em `~/.mimoo-backup.conf` (`chmod 600`): `DB_NAME="<nome do banco>"`.
-5. Teste: `bash ~/site-mimo/deploy/hostinger/backup.sh` → uma linha `... ok backup ...`;
-   `~/bin/rclone ls mimoo-backup-crypt:diario/` lista os dois arquivos.
-6. Cron Personalizado, todo dia (o horário do cron da Hostinger é o do servidor; confira com `date` e ajuste para
-   cair de madrugada no Brasil):
-   ```
-   0 6 * * * bash /home/<usuário>/site-mimo/deploy/hostinger/backup.sh >> /home/<usuário>/backups/backup.log 2>&1
-   ```
+**Conferir (uma vez por mês e depois de cada deploy com migration):**
 
-O script guarda o banco (`mariadb-dump --single-transaction`) e as imagens dos produtos: 7 diários + 4 semanais
-(domingo) no servidor (`~/backups/diario/` e `~/backups/semanal/`) e fora dele. O backup tem dados pessoais (LGPD):
-só sai do servidor criptografado. Cada execução escreve **uma linha** no `~/backups/backup.log`:
-`<data> ok backup banco=... imagens=... semanal=sim|nao ping=...` ou `<data> ERRO backup passo="..." ...`, com a
-mensagem da ferramenta em `~/backups/ultimo-erro.txt`. Se só o envio falhar, o backup local do dia fica. Olhe o log
-uma vez por semana (ou ponha uma URL do healthchecks.io em `HEALTHCHECK_URL` no `~/.mimoo-backup.conf` para ser
-avisado se ele parar).
+1. hPanel → no seletor **Nome do site**, escolha **`api.mimoolab.com.br`** (o banco fica no backup desse site, não
+   no da loja) → **Arquivos** → **Backups**.
+2. A aba **Gerenciar backups** mostra a frequência (no ensaio: **diário**) e a data do último.
+3. Na aba **Restaurar e baixar**, a parte de **banco de dados** lista o `u294647749_mimoolab` com a data do último
+   backup (do dia ou do dia anterior).
+4. **Não clique em "Restaurar"** só para conferir: restaurar volta o banco inteiro para aquela data e **apaga
+   todos os pedidos e cadastros feitos depois**.
+- Se der errado: o banco não aparece, ou o último backup tem mais de 2 dias → abra um chamado no suporte da
+  Hostinger e mande na thread a data mostrada (sem prints com dados de clientes).
 
-**Plano B** (rclone não roda): os backups da própria Hostinger (Arquivos → Backups) continuam; uma vez por semana
-baixe o do banco pelo hPanel para o PC, guarde num disco criptografado (BitLocker) e apague os antigos.
+**Restaurar** (só num desastre, e sabendo que o que veio depois do backup se perde):
+1. `$PHP artisan down` (a loja não cria pedido no meio da restauração; o Mercado Pago reenvia os webhooks depois).
+2. hPanel → Backups → **Restaurar e baixar** → banco `u294647749_mimoolab` → **Restaurar** na data escolhida.
+3. Se as fotos dos produtos também se perderam, restaure os **arquivos** do site `api.mimoolab.com.br` na mesma
+   tela (as fotos ficam em `~/site-mimo/backend/storage/app/public`).
+4. `$PHP artisan mimoo:check-production` e `$PHP artisan up`. Pedidos pagos depois da data do backup existem só
+   no Mercado Pago: confira um a um no painel do Mercado Pago.
 
-**Restaurar**: baixar com `rclone copy mimoo-backup-crypt:diario/<arquivo> .`, `gunzip`, importar no banco
-(`mariadb <banco> < arquivo.sql`) e descompactar as imagens em `storage/app/public`. O `.sql` tem dados pessoais de
-clientes: **apague** o `.sql` e o `.sql.gz` baixados assim que a importação terminar (também no teste do ensaio).
+Para **baixar** o backup do banco (botão de download na mesma aba): o arquivo tem dados pessoais de clientes (LGPD).
+Só baixe se for restaurar ou testar a restauração no MariaDB local (`docs/ambiente-local-mariadb.md`), e **apague**
+o arquivo baixado assim que terminar.
 
 ### Monitoramento de disponibilidade
 
 UptimeRobot (plano grátis, checagem a cada 5 min), alertas para o seu e-mail pessoal e para
 contato.mimoolab@gmail.com:
 
-- `https://api.mimoolab.com.br/up` (HTTP, espera 200);
+- `https://api.mimoolab.com.br/api/products` (HTTP, espera 200): passa pelo Laravel e pelo banco, então cai com o
+  banco fora do ar e responde **503** em manutenção (`artisan down`);
 - `https://mimoolab.com.br` (HTTP, espera 200).
+
+**Não monitore `/up`:** no Laravel 13 a rota de saúde fica fora do modo manutenção
+(`PreventRequestsDuringMaintenance::except($health)`), então `/up` responde 200 mesmo depois do `artisan down`
+(achado no item 10 do ensaio, 2026-11-24) e também não consulta o banco. Ele continua útil só no 1.9, para ver
+os cabeçalhos do servidor.
 
 Fila parada (e-mails não saindo) ainda depende do `mimoo:check-production` à mão até o M-33.
 
