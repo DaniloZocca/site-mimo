@@ -112,7 +112,7 @@ class PostCommitFailureTest extends CharacterizationTestCase
         Livewire::test(ListOrders::class)
             ->callTableAction('startPrinting', $order)
             ->assertHasNoTableActionErrors()
-            ->assertNotified('Extrusão 3D Iniciada!');
+            ->assertNotified('Impressão 3D Iniciada!');
 
         $this->assertSame(OrderStatus::PRINTING, $order->fresh()->status);
 

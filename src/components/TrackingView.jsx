@@ -20,7 +20,6 @@ import { OrderSearchForm } from './tracking/OrderSearchForm';
 import { ManufacturingStepper } from './tracking/ManufacturingStepper';
 import { OrderSummaryCard } from './tracking/OrderSummaryCard';
 import { ProductionTimelineLogs } from './tracking/ProductionTimelineLogs';
-import { ShareTrackingCard } from './tracking/ShareTrackingCard';
 
 export const TrackingView = () => {
   const { setActiveTab } = useShop();
@@ -74,7 +73,7 @@ export const TrackingView = () => {
                 Encomenda Confirmada com Sucesso!
               </h3>
               <p className="text-xs font-nunito text-white/90">
-                Sua peça já foi registrada. Acompanhe abaixo cada etapa de manufatura em tempo real na fazenda 3D.
+                Sua peça já foi registrada. Acompanhe abaixo cada etapa da sua encomenda na fazenda 3D.
               </p>
             </div>
           </div>
@@ -136,7 +135,7 @@ export const TrackingView = () => {
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 font-fredoka">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                    Ao Vivo
+                    Rastreio
                   </span>
                 </div>
                 <h1 className="font-fredoka font-bold text-2xl text-mimoo-dark leading-tight">
@@ -170,13 +169,12 @@ export const TrackingView = () => {
           {/* 1. Stepper Visual da Produção Fabril 3D */}
           <ManufacturingStepper currentStatus={order.status} />
 
-          {/* 2. Grid de 2 Colunas: Resumo + Compartilhamento e Diário da Oficina */}
+          {/* 2. Grid de 2 Colunas: Resumo e Diário da Oficina */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* Coluna 1 (Esquerda - 7 Colunas): Detalhes da Encomenda & Compartilhamento */}
+            {/* Coluna 1 (Esquerda - 7 Colunas): Detalhes da Encomenda */}
             <div className="lg:col-span-7 space-y-6">
               <OrderSummaryCard order={order} />
-              <ShareTrackingCard trackingToken={order.trackingToken} orderNumber={order.orderNumber} />
             </div>
 
             {/* Coluna 2 (Direita - 5 Colunas): Linha do Tempo de Logs da Oficina */}
@@ -209,7 +207,7 @@ export const TrackingView = () => {
 
               <p className="font-nunito text-slate-600 text-sm sm:text-base leading-relaxed max-w-lg mx-auto lg:mx-0">
                 Cada item da <strong>MIMOO LAB</strong> é produzido artesanalmente em nossas impressoras 3D. 
-                Digite o número da sua encomenda ou cole o seu token secreto para ver a temperatura da mesa, o tempo restante e o código de envio!
+                Digite o número da sua encomenda ou cole o seu token secreto para ver em que etapa está o seu pedido e o código de envio!
               </p>
 
               {/* Badges de Confiança */}
@@ -220,7 +218,7 @@ export const TrackingView = () => {
                 </div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-chunky-sm">
                   <Clock className="w-4 h-4 text-mimoo-purple" />
-                  <span>Status em Tempo Real</span>
+                  <span>Status de Cada Etapa</span>
                 </div>
               </div>
             </div>
@@ -296,7 +294,7 @@ export const TrackingView = () => {
                   2
                 </div>
                 <h4 className="font-fredoka font-bold text-sm text-mimoo-dark">
-                  Extrusão na Fazenda 3D
+                  Impressão na Fazenda 3D
                 </h4>
                 <p className="text-xs font-nunito text-slate-600 leading-relaxed">
                   A peça é construída camada por camada (0.16mm a 0.20mm) com PLA (biodegradável em compostagem industrial) durante várias horas.

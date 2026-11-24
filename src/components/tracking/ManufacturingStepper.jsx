@@ -8,7 +8,6 @@ import {
   HeartHandshake, 
   CheckCircle2, 
   AlertTriangle,
-  Flame,
   Check
 } from 'lucide-react';
 
@@ -32,10 +31,10 @@ const STEPS = [
   {
     id: 'printing',
     label: 'Imprimindo na Fazenda 3D',
-    shortLabel: 'Extrusão 3D',
+    shortLabel: 'Impressão 3D',
     icon: Printer,
     color: 'blue',
-    description: 'Extrusão em camadas a 210°C em alta precisão.',
+    description: 'Impressão em camadas, com alta precisão.',
   },
   {
     id: 'finishing_and_packaging',
@@ -134,11 +133,6 @@ export const ManufacturingStepper = ({ currentStatus = 'pending_payment' }) => {
               <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-mimoo-dark text-white font-fredoka">
                 Etapa {currentIndex + 1} de 6
               </span>
-              {currentStatus === 'printing' && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-fredoka">
-                  <Flame className="w-3 h-3 text-blue-600" /> Mesa a 60°C • Bico a 210°C
-                </span>
-              )}
             </div>
             <h3 className="font-fredoka font-bold text-lg text-mimoo-dark leading-tight mt-0.5">
               {activeStep.label}

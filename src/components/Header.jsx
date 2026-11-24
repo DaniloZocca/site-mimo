@@ -50,7 +50,7 @@ export const Header = () => {
       <div className="bg-gradient-to-r from-mimoo-purple via-mimoo-pink to-mimoo-purple text-white py-1.5 px-4 text-xs md:text-sm font-fredoka tracking-wide flex items-center justify-between border-b border-mimoo-dark/20 overflow-hidden">
         <div className="flex items-center gap-2 mx-auto animate-pulse-subtle text-center">
           <span className="bg-white/20 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase">✨ Sob Encomenda</span>
-          <span>Peças impressas em 3D em PLA, biodegradável em compostagem industrial • Frete calculado pelo CEP no carrinho</span>
+          <span>Peças impressas 3D em PLA • Frete calculado pelo CEP no carrinho</span>
         </div>
         <button 
           onClick={() => handleNav('tracking')}
@@ -134,7 +134,7 @@ export const Header = () => {
                   ? 'bg-mimoo-yellow text-mimoo-dark shadow-chunky-sm' 
                   : 'bg-white text-slate-700 hover:bg-mimoo-yellow-light shadow-chunky-sm'
               }`}
-              title="Acompanhe sua fabricação em tempo real"
+              title="Acompanhe cada etapa da sua encomenda"
             >
               <Truck className="w-4 h-4 text-mimoo-purple" />
               <span>Rastrear 3D</span>
@@ -240,13 +240,6 @@ export const Header = () => {
             >
               💡 Como Funciona
             </button>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold">
-            <span className="flex items-center gap-1 bg-mimoo-mint-light text-emerald-800 px-2.5 py-1 rounded-full border border-emerald-300 font-fredoka">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              Fazenda 3D Operando
-            </span>
           </div>
         </nav>
       </div>

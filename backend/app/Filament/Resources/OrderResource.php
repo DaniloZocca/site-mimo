@@ -220,11 +220,12 @@ class OrderResource extends Resource
                     ->label('Iniciar Impressão')
                     ->icon('heroicon-m-cpu-chip')
                     ->color('info')
+                    ->button()
                     ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::IN_QUEUE, OrderStatus::PRINTING))
                     ->requiresConfirmation()
                     ->modalHeading('Iniciar Fabricação 3D na Fazenda')
                     ->modalDescription('Confirmar que a impressora 3D foi abastecida com o filamento correto e o fatiamento foi disparado?')
-                    ->modalSubmitActionLabel('Sim, iniciar extrusão')
+                    ->modalSubmitActionLabel('Sim, iniciar impressão')
                     ->action(function (Order $record): void {
                         $notes = 'Impressão 3D iniciada na fazenda de manufatura.';
                         if (! self::applyPanelTransition($record, OrderStatus::IN_QUEUE, OrderStatus::PRINTING, $notes)) {
@@ -232,7 +233,7 @@ class OrderResource extends Resource
                         }
 
                         Notification::make()
-                            ->title('Extrusão 3D Iniciada!')
+                            ->title('Impressão 3D Iniciada!')
                             ->body("A encomenda {$record->order_number} entrou em processo de impressão.")
                             ->success()
                             ->send();
@@ -243,6 +244,7 @@ class OrderResource extends Resource
                     ->label('Acabamento & Embalar')
                     ->icon('heroicon-m-gift')
                     ->color('primary')
+                    ->button()
                     ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::PRINTING, OrderStatus::FINISHING_AND_PACKAGING))
                     ->action(function (Order $record): void {
                         if (! self::applyPanelTransition($record, OrderStatus::PRINTING, OrderStatus::FINISHING_AND_PACKAGING, 'Peça retirada da mesa de impressão, movida para conferência, acabamento e embalagem.')) {
@@ -261,6 +263,7 @@ class OrderResource extends Resource
                     ->label('Expedir Pedido')
                     ->icon('heroicon-m-truck')
                     ->color('success')
+                    ->button()
                     ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::FINISHING_AND_PACKAGING, OrderStatus::SHIPPED))
                     ->form([
                         Forms\Components\TextInput::make('carrier_tracking_code')
@@ -295,6 +298,7 @@ class OrderResource extends Resource
                     ->label('Marcar como Entregue')
                     ->icon('heroicon-m-check-circle')
                     ->color('success')
+                    ->button()
                     ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::SHIPPED, OrderStatus::DELIVERED))
                     ->requiresConfirmation()
                     ->modalHeading('Confirmar entrega da encomenda')
@@ -318,6 +322,7 @@ class OrderResource extends Resource
                     ->label('Cancelar Pedido')
                     ->icon('heroicon-m-x-circle')
                     ->color('danger')
+                    ->button()
                     ->visible(fn (Order $record): bool => self::canMove($record, OrderStatus::PENDING_PAYMENT, OrderStatus::CANCELLED)
                         && ! $record->isInPaymentReview())
                     ->requiresConfirmation()
@@ -356,8 +361,13 @@ class OrderResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                // M-69: Ver e Editar só com ícone (nome no tooltip) para sobrar espaço aos botões de status
+                Tables\Actions\ViewAction::make()
+                    ->iconButton()
+                    ->tooltip('Ver pedido'),
+                Tables\Actions\EditAction::make()
+                    ->iconButton()
+                    ->tooltip('Editar pedido'),
             ])
             ->bulkActions([]);
     }

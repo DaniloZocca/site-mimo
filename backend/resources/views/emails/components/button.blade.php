@@ -2,7 +2,9 @@
     'url' => '#',
     'color' => '#7C3AED',
     'textColor' => '#FFFFFF',
-    'align' => 'center'
+    'align' => 'center',
+    'iconUrl' => null,
+    'iconAlt' => '',
 ])
 
 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 20px 0;">
@@ -18,7 +20,7 @@
       <![endif]-->
       <!--[if !mso]><!-->
       <a href="{{ $url }}" target="_blank" style="display: inline-block; background-color: {{ $color }}; color: {{ $textColor }}; border: 2px solid #18181B; border-radius: 16px; padding: 14px 28px; font-size: 13px; font-weight: 700; text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 3px 3px 0px #18181B; -webkit-text-size-adjust: none;">
-        {{ $slot }}
+        {{ $slot }}@if ($iconUrl) <img src="{{ $iconUrl }}" width="20" height="20" alt="{{ $iconAlt }}" style="display: inline-block; width: 20px; height: 20px; border: 0; outline: none; text-decoration: none; vertical-align: middle;">@endif
       </a>
       <!--<![endif]-->
     </td>

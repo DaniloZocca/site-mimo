@@ -437,7 +437,7 @@ export const CheckoutModal = () => {
         }, 1200);
 
       } else if (isInProcess) {
-        showToast('⚠️ Pagamento em análise pelo banco. Acompanhe o status em tempo real.', 'info');
+        showToast('⚠️ Pagamento em análise pelo banco. Acompanhe cada etapa na página de rastreio.', 'info');
         
         setTimeout(() => {
           setIsCheckoutOpen(false);
@@ -498,7 +498,7 @@ export const CheckoutModal = () => {
                 Finalizar Encomenda 3D
               </h2>
               <p className="text-xs font-nunito text-slate-500 font-semibold">
-                MIMOO LAB • Extrusão Personalizada Sob Demanda
+                MIMOO LAB • Impressão 3D Personalizada Sob Demanda
               </p>
             </div>
           </div>
@@ -593,7 +593,7 @@ export const CheckoutModal = () => {
                     1. Quem vai receber a criação 3D?
                   </h3>
                   <p className="text-xs text-slate-500 font-nunito">
-                    Usaremos esses dados para notificar o andamento da extrusão e emitir o rastreio.
+                    Usaremos esses dados para notificar o andamento da impressão e emitir o rastreio.
                   </p>
                 </div>
 
@@ -914,7 +914,7 @@ export const CheckoutModal = () => {
                       Peças Fabricadas Sob Encomenda
                     </strong>
                     <span className="text-amber-800">
-                      Tempo estimado de extrusão das suas peças: <strong>~{cartTotalPrintHours} horas</strong> na fazenda 3D. 
+                      Tempo estimado de impressão das suas peças: <strong>~{cartTotalPrintHours} horas</strong> na fazenda 3D. 
                       Assim que o pagamento for concluído, a máquina começará o pré-aquecimento!
                     </span>
                   </div>
@@ -1061,7 +1061,7 @@ export const CheckoutModal = () => {
                       className="btn-chunky-purple py-3.5 px-8 text-sm font-bold shadow-chunky inline-flex items-center gap-2"
                     >
                       <Layers className="w-4 h-4" />
-                      <span>Acompanhar Produção em Tempo Real</span>
+                      <span>Acompanhar Minha Encomenda</span>
                     </button>
                   </div>
                 ) : (

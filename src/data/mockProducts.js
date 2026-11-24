@@ -52,7 +52,7 @@ export const MOCK_ORDERS = [
     printProgress: 68,
     currentLayer: 748,
     totalLayers: 1100,
-    remainingTime: '03h 42min restantes de extrusão',
+    remainingTime: '03h 42min restantes de impressão',
     extruderTemp: '210°C',
     bedTemp: '60°C',
     trackingCode: 'BR984729104BR',
@@ -105,8 +105,8 @@ export const FAQS = [
     answer: 'Sim! Utilizamos filamento PLA (Ácido Polilático) de grau premium, um termoplástico de origem vegetal, biodegradável em compostagem industrial. Não tem cheiro e possui alta resistência mecânica para uso decorativo e funcional diário.'
   },
   {
-    question: 'Posso acompanhar a fabricação da minha peça em tempo real?',
-    answer: 'Com certeza! Assim que seu pedido é confirmado, você recebe um código de rastreio interno (ex: #MIMOO-8492) para acompanhar em nossa página de rastreamento cada etapa: aquecimento da impressora, progresso de camadas em tempo real e preparação do pacote com mimos.'
+    question: 'Posso acompanhar a fabricação da minha peça?',
+    answer: 'Com certeza! Assim que seu pedido é confirmado, você recebe o código da encomenda (ex: MIMOO-A1B2C3D4) para acompanhar na nossa página de rastreio cada etapa: pagamento, fila, impressão 3D, acabamento, envio e entrega.'
   },
   {
     question: 'Posso escolher cores diferentes das mostradas nas fotos?',
@@ -115,9 +115,9 @@ export const FAQS = [
 ];
 
 export const PRINT_FARM_TICKERS = [
-  '🐮 Impressora #02 acabou de iniciar: Vasinho Mimoo em Lilás Pastel para Curitiba/PR',
-  '✨ Impressora #05 imprimindo: Dragão de Cristal Articulado (Camada 820/1200) para Belo Horizonte/MG',
-  '💖 Pedido #8492 de Fernanda O. está a 68% de conclusão na máquina!',
-  '🌱 Filamento PLA de origem vegetal em todas as impressões hoje',
-  '🚀 Envio expresso realizado para 14 clientes felizes esta tarde!'
+  '🐮 Cada peça é impressa sob encomenda, só depois do pagamento confirmado',
+  '✨ Acompanhe cada etapa do seu pedido na página de rastreio com o código da encomenda',
+  '💖 Cada peça passa por acabamento e é embalada com carinho antes do envio',
+  '🌱 Filamento PLA de origem vegetal em todas as impressões',
+  '🚀 Frete calculado pelo CEP no carrinho, com código de rastreio da transportadora no envio'
 ];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Models\Order;
+use App\Support\EmailProductImage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -43,6 +44,7 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
             view: 'emails.orders.confirmed',
             with: [
                 'order' => $this->order,
+                'itemImageUrls' => EmailProductImage::urlsFor($this->order),
                 'trackingUrl' => rtrim((string) config('app.frontend_url'), '/')."/?token={$this->order->tracking_token}",
                 'totalAmountFormatted' => $this->formatCents($totalCents),
                 'subtotalFormatted' => $this->formatCents($subtotalCents),

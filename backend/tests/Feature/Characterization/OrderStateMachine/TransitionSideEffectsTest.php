@@ -42,8 +42,8 @@ class TransitionSideEffectsTest extends CharacterizationTestCase
 
         $this->service->startPrinting($order);
 
-        Event::assertDispatched(OrderPrintingStartedEvent::class, fn ($e): bool => $e->notes === 'Extrusão 3D iniciada na impressora.' && $e->order->is($order));
-        $this->assertSame('[Sistema / Operador 3D] Extrusão 3D iniciada na impressora.', $order->productionLogs()->sole()->notes);
+        Event::assertDispatched(OrderPrintingStartedEvent::class, fn ($e): bool => $e->notes === 'Impressão do seu pedido iniciada.' && $e->order->is($order));
+        $this->assertSame('[Sistema / Operador 3D] Impressão do seu pedido iniciada.', $order->productionLogs()->sole()->notes);
     }
 
     public function test_dispatch_order_grava_codigo_e_evento_de_envio(): void

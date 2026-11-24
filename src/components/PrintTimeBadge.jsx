@@ -73,7 +73,7 @@ export const PrintTimeCallout = ({ hours = 14, days = '1 a 2 dias úteis', sizeL
               <div>
                 <span className="text-slate-500 block text-[10px]">Tempo de Máquina:</span>
                 <strong className="text-mimoo-dark text-xs sm:text-sm">
-                  ~{hours}h de extrusão ({days})
+                  ~{hours}h de impressão ({days})
                 </strong>
               </div>
             </div>

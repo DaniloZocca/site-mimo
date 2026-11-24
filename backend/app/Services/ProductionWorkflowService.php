@@ -229,7 +229,7 @@ class ProductionWorkflowService
     /**
      * Inicia a manufatura 3D na fazenda de impressão.
      */
-    public function startPrinting(Order $order, string $notes = 'Extrusão 3D iniciada na impressora.'): Order
+    public function startPrinting(Order $order, string $notes = 'Impressão do seu pedido iniciada.'): Order
     {
         return $this->transitionTo($order, OrderStatus::PRINTING, $notes);
     }
