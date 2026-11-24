@@ -33,7 +33,7 @@
 
   <!-- Pré-visualização do Inbox (Preheader Invisível) -->
   <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">
-    @yield('preheader', 'Acompanhe em tempo real a extrusão da sua peça personalizada na fazenda 3D da MIMOO LAB.')
+    @yield('preheader', 'Acompanhe em tempo real a impressão da sua peça personalizada na fazenda 3D da MIMOO LAB.')
     &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy;
   </div>
 
@@ -68,7 +68,13 @@
                       <tr>
                         <td align="center" style="padding: 0 0 12px 0;">
                           <div style="display: inline-block; background-color: #7C3AED; color: #FFFFFF; border: 2px solid #18181B; border-radius: 16px; padding: 8px 14px; font-weight: 800; font-size: 16px; box-shadow: 3px 3px 0px #18181B;">
-                            🐮 MIMOO LAB
+                            @php $mascotUrl = \App\Support\EmailBrandImage::mascotUrl(); @endphp
+                            @if ($mascotUrl)
+                              <img src="{{ $mascotUrl }}" width="28" height="28" alt="Vaquinha Mimoo" style="display: inline-block; width: 28px; height: 28px; border: 0; outline: none; text-decoration: none; vertical-align: middle; margin-right: 4px;">
+                            @else
+                              🐮
+                            @endif
+                            <span style="vertical-align: middle;">MIMOO LAB</span>
                           </div>
                         </td>
                       </tr>
@@ -100,7 +106,7 @@
                       Precisa de ajuda ou deseja alterar algum detalhe?
                     </p>
                     <p style="margin: 0; font-size: 11px; color: #6D28D9; line-height: 1.5;">
-                      Nossos artesãos e engenheiros 3D estão à disposição no WhatsApp: 
+                      Nossa equipe está à disposição no WhatsApp: 
                       <a href="https://wa.me/5511999999999" target="_blank" style="color: #7C3AED; font-weight: 700; text-decoration: underline;">
                         (11) 99999-9999
                       </a>

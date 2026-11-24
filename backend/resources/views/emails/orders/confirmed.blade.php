@@ -18,7 +18,7 @@
       </h1>
       
       <p style="margin: 0; font-size: 13px; color: #52525B; line-height: 1.6; max-width: 480px;">
-        Recebemos a confirmação do seu pagamento para o pedido <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong>. Nossos engenheiros já iniciaram a separação do filamento e a calibração digital dos modelos 3D!
+        Recebemos a confirmação do seu pagamento para o pedido <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong>. Nossa equipe já está separando seu pedido!
       </p>
     </td>
   </tr>
@@ -36,9 +36,9 @@
                 </td>
                 <td valign="top" style="font-size: 12px; color: #92400E; line-height: 1.5;">
                   <strong style="display: block; font-size: 13px; color: #78350F; margin-bottom: 2px;">
-                    Estimativa de Extrusão na Fazenda 3D:
+                    Tempo aproximado de impressão do seu pedido:
                   </strong>
-                  Suas peças levarão aproximadamente <strong>~{{ $order->estimated_total_print_time_hours ?? 4 }} horas</strong> de extrusão contínua em alta precisão.
+                  Cerca de <strong>{{ $order->estimated_total_print_time_hours ?? 4 }} horas</strong> de impressão.
                 </td>
               </tr>
             </table>

@@ -51,7 +51,7 @@
       <table border="0" cellpadding="0" cellspacing="0">
         <tr>
           @if($correiosUrl)
-          <td align="center" style="padding: 0 6px;">
+          <td align="center" style="padding: 0 6px;" class="stack-column">
             @include('emails.components.button', [
                 'url' => $correiosUrl,
                 'color' => '#10B981',
@@ -59,11 +59,14 @@
             ])
           </td>
           @endif
-          <td align="center" style="padding: 0 6px;">
+          <td align="center" style="padding: 0 6px;" class="stack-column">
+            @php $mascotUrl = \App\Support\EmailBrandImage::mascotUrl(); @endphp
             @include('emails.components.button', [
                 'url' => $trackingUrl,
                 'color' => '#7C3AED',
-                'slot' => 'Linha do Tempo MIMOO 🐮'
+                'slot' => $mascotUrl ? 'Linha do Tempo MIMOO' : 'Linha do Tempo MIMOO 🐮',
+                'iconUrl' => $mascotUrl,
+                'iconAlt' => 'Vaquinha Mimoo',
             ])
           </td>
         </tr>
