@@ -29,9 +29,15 @@
     <td width="48" valign="middle" align="center" style="padding-right: 14px;">
       <table border="0" cellpadding="0" cellspacing="0" width="48" height="48" style="background-color: #FAF5FF; border: 1px solid #DDD6FE; border-radius: 12px; text-align: center;">
         <tr>
+          @if($imageUrl)
+          <td align="center" valign="middle" style="padding: 0;">
+            <img src="{{ $imageUrl }}" width="46" height="46" alt="{{ $itemTitle }}" style="display: block; width: 46px; height: 46px; object-fit: contain; border: 0; border-radius: 11px;">
+          </td>
+          @else
           <td align="center" valign="middle" style="font-size: 20px;">
             🧱
           </td>
+          @endif
         </tr>
       </table>
     </td>
