@@ -437,7 +437,7 @@ export const CheckoutModal = () => {
         }, 1200);
 
       } else if (isInProcess) {
-        showToast('⚠️ Pagamento em análise pelo banco. Acompanhe o status em tempo real.', 'info');
+        showToast('⚠️ Pagamento em análise pelo banco. Acompanhe cada etapa na página de rastreio.', 'info');
         
         setTimeout(() => {
           setIsCheckoutOpen(false);
@@ -1061,7 +1061,7 @@ export const CheckoutModal = () => {
                       className="btn-chunky-purple py-3.5 px-8 text-sm font-bold shadow-chunky inline-flex items-center gap-2"
                     >
                       <Layers className="w-4 h-4" />
-                      <span>Acompanhar Produção em Tempo Real</span>
+                      <span>Acompanhar Minha Encomenda</span>
                     </button>
                   </div>
                 ) : (
