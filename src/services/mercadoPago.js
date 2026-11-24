@@ -37,7 +37,8 @@ export const getFriendlyCardErrorMessage = (statusDetail) => {
 
 /**
  * Inicialização Idempotente do SDK do Mercado Pago no Frontend (PCI-DSS SAQ A).
- * Utiliza estritamente a chave pública (Public Key).
+ * Utiliza estritamente a chave pública (Public Key) de VITE_MERCADOPAGO_PUBLIC_KEY, sem espaços nas pontas.
+ * Sem chave não há reserva fixa: devolve false e o passo do cartão avisa o cliente.
  *
  * @returns {boolean}
  */
@@ -46,10 +47,12 @@ export const setupMercadoPago = () => {
     return true;
   }
 
-  const publicKey =
-    import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY ||
-    import.meta.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ||
-    'TEST-b26a6a4e-39ff-411a-8bb4-099a9b7405be';
+  const publicKey = String(import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY ?? '').trim();
+
+  if (!publicKey) {
+    console.error('[Mercado Pago] VITE_MERCADOPAGO_PUBLIC_KEY não configurada: o pagamento com cartão fica indisponível.');
+    return false;
+  }
 
   try {
     initMercadoPago(publicKey, {

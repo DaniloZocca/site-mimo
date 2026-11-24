@@ -158,6 +158,27 @@ const ProductDetailContent = ({ selectedProduct }) => {
     }, 600);
   };
 
+  // Selos do produto: na coluna da foto a partir de sm; no celular, depois do simulador de frete
+  const renderGuaranteeBoxes = (visibilityClass) => (
+    <div className={`${visibilityClass} grid-cols-2 gap-3`}>
+      <div className="bg-mimoo-purple-tint p-3 rounded-2xl border border-purple-200 flex items-center gap-2.5">
+        <span className="text-xl">🌱</span>
+        <div className="text-xs font-fredoka">
+          <strong className="block text-mimoo-dark">{selectedMaterial?.name || 'PLA'} Premium</strong>
+          <span className="text-slate-500 font-normal">Manufatura sob demanda</span>
+        </div>
+      </div>
+
+      <div className="bg-mimoo-mint-light p-3 rounded-2xl border border-emerald-300 flex items-center gap-2.5">
+        <span className="text-xl">🛡️</span>
+        <div className="text-xs font-fredoka">
+          <strong className="block text-emerald-900">Garantia MIMOO</strong>
+          <span className="text-emerald-700 font-normal">Qualidade ou reimpressão</span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-mimoo-dark/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
       
@@ -192,11 +213,11 @@ const ProductDetailContent = ({ selectedProduct }) => {
             <div className="lg:col-span-6 space-y-4">
               
               {/* Main Featured Photo */}
-              <div className="relative aspect-square w-full rounded-3xl overflow-hidden border-2 border-mimoo-dark bg-slate-50 shadow-chunky-sm">
+              <div className="relative aspect-[4/3] sm:aspect-square w-full rounded-3xl overflow-hidden border-2 border-mimoo-dark bg-slate-50 shadow-chunky-sm">
                 <img 
                   src={activeImage} 
                   alt={selectedProduct.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
                 
                 {/* Top Badge */}
@@ -220,7 +241,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                     <button
                       key={idx}
                       onClick={() => setActiveImage(img)}
-                      className={`w-20 h-20 rounded-2xl border-2 overflow-hidden flex-shrink-0 transition-all ${
+                      className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl border-2 overflow-hidden flex-shrink-0 transition-all ${
                         activeImage === img
                           ? 'border-mimoo-purple shadow-chunky-sm scale-105'
                           : 'border-mimoo-dark/40 opacity-70 hover:opacity-100'
@@ -232,25 +253,8 @@ const ProductDetailContent = ({ selectedProduct }) => {
                 </div>
               )}
 
-              {/* Guarantee / Eco Box */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="bg-mimoo-purple-tint p-3 rounded-2xl border border-purple-200 flex items-center gap-2.5">
-                  <span className="text-xl">🌱</span>
-                  <div className="text-xs font-fredoka">
-                    <strong className="block text-mimoo-dark">{selectedMaterial?.name || 'PLA'} Premium</strong>
-                    <span className="text-slate-500 font-normal">Manufatura sob demanda</span>
-                  </div>
-                </div>
-
-                <div className="bg-mimoo-mint-light p-3 rounded-2xl border border-emerald-300 flex items-center gap-2.5">
-                  <span className="text-xl">🛡️</span>
-                  <div className="text-xs font-fredoka">
-                    <strong className="block text-emerald-900">Garantia MIMOO</strong>
-                    <span className="text-emerald-700 font-normal">Qualidade ou reimpressão</span>
-                  </div>
-                </div>
-              </div>
-
+              {/* Guarantee / Eco Box (no celular aparece depois do frete, para as opções subirem) */}
+              {renderGuaranteeBoxes('hidden sm:grid pt-2')}
             </div>
 
             {/* Right Column: Title, Material Selector, Color, Size, and CTA */}
@@ -417,7 +421,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                       <span className="text-slate-400 font-nunito text-[11px]">{selectedSize?.dimensions}</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       {selectedProduct.sizeOptions.map((s) => {
                         const isPicked = selectedSize?.id === s.id;
                         return (
@@ -432,7 +436,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                             }`}
                           >
                             <span className="font-fredoka text-xs block font-bold">{s.label}</span>
-                            <div className="flex items-center justify-between text-[10px] text-slate-500 font-nunito mt-0.5">
+                            <div className="flex flex-col items-start sm:flex-row sm:items-center sm:justify-between text-[10px] text-slate-500 font-nunito mt-0.5">
                               <span>{s.addPrice > 0 ? `+ R$ ${s.addPrice.toFixed(2)}` : 'Incluso'}</span>
                               <span className="text-mimoo-purple font-semibold">
                                 {s.addTime > 0 ? `+${s.addTime}h ⏱️` : 'Padrão'}
@@ -445,40 +449,49 @@ const ProductDetailContent = ({ selectedProduct }) => {
                   </div>
                 )}
 
-                {/* Quantity and CTA Buttons */}
-                <div className="pt-2 flex items-center gap-3">
-                  {/* Quantity Pill */}
-                  <div className="flex items-center rounded-2xl border-2 border-mimoo-dark bg-white shadow-chunky-sm p-1">
+                {/* Quantity and CTA Buttons (no celular fica fixo no rodapé do modal enquanto rola) */}
+                <div className="sticky -bottom-4 z-10 -mx-4 px-4 py-3 bg-white border-t border-slate-200 sm:static sm:z-auto sm:mx-0 sm:px-0 sm:py-0 sm:pt-2 sm:bg-transparent sm:border-0">
+                  <div className="flex items-center gap-3">
+                    {/* Quantity Pill */}
+                    <div className="flex items-center rounded-2xl border-2 border-mimoo-dark bg-white shadow-chunky-sm p-1">
+                      <button
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        className="w-8 h-8 rounded-xl font-fredoka font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center text-base"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center font-fredoka font-bold text-sm text-mimoo-dark">
+                        {quantity}
+                      </span>
+                      <button
+                        onClick={() => setQuantity(quantity + 1)}
+                        className="w-8 h-8 rounded-xl font-fredoka font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center text-base"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Chunky Add to Cart Button */}
                     <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-8 h-8 rounded-xl font-fredoka font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center text-base"
+                      onClick={handleAddToCart}
+                      disabled={!selectedColor}
+                      className="flex-1 btn-chunky-purple py-3.5 px-6 text-sm sm:text-base flex items-center justify-center gap-2 shadow-chunky font-fredoka font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      -
-                    </button>
-                    <span className="w-8 text-center font-fredoka font-bold text-sm text-mimoo-dark">
-                      {quantity}
-                    </span>
-                    <button
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="w-8 h-8 rounded-xl font-fredoka font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center text-base"
-                    >
-                      +
+                      <ShoppingBag className="w-5 h-5" />
+                      <span>Adicionar à Sacola • {pricing.totalCartaoFormatted}</span>
                     </button>
                   </div>
 
-                  {/* Chunky Add to Cart Button */}
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={!selectedColor}
-                    className="flex-1 btn-chunky-purple py-3.5 px-6 text-sm sm:text-base flex items-center justify-center gap-2 shadow-chunky font-fredoka font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ShoppingBag className="w-5 h-5" />
-                    <span>Adicionar à Sacola • {pricing.totalCartaoFormatted}</span>
-                  </button>
+                  {/* No celular o aviso fica na barra fixa, junto do botão desabilitado */}
+                  {!selectedColor && (
+                    <p role="status" className="sm:hidden mt-2 text-xs font-nunito font-semibold text-mimoo-pink">
+                      {noColorsForMaterial ? 'Sem cores disponíveis neste material' : 'Escolha uma cor para adicionar à sacola'}
+                    </p>
+                  )}
                 </div>
 
                 {!selectedColor && (
-                  <p role="status" className="text-xs font-nunito font-semibold text-mimoo-pink">
+                  <p role="status" className="hidden sm:block text-xs font-nunito font-semibold text-mimoo-pink">
                     {noColorsForMaterial ? 'Sem cores disponíveis neste material' : 'Escolha uma cor para adicionar à sacola'}
                   </p>
                 )}
@@ -524,6 +537,8 @@ const ProductDetailContent = ({ selectedProduct }) => {
                     )}
                   </form>
                 </div>
+
+                {renderGuaranteeBoxes('grid sm:hidden')}
 
               </div>
 
