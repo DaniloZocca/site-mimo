@@ -69,7 +69,7 @@
       </h3>
 
       @foreach($order->items as $item)
-        @include('emails.components.item-row', ['item' => $item])
+        @include('emails.components.item-row', ['item' => $item, 'imageUrl' => $itemImageUrls[$item->getKey()] ?? null])
       @endforeach
     </td>
   </tr>
