@@ -25,9 +25,12 @@
   <!-- Botão de nova senha -->
   <tr>
     <td align="center" style="padding: 12px 0 16px 0;">
+      @php $mascotUrl = \App\Support\EmailBrandImage::mascotUrl(); @endphp
       @include('emails.components.button', [
           'url' => $resetUrl,
-          'slot' => 'Criar nova senha 🐮'
+          'slot' => $mascotUrl ? 'Criar nova senha' : 'Criar nova senha 🐮',
+          'iconUrl' => $mascotUrl,
+          'iconAlt' => 'Vaquinha Mimoo',
       ])
     </td>
   </tr>

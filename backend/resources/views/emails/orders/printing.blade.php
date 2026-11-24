@@ -2,7 +2,7 @@
 
 @section('title', "Sua peça #{$order->order_number} está sendo impressa! - MIMOO LAB")
 
-@section('preheader', "As impressoras 3D começaram a trabalhar! Acompanhe a extrusão em camadas a 210°C.")
+@section('preheader', "As impressoras 3D começaram a trabalhar! Acompanhe a impressão da sua encomenda.")
 
 @section('content')
 <table border="0" cellpadding="0" cellspacing="0" width="100%">
@@ -10,14 +10,14 @@
   <!-- Saudação e Status -->
   <tr>
     <td align="center" style="padding-bottom: 20px;">
-      @include('emails.components.badge', ['type' => 'blue', 'text' => 'Extrusão 3D em Andamento'])
+      @include('emails.components.badge', ['type' => 'blue', 'text' => 'Impressão 3D em Andamento'])
       
       <h1 style="margin: 14px 0 8px 0; font-size: 22px; font-weight: 800; color: #18181B; line-height: 1.3;">
         As máquinas estão trabalhando! 🖨️✨
       </h1>
       
       <p style="margin: 0; font-size: 13px; color: #52525B; line-height: 1.6; max-width: 480px;">
-        Olá, {{ explode(' ', trim($order->customer_name ?: 'Cliente'))[0] }}! Nossa equipe técnica acabou de carregar o filamento e a impressora 3D já está fatiando a sua encomenda <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong>.
+        Olá, {{ explode(' ', trim($order->customer_name ?: 'Cliente'))[0] }}! A impressora 3D já começou a imprimir a sua encomenda <strong style="color: #7C3AED;">#{{ $order->order_number }}</strong>.
       </p>
     </td>
   </tr>
@@ -61,7 +61,7 @@
   <tr>
     <td style="padding: 16px 0 8px 0; border-top: 2px solid #F4F4F5;">
       <h3 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #71717A;">
-        Peças Sendo Extrusadas Agora ({{ $order->items->count() }})
+        Peças Sendo Impressas Agora ({{ $order->items->count() }})
       </h3>
 
       @foreach($order->items as $item)
