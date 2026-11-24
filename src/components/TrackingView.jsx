@@ -207,7 +207,7 @@ export const TrackingView = () => {
 
               <p className="font-nunito text-slate-600 text-sm sm:text-base leading-relaxed max-w-lg mx-auto lg:mx-0">
                 Cada item da <strong>MIMOO LAB</strong> é produzido artesanalmente em nossas impressoras 3D. 
-                Digite o número da sua encomenda ou cole o seu token secreto para ver a temperatura da mesa, o tempo restante e o código de envio!
+                Digite o número da sua encomenda ou cole o seu token secreto para ver em que etapa está o seu pedido e o código de envio!
               </p>
 
               {/* Badges de Confiança */}
@@ -294,7 +294,7 @@ export const TrackingView = () => {
                   2
                 </div>
                 <h4 className="font-fredoka font-bold text-sm text-mimoo-dark">
-                  Extrusão na Fazenda 3D
+                  Impressão na Fazenda 3D
                 </h4>
                 <p className="text-xs font-nunito text-slate-600 leading-relaxed">
                   A peça é construída camada por camada (0.16mm a 0.20mm) com PLA (biodegradável em compostagem industrial) durante várias horas.

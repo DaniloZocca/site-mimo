@@ -80,21 +80,6 @@ export const Hero = () => {
               </button>
             </div>
 
-            {/* Quick Stat Social Proof */}
-            <div className="pt-4 flex items-center justify-center lg:justify-start gap-6 text-xs text-slate-500 font-nunito border-t border-slate-200/80">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  <div className="w-7 h-7 rounded-full bg-mimoo-pink text-white font-fredoka font-bold flex items-center justify-center border-2 border-white text-[10px]">C</div>
-                  <div className="w-7 h-7 rounded-full bg-mimoo-purple text-white font-fredoka font-bold flex items-center justify-center border-2 border-white text-[10px]">M</div>
-                  <div className="w-7 h-7 rounded-full bg-mimoo-yellow text-mimoo-dark font-fredoka font-bold flex items-center justify-center border-2 border-white text-[10px]">B</div>
-                </div>
-                <span><strong>+1.400</strong> mimos impressos e entregues</span>
-              </div>
-              <div className="flex items-center gap-1 font-semibold text-amber-500">
-                <span>⭐ 4.9/5.0 de avaliação</span>
-              </div>
-            </div>
-
           </div>
 
           {/* Right Column: Hero Visual & Interactive Showcase Card */}
@@ -120,23 +105,6 @@ export const Hero = () => {
                       e.target.src = '/assets/products/cow_planter.jpg';
                     }}
                   />
-
-                  {/* Floating Top Badge */}
-                  <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm border-2 border-mimoo-dark rounded-full px-3 py-1 text-xs font-fredoka font-bold text-mimoo-dark shadow-chunky-sm flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Fazenda 3D Imprimindo</span>
-                  </div>
-
-                  {/* Floating Layer Status overlay */}
-                  <div className="absolute bottom-3 right-3 bg-mimoo-dark/85 backdrop-blur-md text-white rounded-2xl p-2.5 border border-white/20 text-xs font-fredoka shadow-lg max-w-[200px]">
-                    <div className="flex items-center justify-between gap-2 text-[10px] text-slate-300">
-                      <span>Bico: 210°C</span>
-                      <span className="text-mimoo-pink">Camada 748/1100</span>
-                    </div>
-                    <div className="w-full bg-white/20 h-1.5 rounded-full mt-1 overflow-hidden">
-                      <div className="bg-gradient-to-r from-mimoo-pink to-mimoo-purple h-full w-[68%]" />
-                    </div>
-                  </div>
                 </div>
 
                 {/* Card Bottom Meta */}

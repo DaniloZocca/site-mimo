@@ -193,10 +193,10 @@ export const CartDrawer = () => {
                               </span>
                             </div>
 
-                            {/* Tempo de Extrusão Individual */}
+                            {/* Tempo de Impressão Individual */}
                             <div className="flex items-center gap-1.5 text-[10px] text-mimoo-purple font-fredoka">
                               <Clock className="w-3 h-3 flex-shrink-0" />
-                              <span>~{item.estimatedPrintTimeHours * item.quantity}h de extrusão 3D</span>
+                              <span>~{item.estimatedPrintTimeHours * item.quantity}h de impressão 3D</span>
                             </div>
                           </div>
                         </div>

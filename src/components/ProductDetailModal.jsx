@@ -337,7 +337,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                         <span>1. Escolha o Material:</span>
                         <strong className="text-mimoo-purple font-bold">({selectedMaterial?.name || 'PLA'})</strong>
                       </label>
-                      <span className="text-slate-400 font-nunito text-[11px]">Polímero de Extrusão</span>
+                      <span className="text-slate-400 font-nunito text-[11px]">Filamento para Impressão 3D</span>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -530,7 +530,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                           <span className="text-mimoo-purple font-bold">{cepResult.totalEstimate}</span>
                         </div>
                         <div className="text-[11px] text-slate-600 flex justify-between">
-                          <span>• Fabricação & Extrusão: {cepResult.productionTime}</span>
+                          <span>• Fabricação & Impressão: {cepResult.productionTime}</span>
                           <span>• Envio: {cepResult.carrierTime} ({cepResult.price})</span>
                         </div>
                       </div>
@@ -644,7 +644,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
 
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                   <span className="text-slate-400 block text-[10px] font-fredoka">Tempo Estimado:</span>
-                  <strong className="text-mimoo-purple font-fredoka font-bold">~{finalPrintHours}h de Extrusão</strong>
+                  <strong className="text-mimoo-purple font-fredoka font-bold">~{finalPrintHours}h de Impressão</strong>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">

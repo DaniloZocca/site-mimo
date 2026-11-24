@@ -65,7 +65,7 @@ export const Footer = () => {
               </div>
               <div className="text-xs font-fredoka">
                 <strong className="block text-mimoo-dark">Rastreio de Cada Etapa</strong>
-                <span className="text-slate-500">Do bico extrusor à sua porta</span>
+                <span className="text-slate-500">Da impressora à sua porta</span>
               </div>
             </div>
 
@@ -99,11 +99,6 @@ export const Footer = () => {
             <p className="text-xs sm:text-sm text-slate-600 font-nunito leading-relaxed">
               Transformando filamento PLA e ideias criativas em peças colecionáveis, decorativas e funcionais. Cada criação é impressa exclusivamente para você com muito carinho e precisão.
             </p>
-
-            <div className="pt-2 flex items-center gap-2 text-xs font-fredoka font-bold text-slate-700">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              <span>Fazenda 3D em Operação Contínua</span>
-            </div>
           </div>
 
           {/* Quick Categories */}

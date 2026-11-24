@@ -165,7 +165,7 @@ export const ProductionTimelineLogs = ({ logs = [] }) => {
             Aguardando Primeiro Apontamento Técnico
           </strong>
           <p className="text-xs font-nunito text-slate-500 max-w-sm mx-auto">
-            Assim que nossa equipe de impressão 3D iniciar a preparação do filamento ou a extrusão da sua peça, os registros técnicos detalhados aparecerão aqui.
+            Assim que nossa equipe de impressão 3D iniciar a preparação do filamento ou a impressão da sua peça, os registros técnicos detalhados aparecerão aqui.
           </p>
         </div>
       )}
