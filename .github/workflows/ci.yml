@@ -142,8 +142,8 @@ jobs:
       - name: Build
         run: npm run build
 
-  # M-53: os scripts que rodam no servidor (deploy.sh e backup.sh). bash -n e shellcheck sem nenhum aviso, e os
-  # testes que simulam o servidor (php, composer2, rclone e mariadb-dump falsos), inclusive o que prova que o
+  # M-53: o script que roda no servidor (deploy.sh; o backup.sh saiu na M-73). bash -n e shellcheck sem nenhum
+  # aviso, e os testes que simulam o servidor (php e composer2 falsos), inclusive o que prova que o
   # deploy NÃO sai da manutenção quando o mimoo:check-production reprova. O shellcheck já vem no runner.
   scripts:
     name: scripts de deploy
@@ -162,6 +162,3 @@ jobs:
 
       - name: Teste do deploy.sh
         run: bash deploy/hostinger/tests/deploy_test.sh
-
-      - name: Teste do backup.sh
-        run: bash deploy/hostinger/tests/backup_test.sh
