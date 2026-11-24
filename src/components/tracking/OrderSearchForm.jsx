@@ -126,7 +126,7 @@ export const OrderSearchForm = ({
           Acompanhe sua Criação
         </h2>
         <p className="text-xs font-nunito text-slate-500 max-w-sm mx-auto">
-          Veja em qual impressora sua peça está sendo fabricada e o tempo restante de extrusão.
+          Veja em qual impressora sua peça está sendo fabricada e o tempo restante de impressão.
         </p>
       </div>
 

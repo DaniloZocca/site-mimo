@@ -65,7 +65,7 @@ export const Footer = () => {
               </div>
               <div className="text-xs font-fredoka">
                 <strong className="block text-mimoo-dark">Rastreio de Cada Etapa</strong>
-                <span className="text-slate-500">Do bico extrusor à sua porta</span>
+                <span className="text-slate-500">Da impressora à sua porta</span>
               </div>
             </div>
 

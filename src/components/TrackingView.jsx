@@ -294,7 +294,7 @@ export const TrackingView = () => {
                   2
                 </div>
                 <h4 className="font-fredoka font-bold text-sm text-mimoo-dark">
-                  Extrusão na Fazenda 3D
+                  Impressão na Fazenda 3D
                 </h4>
                 <p className="text-xs font-nunito text-slate-600 leading-relaxed">
                   A peça é construída camada por camada (0.16mm a 0.20mm) com PLA (biodegradável em compostagem industrial) durante várias horas.

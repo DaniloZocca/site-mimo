@@ -241,13 +241,6 @@ export const Header = () => {
               💡 Como Funciona
             </button>
           </div>
-
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold">
-            <span className="flex items-center gap-1 bg-mimoo-mint-light text-emerald-800 px-2.5 py-1 rounded-full border border-emerald-300 font-fredoka">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              Fazenda 3D Operando
-            </span>
-          </div>
         </nav>
       </div>
 

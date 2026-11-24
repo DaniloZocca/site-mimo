@@ -52,7 +52,7 @@ export const MOCK_ORDERS = [
     printProgress: 68,
     currentLayer: 748,
     totalLayers: 1100,
-    remainingTime: '03h 42min restantes de extrusão',
+    remainingTime: '03h 42min restantes de impressão',
     extruderTemp: '210°C',
     bedTemp: '60°C',
     trackingCode: 'BR984729104BR',
@@ -106,7 +106,7 @@ export const FAQS = [
   },
   {
     question: 'Posso acompanhar a fabricação da minha peça?',
-    answer: 'Com certeza! Assim que seu pedido é confirmado, você recebe o código da encomenda (ex: MIMOO-A1B2C3D4) para acompanhar na nossa página de rastreio cada etapa: pagamento, fila, extrusão 3D, acabamento, envio e entrega.'
+    answer: 'Com certeza! Assim que seu pedido é confirmado, você recebe o código da encomenda (ex: MIMOO-A1B2C3D4) para acompanhar na nossa página de rastreio cada etapa: pagamento, fila, impressão 3D, acabamento, envio e entrega.'
   },
   {
     question: 'Posso escolher cores diferentes das mostradas nas fotos?',
