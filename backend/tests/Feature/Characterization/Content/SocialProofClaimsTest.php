@@ -16,7 +16,8 @@ use RecursiveIteratorIterator;
  * podem ser vistos como propaganda enganosa (art. 37 do CDC).
  * Reprova, em tudo o que o cliente vê na loja (src/, index.html e public/*.html): contagem de clientes ou peças
  * ("+1.400", "mais de 1.400 clientes"), nota de avaliação ("4.9/5.0"), depoimento com "Comprou:", "clientes felizes",
- * "Impressora #05", "Fazenda 3D Operando/Imprimindo", temperatura do bico e contador de camadas.
+ * "Impressora #05", "Fazenda 3D Operando/Imprimindo/em Operação Contínua", temperatura do bico e da mesa,
+ * "em qual impressora" e contador de camadas.
  *
  * Os arquivos podem ter acentos decompostos (NFD); o texto é normalizado e comparado sem acento.
  */
@@ -30,7 +31,8 @@ class SocialProofClaimsTest extends TestCase
         'depoimento ("Comprou:")' => '/\bcomprou:/u',
         'clientes felizes' => '/clientes\s+felizes/u',
         'impressora numerada ao vivo' => '/impressora\s*#\s*\d/u',
-        'fazenda 3D ao vivo' => '/fazenda\s+3d\s+(?:operando|imprimindo)/u',
+        'fazenda 3D ao vivo' => '/fazenda\s+3d\s+(?:operando|imprimindo)|operacao\s+continua/u',
+        'leitura de máquina que a loja não mostra' => '/temperatura\s+da\s+mesa|em\s+qual\s+impressora/u',
         'temperatura do bico' => '/bico\s*:?\s*(?:a\s+)?\d{3}\s*°?\s*c/u',
         'contador de camadas' => '/camada\s+\d+\s*\/\s*\d+/u',
     ];
@@ -71,6 +73,9 @@ class SocialProofClaimsTest extends TestCase
             '<span>Bico: 210°C</span>',
             'Mesa a 60°C • Bico a 210°C',
             'Camada 748/1100',
+            'Fazenda 3D em Operação Contínua',
+            'para ver a temperatura da mesa, o tempo restante e o código de envio!',
+            'Veja em qual impressora sua peça está sendo fabricada',
             Normalizer::normalize('⭐ 4.9/5.0 de avaliação', Normalizer::FORM_D),
         ];
 
