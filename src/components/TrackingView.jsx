@@ -73,7 +73,7 @@ export const TrackingView = () => {
                 Encomenda Confirmada com Sucesso!
               </h3>
               <p className="text-xs font-nunito text-white/90">
-                Sua peça já foi registrada. Acompanhe abaixo cada etapa de manufatura em tempo real na fazenda 3D.
+                Sua peça já foi registrada. Acompanhe abaixo cada etapa da sua encomenda na fazenda 3D.
               </p>
             </div>
           </div>
@@ -135,7 +135,7 @@ export const TrackingView = () => {
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 font-fredoka">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                    Ao Vivo
+                    Rastreio
                   </span>
                 </div>
                 <h1 className="font-fredoka font-bold text-2xl text-mimoo-dark leading-tight">
@@ -218,7 +218,7 @@ export const TrackingView = () => {
                 </div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-chunky-sm">
                   <Clock className="w-4 h-4 text-mimoo-purple" />
-                  <span>Status em Tempo Real</span>
+                  <span>Status de Cada Etapa</span>
                 </div>
               </div>
             </div>
