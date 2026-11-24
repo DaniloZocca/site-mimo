@@ -974,7 +974,9 @@ export const CheckoutModal = () => {
                   <div className="pt-4 border-t border-slate-200">
                     <CreditCardPaymentStep
                       totalCents={totals.grandTotalCartaoCents}
-                      customerData={watch()}
+                      customerEmail={watch('email')}
+                      customerCpf={watchedCpf}
+                      isSdkReady={isMpReady}
                       onSubmitCard={handleCardSubmit}
                       isSubmitting={isSubmittingCard}
                       errorMessage={cardError}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { setupMercadoPago, getFriendlyCardErrorMessage } from '../services/mercadoPago';
 import { transformToApiPayload } from '../schemas/checkoutSchema';
 import { ShippingPriceChangedError, isShippingPriceChanged } from '../utils/shippingPriceChange';
@@ -11,17 +11,12 @@ import { API_BASE } from '../config/api';
  * Comunica com o backend enviando estritamente os tokens de cartão gerados pelo Mercado Pago.
  */
 export const useMercadoPagoCard = () => {
-  const [isReady, setIsReady] = useState(false);
+  // Inicializa o SDK do Mercado Pago uma vez (idempotente); false = chave pública ausente
+  const [isReady] = useState(() => setupMercadoPago());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const inFlightRef = useRef(false);
   const { keyFor, rotate } = useCheckoutAttemptKey();
-
-  // Inicializa o SDK do Mercado Pago na montagem do hook
-  useEffect(() => {
-    const ready = setupMercadoPago();
-    setIsReady(ready);
-  }, []);
 
   const clearError = useCallback(() => {
     setError(null);
