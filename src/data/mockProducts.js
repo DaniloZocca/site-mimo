@@ -110,7 +110,7 @@ export const FAQS = [
   },
   {
     question: 'Posso escolher cores diferentes das mostradas nas fotos?',
-    answer: 'Sim! Cada modelo possui um seletor com mais de 8 opções de filamentos exclusivos (desde tons pastel como Lilás e Menta até filamentos com brilho Seda Dourada e Gradiente Multicolor). Você escolhe a combinação perfeita!'
+    answer: 'Sim! Cada modelo possui um seletor com mais de 8 opções de filamentos exclusivos. Você escolhe a combinação perfeita!'
   }
 ];
 

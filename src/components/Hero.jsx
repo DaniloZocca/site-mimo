@@ -56,7 +56,7 @@ export const Hero = () => {
                 🌱 PLA de Origem Vegetal
               </span>
               <span className="badge-chunky bg-mimoo-pink-light text-pink-700 border-pink-300 flex items-center gap-1">
-                🎨 8+ Cores Pastel & Seda
+                🎨 8+ Cores
               </span>
             </div>
 

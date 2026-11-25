@@ -214,7 +214,6 @@ export const Footer = () => {
           <div className="flex items-center gap-2 font-fredoka font-bold text-[11px] text-slate-700">
             <span className="bg-slate-100 px-2 py-0.5 rounded border">PIX (10% OFF)</span>
             <span className="bg-slate-100 px-2 py-0.5 rounded border">Cartões até 6x</span>
-            <span className="bg-slate-100 px-2 py-0.5 rounded border">Boleto</span>
           </div>
         </div>
 
