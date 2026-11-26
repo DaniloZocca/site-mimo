@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "oxlint --max-warnings 68",
+    "lint": "oxlint --max-warnings 67",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useShop } from '../context/ShopContext';
-import { calculateProductPricing } from '../utils/pricing';
+import { calculateProductPricing, formatMoney } from '../utils/pricing';
+import { useShipping } from '../hooks/useShipping';
 import { sanitizeHtml } from '../utils/sanitize';
 import { CategoryBadge } from './ui/CategoryBadge';
 import { 
@@ -114,8 +115,10 @@ const ProductDetailContent = ({ selectedProduct }) => {
 
   // CEP Simulator state
   const [cepInput, setCepInput] = useState('');
-  const [cepResult, setCepResult] = useState(null);
-  const [isCalculatingCep, setIsCalculatingCep] = useState(false);
+  // Cotação real (mesma API do carrinho, M-74). A chave guarda o tamanho e a quantidade cotados:
+  // se o cliente muda um dos dois, o resultado antigo some em vez de mostrar um frete que não vale mais.
+  const { shippingOptions, loading: isCalculatingCep, error: cepError, calculateShipping } = useShipping();
+  const [quotedKey, setQuotedKey] = useState(null);
 
   // Active Tab for details - Default: 'about'
   const [activeTab, setActiveTab] = useState('about'); // 'about' | 'specs' | 'care'
@@ -141,22 +144,24 @@ const ProductDetailContent = ({ selectedProduct }) => {
     closeProductDetail();
   };
 
+  const quoteKey = `${selectedProduct.id}:${selectedSize?.id || ''}:${quantity}`;
+  const showQuote = quotedKey === quoteKey;
+
   const handleSimulateCep = (e) => {
     e.preventDefault();
     if (!cepInput.trim()) return;
 
-    setIsCalculatingCep(true);
-    setTimeout(() => {
-      setIsCalculatingCep(false);
-      setCepResult({
-        productionTime: `${Math.ceil(finalPrintHours / 12)} a ${Math.ceil(finalPrintHours / 8)} dias úteis`,
-        carrierTime: '2 a 3 dias úteis',
-        totalEstimate: `${Math.ceil(finalPrintHours / 12) + 2} a ${Math.ceil(finalPrintHours / 8) + 3} dias úteis`,
-        price: 'R$ 14,90',
-        carrier: 'Jadlog Expresso / Correios Sedex',
-      });
-    }, 600);
+    setQuotedKey(quoteKey);
+    calculateShipping(cepInput, [{ productId: selectedProduct.id, size: selectedSize, quantity }]);
   };
+
+  const formatDays = (days) => `${days} ${days === 1 ? 'dia útil' : 'dias úteis'}`;
+  const quoteTotals = shippingOptions.map((opt) => opt.total_estimated_days);
+  const quoteTotalLabel = quoteTotals.length === 0
+    ? ''
+    : Math.min(...quoteTotals) === Math.max(...quoteTotals)
+      ? formatDays(Math.min(...quoteTotals))
+      : `${Math.min(...quoteTotals)} a ${formatDays(Math.max(...quoteTotals))}`;
 
   // Selos do produto: na coluna da foto a partir de sm; no celular, depois do simulador de frete
   const renderGuaranteeBoxes = (visibilityClass) => (
@@ -173,7 +178,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
         <span className="text-xl">🛡️</span>
         <div className="text-xs font-fredoka">
           <strong className="block text-emerald-900">Garantia MIMOO</strong>
-          <span className="text-emerald-700 font-normal">Qualidade ou reimpressão</span>
+          <span className="text-emerald-700 font-normal">Defeito? A gente reimprime ou devolve</span>
         </div>
       </div>
     </div>
@@ -523,16 +528,27 @@ const ProductDetailContent = ({ selectedProduct }) => {
                       </button>
                     </div>
 
-                    {cepResult && (
+                    {showQuote && !isCalculatingCep && cepError && (
+                      <p role="alert" className="text-xs font-nunito font-semibold text-mimoo-pink">
+                        {cepError}
+                      </p>
+                    )}
+
+                    {showQuote && !isCalculatingCep && !cepError && shippingOptions.length > 0 && (
                       <div className="bg-mimoo-purple-tint p-3 rounded-2xl border border-purple-200 text-xs font-nunito space-y-1.5 animate-in fade-in">
                         <div className="flex justify-between font-fredoka text-mimoo-dark font-bold">
                           <span>Tempo Total Estimado:</span>
-                          <span className="text-mimoo-purple font-bold">{cepResult.totalEstimate}</span>
+                          <span className="text-mimoo-purple font-bold">{quoteTotalLabel}</span>
                         </div>
-                        <div className="text-[11px] text-slate-600 flex justify-between">
-                          <span>• Fabricação & Impressão: {cepResult.productionTime}</span>
-                          <span>• Envio: {cepResult.carrierTime} ({cepResult.price})</span>
+                        <div className="text-[11px] text-slate-600">
+                          • Fabricação & Impressão: {formatDays(shippingOptions[0].manufacturing_lead_time_days)}
                         </div>
+                        {shippingOptions.map((opt) => (
+                          <div key={opt.service_code} className="text-[11px] text-slate-600 flex justify-between">
+                            <span>• Envio {opt.service_name}: {formatDays(opt.carrier_delivery_days)}</span>
+                            <span className="font-bold text-mimoo-dark">{formatMoney(opt.price_in_cents)}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </form>
