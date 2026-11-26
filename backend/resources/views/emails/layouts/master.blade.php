@@ -107,11 +107,11 @@
                     </p>
                     <p style="margin: 0; font-size: 11px; color: #6D28D9; line-height: 1.5;">
                       Nossa equipe está à disposição no WhatsApp: 
-                      <a href="https://wa.me/{{ config('loja.whatsapp') }}" target="_blank" style="color: #7C3AED; font-weight: 700; text-decoration: underline;">
-                        {{ config('loja.whatsapp_exibicao') }}
+                      <a href="https://wa.me/{{ config('atendimento.whatsapp') }}" target="_blank" style="color: #7C3AED; font-weight: 700; text-decoration: underline;">
+                        {{ config('atendimento.whatsapp_exibicao') }}
                       </a>
                       <br>
-                      Atendimento {{ config('loja.horario_atendimento') }}.
+                      Atendimento {{ config('atendimento.horario') }}.
                     </p>
                   </td>
                 </tr>
