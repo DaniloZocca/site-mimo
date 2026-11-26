@@ -107,9 +107,11 @@
                     </p>
                     <p style="margin: 0; font-size: 11px; color: #6D28D9; line-height: 1.5;">
                       Nossa equipe está à disposição no WhatsApp: 
-                      <a href="https://wa.me/5511999999999" target="_blank" style="color: #7C3AED; font-weight: 700; text-decoration: underline;">
-                        (11) 99999-9999
+                      <a href="https://wa.me/{{ config('loja.whatsapp') }}" target="_blank" style="color: #7C3AED; font-weight: 700; text-decoration: underline;">
+                        {{ config('loja.whatsapp_exibicao') }}
                       </a>
+                      <br>
+                      Atendimento {{ config('loja.horario_atendimento') }}.
                     </p>
                   </td>
                 </tr>

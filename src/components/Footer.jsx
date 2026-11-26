@@ -1,25 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useShop } from '../context/ShopContext';
 import { CATEGORY_LIST } from '../constants/categories';
 import { LEGAL_LINKS } from '../content/legal';
-import { Heart, Sparkles, Truck, ShieldCheck, Mail, ArrowRight, Share2 } from 'lucide-react';
+import { LOJA } from '../config/loja';
+import { Heart, Sparkles, Truck, Mail, ArrowRight, Share2 } from 'lucide-react';
 
 export const Footer = () => {
-  const { setActiveTab, setSelectedCategory, showToast } = useShop();
-  const [emailInput, setEmailInput] = useState('');
+  const { setActiveTab, setSelectedCategory } = useShop();
 
   const openLegalPage = (tab) => {
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleNewsletter = (e) => {
-    e.preventDefault();
-    if (emailInput.trim()) {
-      showToast('💌 Obrigado pelo interesse!');
-      setEmailInput('');
-    }
-  };
 
   return (
     <footer className="bg-white border-t-2 border-mimoo-dark text-mimoo-dark">
@@ -172,36 +165,38 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Newsletter Box */}
+          {/* Fale com a gente */}
           <div className="lg:col-span-4 space-y-3">
             <h4 className="font-fredoka font-bold text-mimoo-dark uppercase tracking-wider text-xs border-b border-slate-200 pb-2">
-              Clube da Vaquinha Mimoo 🐮
+              Fale com a gente 🐮
             </h4>
             <p className="font-nunito text-xs text-slate-600">
-              Receba novidades dos novos modelos 3D.
+              Atendimento {LOJA.horarioAtendimento}.
             </p>
 
-            <form onSubmit={handleNewsletter} className="flex gap-2">
-              <input
-                type="email"
-                required
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="Seu melhor e-mail..."
-                className="flex-1 rounded-2xl border-2 border-mimoo-dark px-3 py-2 text-xs font-nunito focus:outline-none"
-              />
-              <button
-                type="submit"
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={`https://wa.me/${LOJA.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="btn-chunky-purple px-4 py-2 text-xs font-bold flex items-center gap-1 shadow-chunky-sm"
               >
-                <span>Inscrever</span>
+                <span>💬 WhatsApp {LOJA.whatsappExibicao}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </form>
+              </a>
+              <a
+                href={`https://www.instagram.com/${LOJA.instagram}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-chunky-white px-4 py-2 text-xs font-bold flex items-center gap-1"
+              >
+                <span>📸 @{LOJA.instagram}</span>
+              </a>
+            </div>
 
             <div className="pt-2 flex items-center gap-3 text-[10px] text-slate-400 font-nunito">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Sem spam, só fofura e lançamentos exclusivos.</span>
+              <Mail className="w-4 h-4 text-mimoo-purple" />
+              <a href={`mailto:${LOJA.emailContato}`} className="hover:text-mimoo-purple transition-colors">{LOJA.emailContato}</a>
             </div>
           </div>
 

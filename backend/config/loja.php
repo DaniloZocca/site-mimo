@@ -11,4 +11,9 @@ return [
     'razao_social' => trim((string) env('LOJA_RAZAO_SOCIAL', '')),
     'cnpj' => trim((string) env('LOJA_CNPJ', '')),
     'cidade_uf' => trim((string) env('LOJA_CIDADE_UF', '')),
+
+    // Canais de atendimento públicos, informados pelo Zocca em 2026-11-26 (M-74). Não são segredo.
+    'whatsapp' => '5519996317677',
+    'whatsapp_exibicao' => '(19) 99631-7677',
+    'horario_atendimento' => 'de segunda a sexta, das 8h às 17h',
 ];

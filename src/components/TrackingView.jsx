@@ -20,6 +20,7 @@ import { OrderSearchForm } from './tracking/OrderSearchForm';
 import { ManufacturingStepper } from './tracking/ManufacturingStepper';
 import { OrderSummaryCard } from './tracking/OrderSummaryCard';
 import { ProductionTimelineLogs } from './tracking/ProductionTimelineLogs';
+import { LOJA } from '../config/loja';
 
 export const TrackingView = () => {
   const { setActiveTab } = useShop();
@@ -253,7 +254,7 @@ export const TrackingView = () => {
               </div>
 
               <a
-                href="https://wa.me/5511999999999?text=Ol%C3%A1!%20Gostaria%20de%20ajuda%20para%20rastrear%20minha%20encomenda%203D%20na%20MIMOO%20LAB."
+                href={`https://wa.me/${LOJA.whatsapp}?text=${encodeURIComponent('Olá! Gostaria de ajuda para rastrear minha encomenda 3D na MIMOO LAB.')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-chunky-purple py-2.5 px-5 text-xs font-fredoka font-bold flex items-center gap-2 whitespace-nowrap shadow-chunky-sm"

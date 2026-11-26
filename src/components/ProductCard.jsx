@@ -3,7 +3,6 @@ import { useShop } from '../context/ShopContext';
 import { PrintTimeBadge } from './PrintTimeBadge';
 import { CategoryBadge } from './ui/CategoryBadge';
 import { Heart, Star, ShoppingBag, Eye } from 'lucide-react';
-import { FILAMENT_COLORS } from '../data/mockProducts';
 import { calculateProductPricing } from '../utils/pricing';
 
 export const ProductCard = ({ product }) => {
@@ -17,7 +16,8 @@ export const ProductCard = ({ product }) => {
     maxInstallments: 3,
   });
 
-  const displayColors = (product.colors && product.colors.length > 0) ? product.colors : FILAMENT_COLORS;
+  // Só as cores cadastradas no painel (M-74): produto sem cor não mostra amostras de exemplo.
+  const displayColors = Array.isArray(product.colors) ? product.colors : [];
 
   // Compra rápida: primeiro material do produto que tenha cor ligada desse filamento (o checkout recusa as demais)
   const findQuickAddChoice = () => {
@@ -133,6 +133,7 @@ export const ProductCard = ({ product }) => {
         </div>
 
         {/* Filament Color Swatches Preview */}
+        {displayColors.length > 0 && (
         <div className="pt-2 border-t border-slate-100">
           <div className="flex items-center justify-between text-[11px] text-slate-500 font-fredoka mb-1.5">
             <span>Cores Disponíveis:</span>
@@ -154,6 +155,7 @@ export const ProductCard = ({ product }) => {
             )}
           </div>
         </div>
+        )}
 
         {/* Price and CTA */}
         <div className="pt-2 border-t border-slate-100 flex items-end justify-between gap-2">
