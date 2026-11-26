@@ -20,7 +20,7 @@ export const HowItWorks = () => {
       desc: 'Assim que o pagamento é aprovado, a impressora começa a dar forma à sua peça, camada por camada, com muito capricho.',
       icon: Cpu,
       color: 'bg-mimoo-pink-light text-mimoo-pink-dark border-mimoo-pink',
-      badge: 'Prazo na página da peça'
+      badge: 'Prazo varia por peça'
     },
     {
       step: '03',

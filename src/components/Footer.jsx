@@ -13,7 +13,6 @@ export const Footer = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-
   return (
     <footer className="bg-white border-t-2 border-mimoo-dark text-mimoo-dark">
       
@@ -194,7 +193,7 @@ export const Footer = () => {
               </a>
             </div>
 
-            <div className="pt-2 flex items-center gap-3 text-[10px] text-slate-400 font-nunito">
+            <div className="pt-2 flex items-center gap-3 text-xs text-slate-600 font-nunito">
               <Mail className="w-4 h-4 text-mimoo-purple" />
               <a href={`mailto:${LOJA.emailContato}`} className="hover:text-mimoo-purple transition-colors">{LOJA.emailContato}</a>
             </div>

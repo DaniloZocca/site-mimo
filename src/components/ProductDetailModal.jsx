@@ -529,7 +529,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
                     </div>
 
                     {showQuote && !isCalculatingCep && cepError && (
-                      <p role="status" className="text-xs font-nunito font-semibold text-mimoo-pink">
+                      <p role="alert" className="text-xs font-nunito font-semibold text-mimoo-pink">
                         {cepError}
                       </p>
                     )}

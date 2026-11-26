@@ -31,7 +31,7 @@
             <table border="0" cellpadding="0" cellspacing="0" width="100%">
               <tr>
                 <td width="36" valign="top" style="font-size: 24px; line-height: 1;">
-                  🔥
+                  🖨️
                 </td>
                 <td valign="top" style="font-size: 12px; color: #1E40AF; line-height: 1.5;">
                   <strong style="display: block; font-size: 13px; color: #1E3A8A; margin-bottom: 2px;">
