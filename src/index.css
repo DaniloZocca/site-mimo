@@ -104,3 +104,15 @@
 .animate-laser {
   animation: laserScan 2.5s ease-in-out infinite;
 }
+
+/* M-75: com uma janela aberta (produto, carrinho, pagamento ou conta), as animações da página atrás dela
+   ficam paradas e as de dentro da janela continuam. O fundo desfocado da janela (backdrop-blur) é refeito
+   a cada quadro enquanto algo se mexe atrás dele; com o fundo parado, o navegador desfoca uma vez só. */
+#root:has([data-janela]) * {
+  animation-play-state: paused;
+}
+
+#root [data-janela],
+#root [data-janela] * {
+  animation-play-state: running;
+}

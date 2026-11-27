@@ -295,7 +295,7 @@ export const AuthModal = () => {
   }[authModalView];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-mimoo-dark/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div data-janela="conta" className="fixed inset-0 z-50 overflow-y-auto bg-mimoo-dark/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
 
       <div
         role="dialog"
