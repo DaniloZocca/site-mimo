@@ -22,7 +22,7 @@
     </td>
   </tr>
 
-  <!-- Card Técnico Fabril -->
+  <!-- Card da Oficina -->
   <tr>
     <td style="padding: 16px 0;">
       <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #EFF6FF; border: 2px solid #BFDBFE; border-radius: 16px;">
@@ -31,13 +31,13 @@
             <table border="0" cellpadding="0" cellspacing="0" width="100%">
               <tr>
                 <td width="36" valign="top" style="font-size: 24px; line-height: 1;">
-                  🔥
+                  🖨️
                 </td>
                 <td valign="top" style="font-size: 12px; color: #1E40AF; line-height: 1.5;">
                   <strong style="display: block; font-size: 13px; color: #1E3A8A; margin-bottom: 2px;">
-                    Parâmetros da Oficina 3D:
+                    Na nossa oficina:
                   </strong>
-                  Bico aquecido a <strong>210°C</strong> &bull; Mesa a <strong>60°C</strong> &bull; Resolução em camadas ultrafinas (<strong>0.16mm</strong>) para máxima definição.
+                  Sua peça está ganhando forma camada por camada, com muito carinho. Depois vem o acabamento e a embalagem.
                 </td>
               </tr>
             </table>

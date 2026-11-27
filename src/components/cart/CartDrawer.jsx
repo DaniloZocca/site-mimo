@@ -62,7 +62,7 @@ export const CartDrawer = () => {
   const totals = calculateCartTotals(cart, 10, shippingCents);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+    <div data-janela="carrinho" className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
       {/* Backdrop com Blur */}
       <div 
         onClick={() => setIsCartOpen(false)}

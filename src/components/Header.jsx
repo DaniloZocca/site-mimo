@@ -45,7 +45,7 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b-2 border-mimoo-dark shadow-sm">
+    <header className="sticky top-0 z-40 bg-white border-b-2 border-mimoo-dark shadow-sm">
       {/* Top Banner Announcement Ticker */}
       <div className="bg-gradient-to-r from-mimoo-purple via-mimoo-pink to-mimoo-purple text-white py-1.5 px-4 text-xs md:text-sm font-fredoka tracking-wide flex items-center justify-between border-b border-mimoo-dark/20 overflow-hidden">
         <div className="flex items-center gap-2 mx-auto animate-pulse-subtle text-center">

@@ -98,7 +98,7 @@ export const FAQS = [
   },
   {
     question: 'Qual é o tempo total até a chegada do meu pedido?',
-    answer: 'O prazo total é composto por: [Tempo de Impressão e Acabamento da Peça: de 1 a 3 dias úteis] + [Prazo de Envio dos Correios/Transportadora: 1 a 5 dias úteis de acordo com seu CEP]. No carrinho e na página do produto nós calculamos tudo de forma 100% transparente!'
+    answer: 'O tempo de produção muda de peça para peça e aparece na página de cada produto. O prazo de entrega depende do seu CEP: no carrinho você vê o frete e o prazo total, já com a produção somada.'
   },
   {
     question: 'O material PLA é resistente e seguro?',
@@ -110,7 +110,7 @@ export const FAQS = [
   },
   {
     question: 'Posso escolher cores diferentes das mostradas nas fotos?',
-    answer: 'Sim! Cada modelo possui um seletor com mais de 8 opções de filamentos exclusivos (desde tons pastel como Lilás e Menta até filamentos com brilho Seda Dourada e Gradiente Multicolor). Você escolhe a combinação perfeita!'
+    answer: 'Sim! Cada modelo possui um seletor com mais de 8 opções de filamentos exclusivos. Você escolhe a combinação perfeita!'
   }
 ];
 

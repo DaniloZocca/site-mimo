@@ -56,7 +56,7 @@
           'slot' => 'Acompanhar Produção 3D em Tempo Real ✨'
       ])
       <span style="display: block; font-size: 10px; color: #A1A1AA; margin-top: 4px;">
-        Link exclusivo e protegido por chave única criptográfica.
+        Este link é só seu: não compartilhe com ninguém.
       </span>
     </td>
   </tr>

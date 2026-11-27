@@ -17,10 +17,10 @@ export const HowItWorks = () => {
     {
       step: '02',
       title: 'Nossa Impressora 3D Entra em Ação',
-      desc: 'Assim que o pedido é aprovado, a impressora aquece a 210°C e deposita o filamento camada por camada (0.12mm) com precisão milimétrica.',
+      desc: 'Assim que o pagamento é aprovado, a impressora começa a dar forma à sua peça, camada por camada, com muito capricho.',
       icon: Cpu,
       color: 'bg-mimoo-pink-light text-mimoo-pink-dark border-mimoo-pink',
-      badge: 'Tempo de Máquina: 8h a 24h'
+      badge: 'Prazo varia por peça'
     },
     {
       step: '03',

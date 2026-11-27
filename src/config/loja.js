@@ -11,6 +11,11 @@ export const LOJA = {
   servicoEmail: 'Resend',
   hospedagem: 'Hostinger',
   atualizadoEm: '',
+  // Canais de atendimento (Zocca, 2026-11-26, M-74). O rodapé dos e-mails usa os mesmos em backend/config/atendimento.php.
+  whatsapp: '5519996317677',
+  whatsappExibicao: '(19) 99631-7677',
+  instagram: 'mimoolab.oficial',
+  horarioAtendimento: 'de segunda a sexta, das 8h às 17h',
 };
 
 // Nome de cada campo no aviso "[a preencher: …]".
@@ -23,4 +28,8 @@ export const LOJA_CAMPOS = {
   servicoEmail: 'serviço de envio de e-mails',
   hospedagem: 'hospedagem',
   atualizadoEm: 'data da publicação',
+  whatsapp: 'WhatsApp',
+  whatsappExibicao: 'WhatsApp',
+  instagram: 'Instagram',
+  horarioAtendimento: 'horário de atendimento',
 };
