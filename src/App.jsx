@@ -51,7 +51,7 @@ const MainContent = () => {
             {/* Featured Best Sellers Section */}
             <ProductGrid 
               title="🌟 Destaques Feitos Sob Encomenda" 
-              subtitle="As peças mais amadas pelos nossos clientes, prontas para serem impressas na sua cor favorita."
+              subtitle="Peças fofas do nosso catálogo, prontas para serem impressas na sua cor favorita."
               showFilters={true}
               initialLimit={6}
             />
