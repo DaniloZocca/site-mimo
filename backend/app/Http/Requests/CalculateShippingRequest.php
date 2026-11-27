@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Support\CheckoutLimits;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -43,29 +44,33 @@ class CalculateShippingRequest extends FormRequest
                 'size:8',
                 'regex:/^\d{8}$/',
             ],
+            // M-06: no máximo 50 linhas; acima disso as regras de cada item nem são montadas (sem consultas).
             'items' => [
                 'required',
                 'array',
                 'min:1',
+                'max:'.CheckoutLimits::MAX_ITEM_LINES,
             ],
-            'items.*.product_id' => [
-                'required',
-                'string',
-                'uuid',
-                'exists:products,id',
-            ],
-            'items.*.size_id' => [
-                'nullable',
-                'string',
-                'uuid',
-                'exists:sizes,id',
-            ],
-            'items.*.quantity' => [
-                'required',
-                'integer',
-                'min:1',
-                'max:50',
-            ],
+            ...CheckoutLimits::itemRulesFor($this->input('items'), [
+                'items.*.product_id' => [
+                    'required',
+                    'string',
+                    'uuid',
+                    'exists:products,id',
+                ],
+                'items.*.size_id' => [
+                    'nullable',
+                    'string',
+                    'uuid',
+                    'exists:sizes,id',
+                ],
+                'items.*.quantity' => [
+                    'required',
+                    'integer',
+                    'min:1',
+                    'max:50',
+                ],
+            ]),
         ];
     }
 
@@ -82,6 +87,7 @@ class CalculateShippingRequest extends FormRequest
             'destination_cep.regex' => 'Formato de CEP inválido.',
             'items.required' => 'A lista de itens do pedido é obrigatória.',
             'items.min' => 'Informe ao menos um produto para calcular o frete.',
+            'items.max' => CheckoutLimits::ITEM_LINES_MESSAGE,
             'items.*.product_id.exists' => 'Um dos produtos informados não existe em nosso catálogo.',
             'items.*.product_id.uuid' => 'Identificador de produto inválido.',
             'items.*.size_id.exists' => 'A variação de tamanho selecionada não foi encontrada.',
