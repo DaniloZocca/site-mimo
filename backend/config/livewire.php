@@ -63,9 +63,12 @@ return [
     |
     */
 
+    // M-80: o temporário fica fora da pasta pública (storage/app/livewire-tmp) e só aceita foto. O `mimes` confere o
+    // conteúdo; o `extensions` confere o nome, que o Livewire e o Filament reaproveitam ao gravar o arquivo (um JPEG
+    // chamado foto.html viraria products/<código>.html). O .jfif é JPEG (o Windows às vezes salva assim).
     'temporary_file_upload' => [
-        'disk' => 'public',
-        'rules' => 'file|max:51200', // 50MB em KB (51.200 KB)
+        'disk' => 'local',
+        'rules' => ['file', 'mimes:jpg,jpeg,png,webp', 'extensions:jpg,jpeg,jfif,png,webp', 'max:51200'], // 50MB em KB (51.200 KB)
         'directory' => 'livewire-tmp',
         'middleware' => null,
         'preview_mimes' => ['png', 'gif', 'bmp', 'svg', 'jpg', 'jpeg', 'webp'],

@@ -9,6 +9,11 @@
     RewriteCond %{REQUEST_URI} !^/\.well-known/
     RewriteRule (^|/)\. - [F,L]
 
+    # M-80: em /storage só saem fotos (um ponto só no caminho, terminando em jpg, jpeg, jfif, png ou webp); o resto dá 403
+    RewriteCond %{REQUEST_URI} ^/storage/ [NC]
+    RewriteCond %{REQUEST_URI} !^/storage/[^.]+\.(jpe?g|jfif|png|webp)$ [NC]
+    RewriteRule ^ - [F,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -35,4 +40,13 @@
 <IfModule mod_headers.c>
     Header always unset X-Powered-By
     Header unset X-Powered-By
+    # M-80: as fotos de /storage e o CSS/JS do painel saem direto do servidor, sem os cabeçalhos do Laravel; o nosniff
+    # impede o navegador de tratar um arquivo como outro tipo. Sem "always": nas respostas do Laravel o cabeçalho já
+    # existe com o mesmo valor e é só substituído, sem sair duplicado.
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# M-80: .jfif é JPEG. Sem isto o servidor poderia mandá-lo como arquivo genérico e, com o nosniff, a foto não abriria
+<IfModule mod_mime.c>
+    AddType image/jpeg .jfif
 </IfModule>
