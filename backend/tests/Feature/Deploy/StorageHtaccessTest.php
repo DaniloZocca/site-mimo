@@ -111,4 +111,60 @@ class StorageHtaccessTest extends CharacterizationTestCase
     {
         $this->assertSame(1, preg_match('/<IfModule mod_mime\.c>\s*AddType image\/jpeg \.jfif\s*<\/IfModule>/', $this->htaccess()));
     }
+
+    private function storageHtaccess(): string
+    {
+        $path = storage_path('app/public/.htaccess');
+        $this->assertFileExists($path, 'a terceira camada (storage/app/public/.htaccess) precisa existir');
+
+        return (string) file_get_contents($path);
+    }
+
+    private function storageDenies(string $filename): bool
+    {
+        $this->assertSame(1, preg_match('/<FilesMatch "([^"]+)">\s*Require all denied\s*<\/FilesMatch>/', $this->storageHtaccess(), $match));
+
+        return preg_match('#'.$match[1].'#', $filename) === 1;
+    }
+
+    public function test_terceira_camada_fica_no_git_e_nao_liga_o_mod_rewrite_da_pasta(): void
+    {
+        $this->assertContains('!.htaccess', file(storage_path('app/public/.gitignore'), FILE_IGNORE_NEW_LINES));
+        // Um RewriteEngine nesta pasta substituiria as regras do public/.htaccess para tudo que está em /storage.
+        $directives = preg_replace('/^\s*#.*$/m', '', $this->storageHtaccess());
+        $this->assertStringNotContainsStringIgnoringCase('RewriteEngine', (string) $directives);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function scriptFilenames(): array
+    {
+        return [
+            'php' => ['shell.php'], 'PHP' => ['shell.PHP'], 'php7' => ['shell.php7'], 'pht' => ['shell.pht'],
+            'phtml' => ['shell.phtml'], 'phar' => ['shell.phar'], 'phps' => ['shell.phps'], 'html' => ['pagina.html'],
+            'htm' => ['pagina.htm'], 'shtml' => ['pagina.shtml'], 'svg' => ['desenho.svg'], 'js' => ['script.js'],
+            'temporário antigo do Livewire' => ['5KJimpvyg1vpOCXDYVfvdICNeUQojk-metac2hlbGwucGhw-.php'],
+        ];
+    }
+
+    #[DataProvider('scriptFilenames')]
+    public function test_terceira_camada_recusa_script_e_pagina(string $filename): void
+    {
+        $this->assertTrue($this->storageDenies($filename), "{$filename} precisa dar 403 pela terceira camada");
+    }
+
+    /** @return array<string, array{string}> */
+    public static function photoFilenames(): array
+    {
+        return [
+            'jpg' => ['01M8DK0VRR7KJCGFS7RWK551X3.jpg'], 'JPG' => ['01M8DK0VRR7KJCGFS7RWK551X3.JPG'],
+            'jpeg' => ['01M8DK0VRR7KJCGFS7RWK551X3.jpeg'], 'jfif' => ['01M8DK0VRR7KJCGFS7RWK551X3.jfif'],
+            'png' => ['01M8DK0VRR7KJCGFS7RWK551X3.png'], 'webp' => ['01M8DK0VRR7KJCGFS7RWK551X3.webp'],
+        ];
+    }
+
+    #[DataProvider('photoFilenames')]
+    public function test_terceira_camada_deixa_as_fotos(string $filename): void
+    {
+        $this->assertFalse($this->storageDenies($filename), "{$filename} não pode dar 403");
+    }
 }
