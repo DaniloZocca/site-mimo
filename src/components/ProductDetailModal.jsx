@@ -185,7 +185,7 @@ const ProductDetailContent = ({ selectedProduct }) => {
   );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-mimoo-dark/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
+    <div data-janela="produto" className="fixed inset-0 z-50 overflow-y-auto bg-mimoo-dark/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
       
       {/* Modal Container */}
       <div className="relative w-full max-w-4xl bg-white rounded-4xl border-3 border-mimoo-dark shadow-chunky-lg overflow-hidden my-auto max-h-[92vh] flex flex-col">
