@@ -26,9 +26,12 @@ class MercadoPagoService
         $accessToken = (string) config('services.mercadopago.access_token', '');
         $this->webhookSecret = config('services.mercadopago.webhook_secret');
 
+        // M-06: sempre SERVER. O modo LOCAL do SDK desliga a conferência do certificado HTTPS em toda
+        // chamada ao Mercado Pago (CURLOPT_SSL_VERIFYPEER/VERIFYHOST = false no MPDefaultHttpClient).
+        MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::SERVER);
+
         if (! empty($accessToken)) {
             MercadoPagoConfig::setAccessToken($accessToken);
-            MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
         }
 
         $this->client = new PaymentClient;

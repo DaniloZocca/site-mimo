@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use App\Enums\MaterialType;
 use App\Rules\ValidCpf;
+use App\Support\CheckoutLimits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -111,18 +112,20 @@ class CheckoutRequest extends FormRequest
             'shipping_service' => ['required', 'string', 'max:30'],
             'shipping_cost_cents' => ['nullable', 'integer', 'min:0'],
 
-            // Lista de Itens com Validação Estrita de Material e UUIDs
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'uuid', 'exists:products,id'],
-            'items.*.color_id' => ['required', 'uuid', 'exists:colors,id'],
-            'items.*.size_id' => ['nullable', 'uuid', 'exists:sizes,id'],
-            'items.*.material' => ['required', 'string', new Enum(MaterialType::class)],
-            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:50'],
+            // Lista de Itens com Validação Estrita de Material e UUIDs (M-06: no máximo 50 linhas)
+            'items' => ['required', 'array', 'min:1', 'max:'.CheckoutLimits::MAX_ITEM_LINES],
+            ...CheckoutLimits::itemRulesFor($this->input('items'), [
+                'items.*.product_id' => ['required', 'uuid', 'exists:products,id'],
+                'items.*.color_id' => ['required', 'uuid', 'exists:colors,id'],
+                'items.*.size_id' => ['nullable', 'uuid', 'exists:sizes,id'],
+                'items.*.material' => ['required', 'string', new Enum(MaterialType::class)],
+                'items.*.quantity' => ['required', 'integer', 'min:1', 'max:50'],
+            ]),
 
             // Método e Dados de Pagamento (PCI-DSS: Apenas tokens do Checkout Bricks)
             'payment.payment_method' => ['required', 'string', Rule::in(['pix', 'credit_card'])],
             'payment.card_token' => ['required_if:payment.payment_method,credit_card', 'nullable', 'string'],
-            'payment.installments' => ['required_if:payment.payment_method,credit_card', 'nullable', 'integer', 'min:1', 'max:12'],
+            'payment.installments' => ['required_if:payment.payment_method,credit_card', 'nullable', 'integer', 'min:1', 'max:'.CheckoutLimits::MAX_INSTALLMENTS],
             'payment.payment_method_id' => ['required_if:payment.payment_method,credit_card', 'nullable', 'string'],
         ];
     }
@@ -155,6 +158,7 @@ class CheckoutRequest extends FormRequest
             'shipping_cost_cents.min' => 'O frete não pode ser negativo.',
             'items.required' => 'A sacola de encomendas não pode estar vazia.',
             'items.min' => 'Adicione pelo menos um item à sacola para finalizar a compra.',
+            'items.max' => CheckoutLimits::ITEM_LINES_MESSAGE,
             'items.*.product_id.required' => 'O identificador do produto é obrigatório.',
             'items.*.product_id.uuid' => 'O identificador do produto deve ser um UUID válido.',
             'items.*.product_id.exists' => 'Um dos produtos informados não existe no catálogo.',
@@ -169,6 +173,7 @@ class CheckoutRequest extends FormRequest
             'items.*.quantity.max' => 'A quantidade máxima por item na mesma encomenda é de 50 unidades.',
             'payment.payment_method.required' => 'Selecione uma forma de pagamento válida (pix ou credit_card).',
             'payment.payment_method.in' => 'Forma de pagamento inválida.',
+            'payment.installments.max' => CheckoutLimits::INSTALLMENTS_MESSAGE,
         ];
     }
 }
