@@ -115,11 +115,14 @@ export const ProductCard = ({ product }) => {
                 />
               )}
             </div>
-            <div className="flex items-center gap-1 text-amber-500 font-bold font-fredoka flex-shrink-0">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              <span>{product.rating}</span>
-              <span className="text-slate-400 font-normal">({product.reviewsCount})</span>
-            </div>
+            {/* M-77: nota e avaliações só quando houver avaliações reais */}
+            {product.reviewsCount > 0 && product.rating > 0 && (
+              <div className="flex items-center gap-1 text-amber-500 font-bold font-fredoka flex-shrink-0">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>{product.rating}</span>
+                <span className="text-slate-400 font-normal">({product.reviewsCount})</span>
+              </div>
+            )}
           </div>
 
           {/* Product Title */}

@@ -1,0 +1,7 @@
+# M-80: terceira camada, só desta pasta (o endereço /storage da API). O public/.htaccess já só deixa sair foto daqui;
+# esta regra recusa script e página mesmo que aquela deixe de valer (regra apagada, outro endereço apontando para
+# esta pasta). Fica no Git para um servidor novo já nascer com ela.
+# Sem RewriteEngine aqui: ligar o mod_rewrite nesta pasta substituiria as regras do public/.htaccess.
+<FilesMatch "\.(?i:php\d*|pht|phtml|phar|phps|inc|cgi|pl|py|sh|s?html?|xhtml|svgz?|xml|js|mjs)$">
+    Require all denied
+</FilesMatch>

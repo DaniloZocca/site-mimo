@@ -2,7 +2,6 @@ import { CartProvider } from './context/CartContext';
 import { ShopProvider, useShop } from './context/ShopContext';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
-import { LiveFarmTicker } from './components/LiveFarmTicker';
 import { HowItWorks } from './components/HowItWorks';
 import { ProductGrid } from './components/ProductGrid';
 import { ProductDetailModal } from './components/ProductDetailModal';
@@ -38,9 +37,6 @@ const MainContent = () => {
       {/* Header */}
       <Header />
 
-      {/* Live 3D Printing Farm Ticker */}
-      <LiveFarmTicker />
-
       {/* Main Routed Views */}
       <main className="flex-1">
         {activeTab === 'home' && (
@@ -51,7 +47,7 @@ const MainContent = () => {
             {/* Featured Best Sellers Section */}
             <ProductGrid 
               title="🌟 Destaques Feitos Sob Encomenda" 
-              subtitle="As peças mais amadas pelos nossos clientes, prontas para serem impressas na sua cor favorita."
+              subtitle="Peças fofas do nosso catálogo, prontas para serem impressas na sua cor favorita."
               showFilters={true}
               initialLimit={6}
             />

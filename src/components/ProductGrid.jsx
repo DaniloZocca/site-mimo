@@ -16,7 +16,7 @@ export const ProductGrid = ({ title, subtitle, showFilters = true, initialLimit 
 
   const productList = products || PRODUCTS;
   const [timeFilter, setTimeFilter] = useState('all'); // 'all' | 'fast' (<12h) | 'standard' (12-24h) | 'complex' (>24h)
-  const [sortBy, setSortBy] = useState('popular'); // 'popular' | 'price-asc' | 'price-desc' | 'time-asc'
+  const [sortBy, setSortBy] = useState('popular'); // 'popular' (Novidades: ordem da API, mais novos primeiro; M-77) | 'price-asc' | 'price-desc' | 'time-asc'
 
   // Filter and sort logic com suporte multi-categoria
   const filteredProducts = useMemo(() => {
@@ -40,7 +40,7 @@ export const ProductGrid = ({ title, subtitle, showFilters = true, initialLimit 
         if (sortBy === 'price-asc') return a.price - b.price;
         if (sortBy === 'price-desc') return b.price - a.price;
         if (sortBy === 'time-asc') return a.printTimeHours - b.printTimeHours;
-        return b.reviewsCount - a.reviewsCount;
+        return (b.reviewsCount || 0) - (a.reviewsCount || 0);
       });
     }
 
@@ -103,7 +103,7 @@ export const ProductGrid = ({ title, subtitle, showFilters = true, initialLimit 
       if (sortBy === 'price-asc') return a.price - b.price;
       if (sortBy === 'price-desc') return b.price - a.price;
       if (sortBy === 'time-asc') return a.printTimeHours - b.printTimeHours;
-      return b.reviewsCount - a.reviewsCount;
+      return (b.reviewsCount || 0) - (a.reviewsCount || 0);
     });
   }, [productList, selectedCategory, searchQuery, timeFilter, sortBy]);
 
@@ -245,7 +245,7 @@ export const ProductGrid = ({ title, subtitle, showFilters = true, initialLimit 
                 onChange={(e) => setSortBy(e.target.value)}
                 className="bg-white border-2 border-mimoo-dark rounded-xl px-2.5 py-1 font-fredoka text-xs focus:outline-none cursor-pointer"
               >
-                <option value="popular">⭐ Mais Populares</option>
+                <option value="popular">⭐ Novidades</option>
                 <option value="time-asc">⏱️ Produção Mais Rápida</option>
                 <option value="price-asc">💵 Menor Preço</option>
                 <option value="price-desc">💎 Maior Preço</option>

@@ -165,9 +165,7 @@ class ProductResource extends JsonResource
             'base_price' => (float) ($this->base_price_cents / 100),
             'pix_discount_percent' => 10,
             'price' => (float) $priceInReais,
-            'originalPrice' => round($priceInReais * 1.30, 2),
-            'rating' => 5.0,
-            'reviewsCount' => 18,
+            // M-77: sem preço "de" nem nota/avaliações inventados (a loja ainda não tem avaliações reais)
             'printTimeHours' => (int) round((float) $hours),
             'printTimeDays' => max(1, (int) ceil((float) $hours / 12)).' a '.max(2, (int) ceil((float) $hours / 8)).' dias úteis',
             'badge' => 'Novo no Catálogo ✨',

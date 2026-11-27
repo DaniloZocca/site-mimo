@@ -409,7 +409,9 @@ hPanel → Avançado → Cron Jobs → **Personalizado**, a cada minuto (`* * * 
 | CORS da loja | `curl.exe -sI -H "Origin: https://mimoolab.com.br" https://api.mimoolab.com.br/api/products` | `access-control-allow-origin: https://mimoolab.com.br` |
 | CORS de outro site | o mesmo com `-H "Origin: https://exemplo.com"` | `access-control-allow-origin: https://mimoolab.com.br` (a origem da loja, **não** `*` nem `https://exemplo.com`). Com uma origem só no `CORS_ALLOWED_ORIGINS`, a API sempre devolve essa origem, seja qual for o site que perguntou, e o navegador do outro site recusa a resposta porque o endereço não é o dele. No ensaio pelo domínio temporário, aparece o endereço temporário nos dois testes. Errado é aparecer `*` ou `https://exemplo.com` |
 | Painel | abrir `https://api.mimoolab.com.br/admin` | tela de login; o admin entra |
-| Imagens | cadastrar um produto com foto no painel e abrir a foto | abre em `https://api.mimoolab.com.br/storage/products/...` |
+| Imagens | cadastrar um produto com foto no painel (escolher a foto, recortar no editor de imagem e salvar) e abrir a foto | abre em `https://api.mimoolab.com.br/storage/products/...` |
+| Só fotos em `/storage` (M-80) | no SSH: `echo '<?php echo "M80-EXECUTOU";' > ~/site-mimo/backend/storage/app/public/m80-teste.php`; no PowerShell: `curl.exe -s -o NUL -w "%{http_code}" https://api.mimoolab.com.br/storage/m80-teste.php`; no SSH, **logo em seguida**: `rm ~/site-mimo/backend/storage/app/public/m80-teste.php` | `403`. Se der `200`, apague o arquivo na hora, tire a API do ar com `$PHP artisan down` e mande na thread (o servidor executa PHP em `/storage`) |
+| `nosniff` nos arquivos (M-80) | `curl.exe -sI https://api.mimoolab.com.br/storage/products/<nome de uma foto>` e `curl.exe -sI https://api.mimoolab.com.br/api/products` | os dois com **uma** linha `x-content-type-options: nosniff`; na foto, `content-type: image/...`. O painel abre com o visual de sempre |
 | `www` | `curl.exe -sI https://www.mimoolab.com.br/` | `301` para `https://mimoolab.com.br/` |
 
 **IP real** (prova de que a CDN não está na frente):
@@ -581,6 +583,10 @@ Sem ele, não publique a loja no item 2.
      manutenção sozinho depois de um erro, nem com o check reprovado.
 3. Não edite arquivos do repositório no servidor e apague os arquivos de teste (`opcache-check.php`,
    `ip-check.php`) depois de usar: o script recusa rodar com o `git status` sujo.
+4. **Só no deploy que trouxer a M-80:** depois do `Deploy ok`, apague a pasta antiga dos temporários, que não é
+   mais usada nem limpa sozinha (`rm -r ~/site-mimo/backend/storage/app/public/livewire-tmp`), e faça as linhas
+   "Imagens", "Só fotos em `/storage`" e "`nosniff` nos arquivos" do 1.9. O `.htaccess` provisório que você criou
+   em `storage/app/public` é trocado pelo versionado no próprio deploy (o Git substitui o arquivo ignorado).
 
 ### Voltar atrás (fase 4): voltar uma versão
 
