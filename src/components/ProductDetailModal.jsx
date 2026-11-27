@@ -285,11 +285,14 @@ const ProductDetailContent = ({ selectedProduct }) => {
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-1 font-fredoka font-bold text-amber-500 flex-shrink-0">
-                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    <span>{selectedProduct.rating || 5.0}</span>
-                    <span className="text-slate-400 font-normal">({selectedProduct.reviewsCount || 1} avaliações)</span>
-                  </div>
+                  {/* M-77: nota e avaliações só quando houver avaliações reais */}
+                  {selectedProduct.reviewsCount > 0 && selectedProduct.rating > 0 && (
+                    <div className="flex items-center gap-1 font-fredoka font-bold text-amber-500 flex-shrink-0">
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      <span>{selectedProduct.rating}</span>
+                      <span className="text-slate-400 font-normal">({selectedProduct.reviewsCount} avaliações)</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Product Title & Summary */}

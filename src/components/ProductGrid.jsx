@@ -40,7 +40,7 @@ export const ProductGrid = ({ title, subtitle, showFilters = true, initialLimit 
         if (sortBy === 'price-asc') return a.price - b.price;
         if (sortBy === 'price-desc') return b.price - a.price;
         if (sortBy === 'time-asc') return a.printTimeHours - b.printTimeHours;
-        return b.reviewsCount - a.reviewsCount;
+        return (b.reviewsCount || 0) - (a.reviewsCount || 0);
       });
     }
 
@@ -103,7 +103,7 @@ export const ProductGrid = ({ title, subtitle, showFilters = true, initialLimit 
       if (sortBy === 'price-asc') return a.price - b.price;
       if (sortBy === 'price-desc') return b.price - a.price;
       if (sortBy === 'time-asc') return a.printTimeHours - b.printTimeHours;
-      return b.reviewsCount - a.reviewsCount;
+      return (b.reviewsCount || 0) - (a.reviewsCount || 0);
     });
   }, [productList, selectedCategory, searchQuery, timeFilter, sortBy]);
 
