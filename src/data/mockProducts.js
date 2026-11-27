@@ -113,11 +113,3 @@ export const FAQS = [
     answer: 'Sim! Cada modelo possui um seletor com mais de 8 opções de filamentos exclusivos. Você escolhe a combinação perfeita!'
   }
 ];
-
-export const PRINT_FARM_TICKERS = [
-  '🐮 Cada peça é impressa sob encomenda, só depois do pagamento confirmado',
-  '✨ Acompanhe cada etapa do seu pedido na página de rastreio com o código da encomenda',
-  '💖 Cada peça passa por acabamento e é embalada com carinho antes do envio',
-  '🌱 Filamento PLA de origem vegetal em todas as impressões',
-  '🚀 Frete calculado pelo CEP no carrinho, com código de rastreio da transportadora no envio'
-];

@@ -2,7 +2,6 @@ import { CartProvider } from './context/CartContext';
 import { ShopProvider, useShop } from './context/ShopContext';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
-import { LiveFarmTicker } from './components/LiveFarmTicker';
 import { HowItWorks } from './components/HowItWorks';
 import { ProductGrid } from './components/ProductGrid';
 import { ProductDetailModal } from './components/ProductDetailModal';
@@ -37,9 +36,6 @@ const MainContent = () => {
 
       {/* Header */}
       <Header />
-
-      {/* Live 3D Printing Farm Ticker */}
-      <LiveFarmTicker />
 
       {/* Main Routed Views */}
       <main className="flex-1">
