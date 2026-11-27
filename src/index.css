@@ -112,6 +112,7 @@
   animation-play-state: paused;
 }
 
+#root [data-janela],
 #root [data-janela] * {
   animation-play-state: running;
 }
