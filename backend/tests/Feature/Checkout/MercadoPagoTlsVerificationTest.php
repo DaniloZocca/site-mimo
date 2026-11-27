@@ -90,11 +90,22 @@ class MercadoPagoTlsVerificationTest extends CharacterizationTestCase
     {
         $offenders = [];
         foreach (File::allFiles(app_path()) as $file) {
-            if ($file->getExtension() === 'php' && str_contains($file->getContents(), 'MercadoPagoConfig::LOCAL')) {
-                $offenders[] = $file->getRelativePathname();
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $code = $file->getContents();
+            $path = $file->getRelativePathname();
+            // O SDK compara com o texto 'local': procurar só a constante deixaria passar setRuntimeEnviroment('local').
+            $setsMode = preg_match_all('/setRuntimeEnviroment\s*\(([^)]*)\)/', $code, $calls) > 0;
+            $onlyServerInService = $path === 'Services/MercadoPagoService.php'
+                && $calls[1] === ['MercadoPagoConfig::SERVER'];
+
+            if (str_contains($code, 'MercadoPagoConfig::LOCAL') || ($setsMode && ! $onlyServerInService)) {
+                $offenders[] = $path;
             }
         }
 
-        $this->assertSame([], $offenders, 'MercadoPagoConfig::LOCAL desliga a verificação do certificado HTTPS.');
+        $this->assertSame([], $offenders, 'Só o MercadoPagoService define o modo do SDK, e só como SERVER: o LOCAL desliga a verificação do certificado HTTPS.');
     }
 }
