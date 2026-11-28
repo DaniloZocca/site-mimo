@@ -607,7 +607,7 @@ vazia e sem pagar nada de verdade.
    nenhuma linha vermelha com `Content Security Policy` / `Refused to` (recusado).
 3. **Loja (computador, iPhone/Safari e Android/Chrome):** vitrine, abrir um produto, pôr na sacola, calcular o
    frete pelo CEP (o endereço preenche sozinho pelo ViaCEP), entrar/cadastrar na Área do Cliente e rastrear um
-   pedido. As fontes e as fotos aparecem como antes (as fotos vêm de `https://api.mimoolab.com.br`; se o
+   pedido. Ao pôr na sacola, o confete aparece. As fontes e as fotos aparecem como antes (as fotos vêm de `https://api.mimoolab.com.br`; se o
    `VITE_API_URL` do Web App ou o `APP_URL` da API forem outro endereço, a CSP bloqueia a API e as fotos).
 4. **Cartão (computador e celulares):** vá até o pagamento com cartão: o formulário aparece. Envie um pagamento com
    um **cartão de teste** do Mercado Pago (Mastercard `5031 4332 1540 6351`, validade `11/30`, CVV `123`, titular
