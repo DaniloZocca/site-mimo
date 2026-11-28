@@ -146,6 +146,10 @@ class StoreSecurityHeadersTest extends CharacterizationTestCase
         $this->assertContains('https://fonts.googleapis.com', $csp['style-src'] ?? []);
         $this->assertContains('https://fonts.gstatic.com', $csp['font-src'] ?? []);
 
+        // O confete (canvas-confetti) roda num worker de blob; sem worker-src o navegador usa a script-src e bloqueia
+        // sem erro (o confete some). Achado na conferência no ar da M-86.
+        $this->assertSame(["'self'", 'blob:'], $csp['worker-src'] ?? null);
+
         // Todo endereço fixo que o front chama com fetch precisa estar na connect-src.
         $fetchOrigins = [];
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->repoPath('src'), \FilesystemIterator::SKIP_DOTS)) as $file) {
