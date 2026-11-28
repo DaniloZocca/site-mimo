@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\Size;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -198,10 +199,10 @@ class ProductResource extends JsonResource
      * Códigos de "Materiais Homologados" da peça que estão ativos (M-84). Lista vazia: a peça não
      * aparece na loja (`ProductController`) e o checkout recusa.
      *
-     * @param  \Illuminate\Support\Collection<string, Material>  $activeMaterials
+     * @param  Collection<string, Material>  $activeMaterials
      * @return array<int, string>
      */
-    public static function activeMaterialCodes(mixed $allowedMaterials, \Illuminate\Support\Collection $activeMaterials): array
+    public static function activeMaterialCodes(mixed $allowedMaterials, Collection $activeMaterials): array
     {
         return array_values(array_filter(
             Product::normalizeMaterialCodes($allowedMaterials),

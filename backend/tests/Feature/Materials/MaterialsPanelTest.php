@@ -146,7 +146,7 @@ class MaterialsPanelTest extends CharacterizationTestCase
             ->assertDontSee('ABS Industrial')
             ->assertSee('PETG Resistente');
 
-        Livewire::test(ListMaterials::class)->callTableAction('activate', $material);
+        Livewire::test(ListMaterials::class)->callTableAction('activate', $material->fresh());
         $this->assertTrue($material->fresh()->is_active);
         Livewire::test(CreateColor::class)->assertSee('ABS Industrial');
     }

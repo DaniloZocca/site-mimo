@@ -136,7 +136,7 @@ class MaterialResource extends Resource
      */
     public static function contentClaimsRule(): Closure
     {
-        return function (string $attribute, mixed $value, Closure $fail): void {
+        return fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
             $broken = ContentClaims::brokenRules(is_string($value) ? $value : null);
 
             if ($broken !== []) {

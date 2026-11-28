@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class ColorResource extends Resource
@@ -68,7 +69,7 @@ class ColorResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->with('material'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('material'))
             ->columns([
                 Tables\Columns\ColorColumn::make('hex_code')
                     ->label('Amostra')

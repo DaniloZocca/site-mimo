@@ -139,14 +139,14 @@ class MaterialsCheckoutAndCatalogTest extends CharacterizationTestCase
         $silkColor = Color::factory()->material('pla-silk')->create(['name' => 'Pérola']);
         $product->colors()->attach([$pla->id, $silkColor->id]);
 
-        $data = $this->getJson('/api/products')->assertOk()->json('data.0');
+        $data = $this->getJson('/api/products')->assertOk()->json('0');
         $this->assertSame(['pla', 'pla-silk'], array_column($data['materials'], 'id'));
         $this->assertSame(['id' => 'pla-silk', 'name' => 'PLA Silk', 'full_name' => 'PLA Silk (Acabamento Acetinado)', 'description' => 'Brilho acetinado.'], $data['materials'][1]);
         $this->assertEqualsCanonicalizing(['Lilás', 'Pérola'], array_column($data['colors'], 'name'));
 
         $silk->update(['is_active' => false]);
 
-        $data = $this->getJson('/api/products')->assertOk()->json('data.0');
+        $data = $this->getJson('/api/products')->assertOk()->json('0');
         $this->assertSame(['pla'], array_column($data['materials'], 'id'));
         $this->assertSame(['pla'], $data['allowed_materials']);
         $this->assertSame(['Lilás'], array_column($data['colors'], 'name'));
@@ -158,11 +158,11 @@ class MaterialsCheckoutAndCatalogTest extends CharacterizationTestCase
         ['product' => $product, 'color' => $color] = $this->productIn(['pla-silk'], 'pla-silk');
         $other = Product::factory()->create();
 
-        $this->assertCount(2, $this->getJson('/api/products')->assertOk()->json('data'));
+        $this->assertCount(2, $this->getJson('/api/products')->assertOk()->json());
 
         $silk->update(['is_active' => false]);
 
-        $this->assertSame([(string) $other->id], array_column($this->getJson('/api/products')->assertOk()->json('data'), 'id'));
+        $this->assertSame([(string) $other->id], array_column($this->getJson('/api/products')->assertOk()->json(), 'id'));
         $this->getJson('/api/products/'.$product->slug)->assertNotFound();
         $this->postJson('/api/checkout', $this->checkoutPayload([$this->itemPayload($product, $color, material: 'pla-silk')]))
             ->assertStatus(422)
