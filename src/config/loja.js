@@ -1,6 +1,6 @@
 // Dados da loja usados na Política de Privacidade e nos Termos de Uso (M-41).
 // Preencha antes do `npm run build` de produção. Campo vazio aparece na página como "[a preencher: …]".
-// `atualizadoEm` fica vazio até a virada para produção (fase 3 do docs/deploy-hostinger.md).
+// `atualizadoEm`: data da publicação da loja (virada para produção, M-85). Mude só quando o texto da Política ou dos Termos mudar.
 // Nunca coloque dado inventado aqui. Os dados do rodapé dos e-mails ficam no .env da API (LOJA_*).
 export const LOJA = {
   razaoSocial: '69432423 Lucas Ruiz Schmidt Gallo',
@@ -10,7 +10,7 @@ export const LOJA = {
   emailPrivacidade: 'contato.mimoolab@gmail.com',
   servicoEmail: 'Resend',
   hospedagem: 'Hostinger',
-  atualizadoEm: '',
+  atualizadoEm: '30 de novembro de 2026',
   // Canais de atendimento (Zocca, 2026-11-26, M-74). O rodapé dos e-mails usa os mesmos em backend/config/atendimento.php.
   whatsapp: '5519996317677',
   whatsappExibicao: '(19) 99631-7677',
