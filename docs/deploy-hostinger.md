@@ -607,12 +607,14 @@ vazia e sem pagar nada de verdade.
    nenhuma linha vermelha com `Content Security Policy` / `Refused to` (recusado).
 3. **Loja (computador, iPhone/Safari e Android/Chrome):** vitrine, abrir um produto, pôr na sacola, calcular o
    frete pelo CEP (o endereço preenche sozinho pelo ViaCEP), entrar/cadastrar na Área do Cliente e rastrear um
-   pedido. As fontes e as fotos aparecem como antes.
+   pedido. As fontes e as fotos aparecem como antes (as fotos vêm de `https://api.mimoolab.com.br`; se o
+   `VITE_API_URL` do Web App ou o `APP_URL` da API forem outro endereço, a CSP bloqueia a API e as fotos).
 4. **Cartão (computador e celulares):** vá até o pagamento com cartão: o formulário aparece. Envie um pagamento com
    um **cartão de teste** do Mercado Pago (Mastercard `5031 4332 1540 6351`, validade `11/30`, CVV `123`, titular
    `OTHE`) até a loja mostrar a resposta do servidor. Com as credenciais de produção o cartão de teste é **recusado**:
-   isso é o esperado e prova que o formulário e o envio funcionam. O que não pode acontecer é o formulário não
-   aparecer ou o botão não fazer nada.
+   isso é o esperado e prova que o formulário e o envio funcionam. Uma mensagem de erro do próprio formulário sobre
+   o cartão também vale como resposta. O que reprova é o formulário não aparecer, o botão não fazer nada ou uma
+   linha de bloqueio no console. Se um pedido for criado, cancele no painel, como o do PIX.
 5. **PIX (computador e celulares):** vá até o QR Code (aparece a imagem e o "Copia e Cola"). Não pague; o pedido
    pendente fica para cancelar no painel.
 6. **Se algo for bloqueado no ar** (passo 2 com linha de bloqueio, ou 3 a 5 sem funcionar): reverta o PR da M-86 no

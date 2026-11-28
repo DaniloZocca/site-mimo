@@ -30,9 +30,14 @@ class StoreSecurityHeadersTest extends CharacterizationTestCase
     private function headers(): array
     {
         $htaccess = $this->htaccess();
+        $this->assertSame(1, preg_match_all('/<IfModule\b/i', $htaccess), 'um bloco <IfModule> só, o dos cabeçalhos');
         $this->assertSame(1, preg_match('/<IfModule mod_headers\.c>(.*?)<\/IfModule>/s', $htaccess, $block));
 
         preg_match_all('/^[ \t]*Header always set ([A-Za-z-]+) "([^"]*)"[ \t]*$/m', $block[1], $matches, PREG_SET_ORDER);
+        // Nenhuma outra diretiva Header (set sem always, append, unset, fora do bloco): o teste não pode ficar verde
+        // com uma segunda linha que muda o cabeçalho que ele confere.
+        $this->assertSame(count($matches), preg_match_all('/^[ \t]*Header\b/mi', $htaccess), 'só as linhas `Header always set` dentro do bloco');
+        $this->assertCount(6, $matches, 'os 6 cabeçalhos, cada um uma vez');
         $headers = [];
         foreach ($matches as [, $name, $value]) {
             $headers[strtolower($name)] = $value;

@@ -7,8 +7,11 @@
 # - script: só o próprio site e o Mercado Pago (SDK, formulário do cartão e antifraude). O antifraude injeta um
 #   script inline; ele recebe o nonce abaixo pelo `deviceProfileCspNonce` em src/services/mercadoPago.js
 #   (o StoreSecurityHeadersTest confere que os dois são iguais). Nunca 'unsafe-inline' nem 'unsafe-eval' em script.
+#   O nonce é fixo e público (a loja é estática): ele só libera o antifraude, não protege contra injeção, e não
+#   deve ser usado em nenhum outro <script>.
 # - style 'unsafe-inline': o formulário do Mercado Pago injeta estilos.
-# - img data:: QR Code do PIX. connect: API da loja, ViaCEP e Mercado Pago.
+# - img data:: QR Code do PIX. connect: API da loja, ViaCEP e Mercado Pago. A API precisa ser exatamente
+#   https://api.mimoolab.com.br (VITE_API_URL do Web App e APP_URL da API, que monta o endereço das fotos).
 # - Se o 3DS do cartão for ligado, frame-src e form-action precisam dos domínios dos bancos (desafio 3DS).
 #
 # HSTS em etapas: 1 dia agora; depois de 1 semana sem problema de HTTPS, PR pequeno para 31536000 (backlog M-87).
