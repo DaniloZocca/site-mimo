@@ -31,7 +31,7 @@ class ColorFactory extends Factory
         return $this->state(['in_stock' => false]);
     }
 
-    public function material(MaterialType $material): static
+    public function material(MaterialType|string $material): static
     {
         return $this->state(['material_type' => $material]);
     }

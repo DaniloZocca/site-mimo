@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Enums\MaterialType;
 use App\Models\Category;
 use App\Models\Color;
+use App\Models\Material;
 use App\Models\Product;
 use App\Models\Size;
 use Illuminate\Http\Request;
@@ -65,21 +65,22 @@ class ProductResource extends JsonResource
         };
         $categoryName = $firstCat?->name ?? 'Decoração';
 
-        // Filament colors mapping with material_type for client filtering
-        $colorsList = $this->colors->map(function (Color $c): array {
-            $materialTypeValue = $c->material_type instanceof MaterialType
-                ? $c->material_type->value
-                : ($c->material_type ?: MaterialType::PLA->value);
+        // Materiais ativos (M-84): cor de material desativado não vai para a loja
+        $activeMaterials = Material::activeByCode($request);
 
-            return [
-                'id' => (string) $c->id,
-                'name' => $c->name,
-                'hex' => $c->hex_code,
-                'material_type' => $materialTypeValue,
-                'tag' => $c->tag ?: 'Disponível',
-                'isActive' => (bool) $c->is_active,
-            ];
-        })->values()->toArray();
+        // Filament colors mapping with material_type for client filtering
+        $colorsList = $this->colors
+            ->filter(fn (Color $c): bool => $activeMaterials->has((string) $c->material_type))
+            ->map(function (Color $c): array {
+                return [
+                    'id' => (string) $c->id,
+                    'name' => $c->name,
+                    'hex' => $c->hex_code,
+                    'material_type' => (string) $c->material_type,
+                    'tag' => $c->tag ?: 'Disponível',
+                    'isActive' => (bool) $c->is_active,
+                ];
+            })->values()->toArray();
 
         // Tamanhos que deixariam a peça abaixo de 1 centavo (base + acréscimo) não são vendáveis: o checkout recusa (M-29)
         $basePriceCents = (int) $this->base_price_cents;
@@ -118,17 +119,19 @@ class ProductResource extends JsonResource
             ];
         }
 
-        // Materials rich objects mapping
-        $materialsList = collect($this->allowed_materials ?? ['pla'])->map(function ($matValue): array {
-            $enum = MaterialType::tryFrom((string) $matValue) ?? MaterialType::PLA;
+        // Materials rich objects mapping (só os ativos, M-84)
+        $materialsList = collect(static::activeMaterialCodes($this->allowed_materials, $activeMaterials))
+            ->map(function (string $code) use ($activeMaterials): array {
+                /** @var Material $material */
+                $material = $activeMaterials->get($code);
 
-            return [
-                'id' => $enum->value,
-                'name' => $enum->shortLabel(),
-                'full_name' => $enum->label(),
-                'description' => $enum->technicalDescription(),
-            ];
-        })->values()->toArray();
+                return [
+                    'id' => $material->code,
+                    'name' => $material->short_name,
+                    'full_name' => $material->full_name,
+                    'description' => $material->description,
+                ];
+            })->values()->toArray();
 
         $priceInReais = round(((int) $this->base_price_cents) / 100, 2);
         $rawDescription = (string) ($this->description ?? '');
@@ -159,7 +162,7 @@ class ProductResource extends JsonResource
                 'price_modifier_cents' => (int) ($size->price_modifier_in_cents ?? $size->pivot->price_modifier_in_cents ?? 0),
                 'price_modifier' => (float) (($size->price_modifier_in_cents ?? $size->pivot->price_modifier_in_cents ?? 0) / 100),
             ])->values()->toArray(),
-            'allowed_materials' => (array) ($this->allowed_materials ?? ['pla']),
+            'allowed_materials' => static::activeMaterialCodes($this->allowed_materials, $activeMaterials),
             'materials' => $materialsList,
             'base_price_cents' => (int) $this->base_price_cents,
             'base_price' => (float) ($this->base_price_cents / 100),
@@ -189,5 +192,20 @@ class ProductResource extends JsonResource
                 'Para limpeza, utilize pano levemente umedecido ou água corrente fria com sabão neutro.',
             ],
         ];
+    }
+
+    /**
+     * Códigos de "Materiais Homologados" da peça que estão ativos (M-84). Lista vazia: a peça não
+     * aparece na loja (`ProductController`) e o checkout recusa.
+     *
+     * @param  \Illuminate\Support\Collection<string, Material>  $activeMaterials
+     * @return array<int, string>
+     */
+    public static function activeMaterialCodes(mixed $allowedMaterials, \Illuminate\Support\Collection $activeMaterials): array
+    {
+        return array_values(array_filter(
+            Product::normalizeMaterialCodes($allowedMaterials),
+            fn (string $code): bool => $activeMaterials->has($code)
+        ));
     }
 }

@@ -6,10 +6,10 @@ namespace App\Services;
 
 use App\DTOs\CheckoutOrderDTO;
 use App\DTOs\ShippingOptionDTO;
-use App\Enums\MaterialType;
 use App\Enums\OrderStatus;
 use App\Exceptions\ShippingPriceChangedException;
 use App\Models\Color;
+use App\Models\Material;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Size;
@@ -100,6 +100,8 @@ class OrderCreationService
         $products = Product::with(['colors', 'sizes'])->whereIn('id', $productIds)->get()->keyBy('id');
         $colors = Color::whereIn('id', $colorIds)->get()->keyBy('id');
         $sizes = ! empty($sizeIds) ? Size::whereIn('id', $sizeIds)->get()->keyBy('id') : collect();
+        // Materiais cadastrados no painel (M-84), pelo código
+        $materials = Material::query()->get()->keyBy('code');
 
         $subtotalPiecesCents = 0;
         $itemsToPersist = [];
@@ -153,31 +155,34 @@ class OrderCreationService
 
             // Normalização e validação do polímero contra allowed_materials do modelo 3D
             $materialValue = strtolower(trim((string) ($item->material ?? 'pla')));
-            $materialEnum = MaterialType::tryFrom($materialValue);
+            /** @var Material|null $material */
+            $material = $materials->get($materialValue);
 
-            if (! $materialEnum) {
+            if (! $material) {
                 throw ValidationException::withMessages([
                     'items' => ["O material '{$materialValue}' não é um polímero reconhecido pela MIMOO LAB."],
                 ]);
             }
 
-            $allowedMaterials = (array) ($product->allowed_materials ?? ['pla']);
-            $normalizedAllowed = array_map(
-                fn ($mat) => $mat instanceof MaterialType ? $mat->value : strtolower((string) $mat),
-                $allowedMaterials
-            );
+            if (! $material->is_active) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.material" => [Material::INACTIVE_MESSAGE],
+                ]);
+            }
 
-            if (! in_array($materialEnum->value, $normalizedAllowed, true)) {
+            $normalizedAllowed = Product::normalizeMaterialCodes($product->allowed_materials ?? ['pla']);
+
+            if (! in_array($material->code, $normalizedAllowed, true)) {
                 $allowedLabels = implode(', ', array_map('strtoupper', $normalizedAllowed));
                 throw ValidationException::withMessages([
-                    'items' => ["O material '{$materialEnum->shortLabel()}' não é autorizado para fabricação da peça '{$product->title}'. Materiais permitidos para este modelo: {$allowedLabels}."],
+                    'items' => ["O material '{$material->short_name}' não é autorizado para fabricação da peça '{$product->title}'. Materiais permitidos para este modelo: {$allowedLabels}."],
                 ]);
             }
 
             // O filamento da cor precisa ser do material escolhido (cor sem material conhecido é recusada)
-            if ($color->material_type !== $materialEnum) {
+            if ($color->material_type !== $material->code) {
                 throw ValidationException::withMessages([
-                    "items.{$index}.material" => ["A cor {$color->name} não está disponível em {$materialEnum->shortLabel()} para {$product->title}."],
+                    "items.{$index}.material" => ["A cor {$color->name} não está disponível em {$material->short_name} para {$product->title}."],
                 ]);
             }
 
@@ -201,7 +206,7 @@ class OrderCreationService
                 'product_title_snapshot' => $product->title,
                 'color_name_snapshot' => $color->name,
                 'size_name_snapshot' => $size?->name ?? 'Tamanho Padrão',
-                'material_name_snapshot' => $materialEnum->label(),
+                'material_name_snapshot' => $material->full_name,
                 'unit_price_cents' => $unitPriceCents,
                 'quantity' => $item->quantity,
             ];

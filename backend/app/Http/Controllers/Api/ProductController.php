@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
+use App\Models\Material;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,11 @@ class ProductController extends Controller
             });
         }
 
-        $products = $query->latest()->get();
+        // Peça com todos os materiais desativados sai da loja (M-84)
+        $activeMaterials = Material::activeByCode($request);
+        $products = $query->latest()->get()
+            ->filter(fn (Product $product): bool => ProductResource::activeMaterialCodes($product->allowed_materials, $activeMaterials) !== [])
+            ->values();
 
         return ProductResource::collection($products);
     }
@@ -45,9 +50,11 @@ class ProductController extends Controller
     /**
      * Retorna um produto individual pelo slug ou ID com todos os campos textuais e relacionamentos.
      */
-    public function show(Product $product): ProductResource|JsonResponse
+    public function show(Request $request, Product $product): ProductResource|JsonResponse
     {
-        if (! $product->is_active) {
+        $hasActiveMaterial = ProductResource::activeMaterialCodes($product->allowed_materials, Material::activeByCode($request)) !== [];
+
+        if (! $product->is_active || ! $hasActiveMaterial) {
             return response()->json(['message' => 'Produto indisponível.'], 404);
         }
 

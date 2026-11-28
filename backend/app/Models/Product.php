@@ -57,6 +57,21 @@ class Product extends Model
         });
     }
 
+    /**
+     * Códigos de "Materiais Homologados" em minúsculas (peça sem a lista vale PLA, como no checkout).
+     *
+     * @return array<int, string>
+     */
+    public static function normalizeMaterialCodes(mixed $allowedMaterials): array
+    {
+        $codes = is_array($allowedMaterials) ? $allowedMaterials : ['pla'];
+
+        return array_values(array_map(
+            fn (mixed $code): string => $code instanceof \BackedEnum ? (string) $code->value : strtolower(trim((string) $code)),
+            $codes
+        ));
+    }
+
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class)->orderBy('display_order');
