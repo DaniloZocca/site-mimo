@@ -10,7 +10,7 @@ export const LOJA = {
   emailPrivacidade: 'contato.mimoolab@gmail.com',
   servicoEmail: 'Resend',
   hospedagem: 'Hostinger',
-  atualizadoEm: '28 de novembro de 2026',
+  atualizadoEm: '30 de novembro de 2026',
   // Canais de atendimento (Zocca, 2026-11-26, M-74). O rodapé dos e-mails usa os mesmos em backend/config/atendimento.php.
   whatsapp: '5519996317677',
   whatsappExibicao: '(19) 99631-7677',
