@@ -26,11 +26,18 @@ final class CheckoutLimits
      * Com linhas demais, as regras de cada item (as que consultam o banco) nem são montadas: o `max` de
      * `items` já recusa o pedido, sem nenhuma consulta.
      *
-     * @param  array<string, mixed>  $itemRules  regras `items.*.…`
+     * Passadas como função, as regras só são montadas dentro do limite (a lista de materiais do
+     * checkout é buscada no banco ao montar, M-84).
+     *
+     * @param  array<string, mixed>|\Closure(): array<string, mixed>  $itemRules  regras `items.*.…`
      * @return array<string, mixed>
      */
-    public static function itemRulesFor(mixed $items, array $itemRules): array
+    public static function itemRulesFor(mixed $items, array|\Closure $itemRules): array
     {
-        return is_array($items) && count($items) > self::MAX_ITEM_LINES ? [] : $itemRules;
+        if (is_array($items) && count($items) > self::MAX_ITEM_LINES) {
+            return [];
+        }
+
+        return $itemRules instanceof \Closure ? $itemRules() : $itemRules;
     }
 }
