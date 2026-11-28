@@ -587,6 +587,39 @@ Sem ele, não publique a loja no item 2.
    mais usada nem limpa sozinha (`rm -r ~/site-mimo/backend/storage/app/public/livewire-tmp`), e faça as linhas
    "Imagens", "Só fotos em `/storage`" e "`nosniff` nos arquivos" do 1.9. O `.htaccess` provisório que você criou
    em `storage/app/public` é trocado pelo versionado no próprio deploy (o Git substitui o arquivo ignorado).
+5. **Só no deploy que trouxer a M-86:** depois que o Web App publicar a loja, faça a conferência de
+   "Cabeçalhos da loja (M-86)" logo abaixo.
+
+### Cabeçalhos da loja (M-86)
+
+A loja manda os cabeçalhos de segurança pelo `public/.htaccess` (o Vite copia para a raiz publicada). Só dá para
+saber se o Web App da Hostinger respeita o arquivo no ar. Faça logo depois de a loja ser publicada, com a sacola
+vazia e sem pagar nada de verdade.
+
+1. **Cabeçalhos (computador, Chrome):** abra a loja, `F12` → aba **Rede** (Network) → recarregue → clique na
+   primeira linha (o endereço da loja) → **Cabeçalhos de resposta**. Precisam aparecer os 6:
+   `strict-transport-security: max-age=86400`, `x-frame-options: DENY`, `x-content-type-options: nosniff`,
+   `referrer-policy: strict-origin-when-cross-origin`, `permissions-policy: camera=(), microphone=(), geolocation=()`
+   e um `content-security-policy` que começa com `default-src 'self'` (o `upgrade-insecure-requests` da Hostinger
+   pode aparecer numa linha à parte; é normal). Se não aparecerem: o Web App ignorou o arquivo; mande na thread
+   (nada quebrou, a loja só segue sem a proteção).
+2. **Console (computador):** deixe o `F12` aberto na aba **Console** durante os passos 3 a 5. Não pode aparecer
+   nenhuma linha vermelha com `Content Security Policy` / `Refused to` (recusado).
+3. **Loja (computador, iPhone/Safari e Android/Chrome):** vitrine, abrir um produto, pôr na sacola, calcular o
+   frete pelo CEP (o endereço preenche sozinho pelo ViaCEP), entrar/cadastrar na Área do Cliente e rastrear um
+   pedido. As fontes e as fotos aparecem como antes (as fotos vêm de `https://api.mimoolab.com.br`; se o
+   `VITE_API_URL` do Web App ou o `APP_URL` da API forem outro endereço, a CSP bloqueia a API e as fotos).
+4. **Cartão (computador e celulares):** vá até o pagamento com cartão: o formulário aparece. Envie um pagamento com
+   um **cartão de teste** do Mercado Pago (Mastercard `5031 4332 1540 6351`, validade `11/30`, CVV `123`, titular
+   `OTHE`) até a loja mostrar a resposta do servidor. Com as credenciais de produção o cartão de teste é **recusado**:
+   isso é o esperado e prova que o formulário e o envio funcionam. Uma mensagem de erro do próprio formulário sobre
+   o cartão também vale como resposta. O que reprova é o formulário não aparecer, o botão não fazer nada ou uma
+   linha de bloqueio no console. Se um pedido for criado, cancele no painel, como o do PIX.
+5. **PIX (computador e celulares):** vá até o QR Code (aparece a imagem e o "Copia e Cola"). Não pague; o pedido
+   pendente fica para cancelar no painel.
+6. **Se algo for bloqueado no ar** (passo 2 com linha de bloqueio, ou 3 a 5 sem funcionar): reverta o PR da M-86 no
+   GitHub (botão **Revert** no PR → novo PR → merge na `main` → PR `main → producao`) e deixe o Web App publicar de
+   novo; a loja volta a como era. Mande na thread o que falhou (print do console).
 
 ### Voltar atrás (fase 4): voltar uma versão
 

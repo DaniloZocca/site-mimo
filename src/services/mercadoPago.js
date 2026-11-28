@@ -3,6 +3,12 @@ import { initMercadoPago } from '@mercadopago/sdk-react';
 let isInitialized = false;
 
 /**
+ * M-86: nonce do script inline do antifraude do Mercado Pago, liberado pela CSP do public/.htaccess.
+ * Fixo porque a loja é estática; precisa ser igual ao `'nonce-…'` da CSP (o StoreSecurityHeadersTest confere).
+ */
+export const MP_CSP_NONCE = 'tePhJvA6VSfaHKOl3XRAhC6L';
+
+/**
  * Mapa de Mensagens de Recusa do Mercado Pago traduzidas para português amigável.
  * Em conformidade com as diretrizes de UX e prevenção de exposição de dados de segurança.
  */
@@ -57,6 +63,8 @@ export const setupMercadoPago = () => {
   try {
     initMercadoPago(publicKey, {
       locale: 'pt-BR',
+      advancedFraudPrevention: true,
+      deviceProfileCspNonce: MP_CSP_NONCE,
     });
     isInitialized = true;
     return true;
