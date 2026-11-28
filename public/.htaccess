@@ -1,0 +1,25 @@
+# M-86 (achado S7 da auditoria): cabeçalhos de segurança da loja.
+# O Vite copia este arquivo para a raiz publicada (dist/.htaccess) e o servidor da Hostinger o aplica.
+# A conferência no ar fica no roteiro (docs/deploy-hostinger.md, "Cabeçalhos da loja"); se algo quebrar,
+# reverta o PR e publique de novo.
+#
+# Content-Security-Policy:
+# - script: só o próprio site e o Mercado Pago (SDK, formulário do cartão e antifraude). O antifraude injeta um
+#   script inline; ele recebe o nonce abaixo pelo `deviceProfileCspNonce` em src/services/mercadoPago.js
+#   (o StoreSecurityHeadersTest confere que os dois são iguais). Nunca 'unsafe-inline' nem 'unsafe-eval' em script.
+#   O nonce é fixo e público (a loja é estática): ele só libera o antifraude, não protege contra injeção, e não
+#   deve ser usado em nenhum outro <script>.
+# - style 'unsafe-inline': o formulário do Mercado Pago injeta estilos.
+# - img data:: QR Code do PIX. connect: API da loja, ViaCEP e Mercado Pago. A API precisa ser exatamente
+#   https://api.mimoolab.com.br (VITE_API_URL do Web App e APP_URL da API, que monta o endereço das fotos).
+# - Se o 3DS do cartão for ligado, frame-src e form-action precisam dos domínios dos bancos (desafio 3DS).
+#
+# HSTS em etapas: 1 dia agora; depois de 1 semana sem problema de HTTPS, PR pequeno para 31536000 (backlog M-87).
+<IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=86400"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-tePhJvA6VSfaHKOl3XRAhC6L' https://sdk.mercadopago.com https://http2.mlstatic.com https://www.mercadolibre.com https://www.mercadolivre.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://api.mimoolab.com.br https://http2.mlstatic.com https://www.mercadolibre.com https://www.mercadolivre.com; connect-src 'self' https://api.mimoolab.com.br https://viacep.com.br https://api.mercadopago.com https://api.mercadolibre.com https://http2.mlstatic.com https://www.mercadolibre.com https://www.mercadolivre.com https://secure-fields.mercadopago.com; frame-src https://secure-fields.mercadopago.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+</IfModule>
