@@ -131,25 +131,14 @@ class CheckoutRequest extends FormRequest
 
     /**
      * Materiais cadastrados no painel (M-84), numa consulta só: código desconhecido recusa com a
-     * mensagem de sempre; material desativado recusa com a mensagem para o cliente tirar o item.
+     * mensagem de sempre. Material desativado não é recusado aqui, e sim no `OrderCreationService`,
+     * depois do replay da `Idempotency-Key`: o reenvio de um pedido já criado devolve a resposta dele.
      *
      * @return array<int, mixed>
      */
     private function materialRules(): array
     {
-        /** @var array<string, bool> $activeByCode */
-        $activeByCode = Material::query()->pluck('is_active', 'code')
-            ->map(fn (mixed $active): bool => (bool) $active)
-            ->all();
-
-        return [
-            Rule::in(array_keys($activeByCode)),
-            function (string $attribute, mixed $value, \Closure $fail) use ($activeByCode): void {
-                if (is_string($value) && ($activeByCode[$value] ?? true) === false) {
-                    $fail(Material::INACTIVE_MESSAGE);
-                }
-            },
-        ];
+        return [Rule::in(Material::query()->pluck('code')->all())];
     }
 
     /**

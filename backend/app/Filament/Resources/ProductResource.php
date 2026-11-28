@@ -150,6 +150,15 @@ class ProductResource extends Resource
                                     ->default(['pla'])
                                     ->columns(2)
                                     ->required()
+                                    ->rules([
+                                        fn (?Product $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                            $allowed = array_keys(Material::panelOptions(Product::normalizeMaterialCodes($record?->allowed_materials ?? [])));
+
+                                            if (array_diff(array_map('strval', (array) $value), $allowed) !== []) {
+                                                $fail('Marque só materiais da lista (os desativados não podem ser adicionados à peça).');
+                                            }
+                                        },
+                                    ])
                                     ->helperText('Marque todos os materiais em que esta peça pode ser manufaturada na oficina.'),
 
                                 Forms\Components\Select::make('sizes')

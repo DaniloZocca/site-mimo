@@ -11,6 +11,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\Feature\Characterization\Support\BuildsCheckoutPayload;
 use Tests\Feature\Characterization\Support\CharacterizationTestCase;
 use Tests\Feature\Characterization\Support\FakeMercadoPagoHttpClient;
@@ -168,5 +169,24 @@ class MaterialsCheckoutAndCatalogTest extends CharacterizationTestCase
             ->assertStatus(422)
             ->assertJsonPath('message', self::INACTIVE_MESSAGE);
         $this->assertSame(0, Order::count());
+    }
+
+    public function test_reenvio_com_a_mesma_chave_depois_de_desativar_o_material_devolve_a_resposta_do_pedido(): void
+    {
+        $silk = $this->silk();
+        ['product' => $product, 'color' => $color] = $this->productIn(['pla-silk'], 'pla-silk');
+        $this->mpHttp->pushJson(FakeMercadoPagoHttpClient::payment(9050, 'pending', statusDetail: 'pending_waiting_transfer'));
+        $payload = $this->checkoutPayload([$this->itemPayload($product, $color, material: 'pla-silk')]);
+        $key = (string) Str::uuid();
+
+        $first = $this->postJson('/api/checkout', $payload, ['Idempotency-Key' => $key])->assertStatus(201);
+        $silk->update(['is_active' => false]);
+        $second = $this->postJson('/api/checkout', $payload, ['Idempotency-Key' => $key])
+            ->assertStatus(201)
+            ->assertHeader('Idempotent-Replayed', 'true');
+
+        $this->assertSame($first->json(), $second->json());
+        $this->assertSame(1, Order::count());
+        $this->assertCount(1, $this->mpHttp->requests);
     }
 }

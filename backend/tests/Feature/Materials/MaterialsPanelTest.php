@@ -228,6 +228,30 @@ class MaterialsPanelTest extends CharacterizationTestCase
         $this->assertSame(['pla', 'pla-silk'], $product->fresh()->allowed_materials);
     }
 
+    public function test_nome_completo_com_mais_de_100_caracteres_e_recusado(): void
+    {
+        Livewire::test(CreateMaterial::class)
+            ->fillForm($this->form(['full_name' => str_repeat('a', 101)]))
+            ->call('create')
+            ->assertHasFormErrors(['full_name' => 'max']);
+    }
+
+    public function test_peca_nao_grava_material_desativado_nem_codigo_fora_da_tabela(): void
+    {
+        Material::query()->where('code', 'abs')->update(['is_active' => false]);
+        $pla = Color::factory()->create();
+        $product = $this->product(['pla'], [$pla]);
+
+        foreach (['abs', '<b>x</b>'] as $code) {
+            Livewire::test(EditProduct::class, ['record' => $product->getKey()])
+                ->fillForm(['allowed_materials' => ['pla', $code]])
+                ->call('save')
+                ->assertHasFormErrors(['allowed_materials']);
+        }
+
+        $this->assertSame(['pla'], $product->fresh()->allowed_materials);
+    }
+
     /**
      * @param  array<int, string>  $materials
      * @param  array<int, Color>  $colors

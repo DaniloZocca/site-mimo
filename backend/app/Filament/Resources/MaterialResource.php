@@ -81,7 +81,8 @@ class MaterialResource extends Resource
                         Forms\Components\TextInput::make('full_name')
                             ->label('Nome completo')
                             ->required()
-                            ->maxLength(120)
+                            // Mesmo tamanho de order_items.material_name_snapshot, onde o nome fica gravado
+                            ->maxLength(100)
                             ->placeholder('Ex: PLA Silk (Acabamento Acetinado)')
                             ->helperText('Aparece na janela da peça, na loja, e fica gravado no pedido.')
                             ->rules([static::contentClaimsRule()]),

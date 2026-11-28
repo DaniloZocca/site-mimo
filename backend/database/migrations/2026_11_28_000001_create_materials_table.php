@@ -49,7 +49,8 @@ return new class extends Migration
             // Mesmo tamanho de colors.material_type; só [a-z0-9-], não muda depois de criado
             $table->string('code', 30)->unique();
             $table->string('short_name', 40);
-            $table->string('full_name', 120);
+            // Mesmo tamanho de order_items.material_name_snapshot, onde o nome fica gravado no pedido
+            $table->string('full_name', 100);
             $table->text('description');
             $table->boolean('is_active')->default(true)->index();
             $table->unsignedInteger('sort_order')->default(0);
