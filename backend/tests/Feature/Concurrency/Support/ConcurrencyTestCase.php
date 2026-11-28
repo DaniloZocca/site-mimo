@@ -116,7 +116,8 @@ abstract class ConcurrencyTestCase extends TestCase
     {
         $tables = array_map(
             fn (object $row): string => (string) $row->name,
-            DB::select("SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME <> 'migrations'")
+            // `materials` nasce preenchida pela migration (M-84), como dado de referência: fica, igual a `migrations`
+            DB::select("SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME NOT IN ('migrations', 'materials')")
         );
 
         DB::statement('SET FOREIGN_KEY_CHECKS = 0');

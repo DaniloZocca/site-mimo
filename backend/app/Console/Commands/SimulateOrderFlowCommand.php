@@ -82,7 +82,7 @@ class SimulateOrderFlowCommand extends Command
         $size = Size::where('name', 'Colecionador')->firstOrFail();
 
         $this->line("   • Produto: <info>{$product->title}</info> (R$ ".number_format($product->base_price_cents / 100, 2, ',', '.').')');
-        $this->line("   • Cor: <info>{$color->name}</info> ({$color->material_type->value})");
+        $this->line("   • Cor: <info>{$color->name}</info> ({$color->material_type})");
         $this->line("   • Tamanho: <info>{$size->name}</info> (+R$ ".number_format($size->price_modifier_in_cents / 100, 2, ',', '.').')');
 
         // =====================================================================

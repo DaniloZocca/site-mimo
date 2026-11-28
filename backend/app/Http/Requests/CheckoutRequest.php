@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Enums\MaterialType;
+use App\Models\Material;
 use App\Rules\ValidCpf;
 use App\Support\CheckoutLimits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Enum;
 
 class CheckoutRequest extends FormRequest
 {
@@ -114,11 +113,11 @@ class CheckoutRequest extends FormRequest
 
             // Lista de Itens com Validação Estrita de Material e UUIDs (M-06: no máximo 50 linhas)
             'items' => ['required', 'array', 'min:1', 'max:'.CheckoutLimits::MAX_ITEM_LINES],
-            ...CheckoutLimits::itemRulesFor($this->input('items'), [
+            ...CheckoutLimits::itemRulesFor($this->input('items'), fn (): array => [
                 'items.*.product_id' => ['required', 'uuid', 'exists:products,id'],
                 'items.*.color_id' => ['required', 'uuid', 'exists:colors,id'],
                 'items.*.size_id' => ['nullable', 'uuid', 'exists:sizes,id'],
-                'items.*.material' => ['required', 'string', new Enum(MaterialType::class)],
+                'items.*.material' => ['required', 'string', ...$this->materialRules()],
                 'items.*.quantity' => ['required', 'integer', 'min:1', 'max:50'],
             ]),
 
@@ -128,6 +127,18 @@ class CheckoutRequest extends FormRequest
             'payment.installments' => ['required_if:payment.payment_method,credit_card', 'nullable', 'integer', 'min:1', 'max:'.CheckoutLimits::MAX_INSTALLMENTS],
             'payment.payment_method_id' => ['required_if:payment.payment_method,credit_card', 'nullable', 'string'],
         ];
+    }
+
+    /**
+     * Materiais cadastrados no painel (M-84), numa consulta só: código desconhecido recusa com a
+     * mensagem de sempre. Material desativado não é recusado aqui, e sim no `OrderCreationService`,
+     * depois do replay da `Idempotency-Key`: o reenvio de um pedido já criado devolve a resposta dele.
+     *
+     * @return array<int, mixed>
+     */
+    private function materialRules(): array
+    {
+        return [Rule::in(Material::query()->pluck('code')->all())];
     }
 
     /**
@@ -168,6 +179,7 @@ class CheckoutRequest extends FormRequest
             'items.*.size_id.uuid' => 'O identificador do tamanho deve ser um UUID válido.',
             'items.*.size_id.exists' => 'A variação de tamanho selecionada não foi encontrada.',
             'items.*.material.required' => 'O material de impressão 3D (ex: PLA, PETG, ABS, TPU) é obrigatório.',
+            'items.*.material.in' => 'O valor escolhido em material é inválido.',
             'items.*.quantity.required' => 'A quantidade de cada item é obrigatória.',
             'items.*.quantity.min' => 'A quantidade mínima por peça é de 1 unidade.',
             'items.*.quantity.max' => 'A quantidade máxima por item na mesma encomenda é de 50 unidades.',

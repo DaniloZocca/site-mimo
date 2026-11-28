@@ -7,6 +7,7 @@ namespace App\Filament\Resources;
 use App\Enums\MaterialType;
 use App\Filament\Resources\ColorResource\Pages;
 use App\Models\Color;
+use App\Models\Material;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class ColorResource extends Resource
@@ -49,8 +51,10 @@ class ColorResource extends Resource
 
                         Forms\Components\Select::make('material_type')
                             ->label('Tipo de Polímero / Material')
-                            ->options(MaterialType::class)
-                            ->default(MaterialType::PLA)
+                            // Materiais da aba "Materiais" (M-84): os ativos e o atual da cor
+                            ->options(fn (?Color $record): array => Material::panelOptions(array_filter([$record?->material_type]), long: true))
+                            ->default(MaterialType::PLA->value)
+                            ->in(fn (?Color $record): array => array_keys(Material::panelOptions(array_filter([$record?->material_type]))))
                             ->required(),
 
                         Forms\Components\Toggle::make('in_stock')
@@ -65,6 +69,7 @@ class ColorResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('material'))
             ->columns([
                 Tables\Columns\ColorColumn::make('hex_code')
                     ->label('Amostra')
@@ -80,6 +85,8 @@ class ColorResource extends Resource
                 Tables\Columns\TextColumn::make('material_type')
                     ->label('Material')
                     ->badge()
+                    ->formatStateUsing(fn (Color $record): string => ProductResource::materialName($record))
+                    ->color(fn (?string $state): string => MaterialType::tryFrom((string) $state)?->getColor() ?? 'gray')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('products_count')
@@ -95,7 +102,7 @@ class ColorResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('material_type')
                     ->label('Filtrar por Material')
-                    ->options(MaterialType::class),
+                    ->options(fn (): array => Material::query()->ordered()->pluck('short_name', 'code')->all()),
 
                 Tables\Filters\TernaryFilter::make('in_stock')
                     ->label('Status de Estoque')
